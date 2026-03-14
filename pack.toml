@@ -1,0 +1,11 @@
+[custom.all.flux]
+type = "local"
+path = "."
+ipkg = "flux.ipkg"
+test = "test/test.ipkg"
+
+[custom.all.flux-test]
+type = "local"
+path = "test"
+ipkg = "test.ipkg"
+
