@@ -3,6 +3,7 @@ module Flux.Core.Router
 import public Flux.Core.HTTP
 import public Data.SortedMap
 import public Data.List
+import Data.String
 
 %default total
 
@@ -20,14 +21,18 @@ export
 getParam : String -> PathParams -> Maybe String
 getParam name (MkParams ps) = lookup name ps
 
--- Route pattern types
+-- Route pattern types. `Splat` (written `*name` in a pattern) consumes all
+-- remaining path segments (joined with "/"); it only makes sense as the
+-- last segment of a pattern - any pattern segments after it are never
+-- reached, since a Splat always matches regardless of what's left.
 public export
-data PathSegment = Literal String | Param String
+data PathSegment = Literal String | Param String | Splat String
 
 export
 Eq PathSegment where
   Literal x == Literal y = x == y
   Param x == Param y = x == y
+  Splat x == Splat y = x == y
   _ == _ = False
 
 public export
@@ -60,6 +65,7 @@ parsePattern pat = map parseSeg (splitOn '/' pat)
       case unpack str of
         [] => Literal ""
         (':' :: cs) => Param (pack cs)
+        ('*' :: cs) => Splat (pack cs)
         _ => Literal str
 
 -- Match a path against a pattern
@@ -70,6 +76,8 @@ matchPath pattern path =
    in matchSegments pattern segments empty
   where
     matchSegments : List PathSegment -> List String -> SortedMap String String -> Maybe PathParams
+    matchSegments (Splat name :: _) segs acc =
+      Just (MkParams (insert name (joinBy "/" segs) acc))
     matchSegments [] [] acc = Just (MkParams acc)
     matchSegments [] _  _   = Nothing
     matchSegments _  [] _   = Nothing
@@ -114,16 +122,40 @@ export
 head_ : String -> h -> Router h -> Router h
 head_ = addRoute HEAD
 
--- Find the first matching route
 export
-matchRoute : Method -> String -> Router h -> Maybe (PathParams, h)
-matchRoute method path (MkRouter routes) = findRoute routes
+put : String -> h -> Router h -> Router h
+put = addRoute PUT
+
+export
+delete : String -> h -> Router h -> Router h
+delete = addRoute DELETE
+
+export
+patch : String -> h -> Router h -> Router h
+patch = addRoute PATCH
+
+export
+options_ : String -> h -> Router h -> Router h
+options_ = addRoute OPTIONS
+
+||| The result of matching a request against a `Router`: a genuine match,
+||| a path match with no route for this particular method (carrying the
+||| methods that *would* have matched, for a 405 response's `Allow`
+||| header), or no route registered for this path at all.
+public export
+data MatchResult h = Matched PathParams h | WrongMethod (List Method) | NoMatch
+
+-- Find the first matching route, in declaration order. A route whose path
+-- matches but whose method doesn't is remembered (not discarded) so callers
+-- can tell a 405 (wrong method) apart from a genuine 404 (no such path).
+export
+matchRoute : Method -> String -> Router h -> MatchResult h
+matchRoute method path (MkRouter routes) = go routes []
   where
-    findRoute : List (Route h) -> Maybe (PathParams, h)
-    findRoute [] = Nothing
-    findRoute (MkRoute m pat h :: rs) =
-      if m == method then
-        case matchPath pat path of
-          Just params => Just (params, h)
-          Nothing     => findRoute rs
-      else findRoute rs
+    go : List (Route h) -> List Method -> MatchResult h
+    go []                        []      = NoMatch
+    go []                        allowed = WrongMethod allowed
+    go (MkRoute m pat h :: rs) allowed =
+      case matchPath pat path of
+        Nothing     => go rs allowed
+        Just params => if m == method then Matched params h else go rs (allowed ++ [m])

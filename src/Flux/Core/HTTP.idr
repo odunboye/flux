@@ -3,6 +3,7 @@ module Flux.Core.HTTP
 import public Data.SortedMap
 import public FS.Posix
 import public FS.Socket
+import Data.List1
 
 import public IO.Async.Loop.Posix
 
@@ -55,13 +56,17 @@ public export
 Headers = SortedMap String String
 
 public export
-data Method = GET | POST | HEAD
+data Method = GET | POST | HEAD | PUT | DELETE | PATCH | OPTIONS
 
 export
 Eq Method where
   GET == GET = True
   POST == POST = True
   HEAD == HEAD = True
+  PUT == PUT = True
+  DELETE == DELETE = True
+  PATCH == PATCH = True
+  OPTIONS == OPTIONS = True
   _ == _ = False
 
 export
@@ -69,6 +74,10 @@ Show Method where
   showPrec _ GET = "GET"
   showPrec _ POST = "POST"
   showPrec _ HEAD = "HEAD"
+  showPrec _ PUT = "PUT"
+  showPrec _ DELETE = "DELETE"
+  showPrec _ PATCH = "PATCH"
+  showPrec _ OPTIONS = "OPTIONS"
 
 public export
 data Version = V10 | V11 | V20
@@ -85,6 +94,7 @@ record Request where
   constructor R
   method  : Method
   uri     : String
+  query   : SortedMap String String
   version : Version
   headers : Headers
   length  : Nat
@@ -93,11 +103,19 @@ record Request where
 
 export
 requestMethod : Request -> Method
-requestMethod (R m _ _ _ _ _ _) = m
+requestMethod (R m _ _ _ _ _ _ _) = m
 
 export
 requestUri : Request -> String
-requestUri (R _ u _ _ _ _ _) = u
+requestUri (R _ u _ _ _ _ _ _) = u
+
+export
+requestQuery : Request -> SortedMap String String
+requestQuery (R _ _ q _ _ _ _ _) = q
+
+export
+getQuery : String -> Request -> Maybe String
+getQuery name req = lookup name req.query
 
 MaxHeaderSize : Nat
 MaxHeaderSize = 0xffff
@@ -110,24 +128,32 @@ SPACE, COLON : Bits8
 SPACE = 32
 COLON = 58
 
+export
 method : String -> Either HTTPErr Method
-method "GET"  = Right GET
-method "POST" = Right POST
-method "HEAD" = Right HEAD
-method _      = Left InvalidRequest
+method "GET"     = Right GET
+method "POST"    = Right POST
+method "HEAD"    = Right HEAD
+method "PUT"     = Right PUT
+method "DELETE"  = Right DELETE
+method "PATCH"   = Right PATCH
+method "OPTIONS" = Right OPTIONS
+method _         = Left InvalidRequest
 
+export
 version : String -> Either HTTPErr Version
 version "HTTP/1.0" = Right V10
 version "HTTP/1.1" = Right V11
 version "HTTP/2.0" = Right V20
 version _          = Left InvalidRequest
 
+export
 startLine : ByteString -> Either HTTPErr (Method,String,Version)
 startLine bs =
   case toString <$> split SPACE (trim bs) of
     [m,t,v] => [| (\x,y,z => (x,y,z)) (method m) (pure t) (version v) |]
     _       => Left InvalidRequest
 
+export
 headers : Headers -> List ByteString -> Either HTTPErr Headers
 headers hs []     = Right hs
 headers hs (h::t) =
@@ -138,11 +164,34 @@ headers hs (h::t) =
       in headers (insert name val hs) t
     _                => Left InvalidRequest
 
+export
 contentLength : Headers -> Nat
 contentLength = maybe 0 cast . lookup "content-length"
 
+export
 contentType : Headers -> Maybe String
 contentType = lookup "content-type"
+
+-- Splits a request target like "/users?active=true" into ("/users",
+-- "active=true"); a target with no "?" yields an empty query part.
+export
+splitQuery : String -> (String, String)
+splitQuery tgt =
+  case break (== '?') tgt of
+    (path, qs) => case strUncons qs of
+      Just (_, rest) => (path, rest)
+      Nothing        => (path, "")
+
+export
+parseQuery : String -> SortedMap String String
+parseQuery ""  = empty
+parseQuery qs  = foldl insertPair empty (forget (split (== '&') qs))
+  where
+    insertPair : SortedMap String String -> String -> SortedMap String String
+    insertPair acc kv = case break (== '=') kv of
+      (k, v) => case strUncons v of
+        Just (_, val) => insert k val acc
+        Nothing       => insert k "" acc
 
 export
 assemble :
@@ -154,8 +203,10 @@ assemble p = Prelude.do
   (hs,body)     <- foldPairE headers empty rem
   let cl := contentLength hs
       ct := contentType hs
+      (path,qs) := splitQuery tgt
+      qmap := parseQuery qs
   when (cl > MaxContentSize) (throw ContentSizeExceeded)
-  pure $ Just (R met tgt vrs hs cl ct $ C.take cl body)
+  pure $ Just (R met path qmap vrs hs cl ct $ C.take cl body)
 
 export
 request : HTTPStream ByteString -> HTTPPull o (Maybe Request)

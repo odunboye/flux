@@ -18,6 +18,7 @@ depends = flux
 -- modules to install
 modules = Main
         , TestRouter
+        , TestHTTP
         , TestJSON
         , TestMiddleware
         , TestLogging

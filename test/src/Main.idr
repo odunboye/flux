@@ -1,6 +1,7 @@
 module Main
 
 import TestRouter
+import TestHTTP
 import TestJSON
 import TestMiddleware
 import TestLogging
@@ -34,6 +35,9 @@ runAllSuites = do
   putStrLn "=== Running Router Tests ==="
   runTests TestRouter.runAllTests
   putStrLn ""
+  putStrLn "=== Running HTTP Tests ==="
+  runTests TestHTTP.runAllTests
+  putStrLn ""
   putStrLn "=== Running JSON Tests ==="
   runTests TestJSON.runAllTests
   putStrLn ""
@@ -46,6 +50,7 @@ runAllSuites = do
 allPassed : Bool
 allPassed =
   all snd TestRouter.runAllTests &&
+  all snd TestHTTP.runAllTests &&
   all snd TestJSON.runAllTests &&
   all snd TestMiddleware.runAllTests &&
   all snd TestLogging.runAllTests

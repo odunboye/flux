@@ -11,8 +11,8 @@ testEmptyApp =
   case emptyApp of
     MkApp r _ _ =>
       case matchRoute GET "/any" r of
-        Nothing => True
-        Just _ => False
+        NoMatch => True
+        _ => False
 
 -- `use` adds to the before-chain
 export
@@ -44,8 +44,8 @@ testWithRoutes =
    in case app1 of
         MkApp r _ _ =>
           case matchRoute GET "/test" r of
-            Just _ => True
-            Nothing => False
+            Matched _ _ => True
+            _           => False
 
 -- Run all middleware tests
 export

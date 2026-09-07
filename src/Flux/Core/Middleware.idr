@@ -3,6 +3,7 @@ module Flux.Core.Middleware
 import public Flux.Core.HTTP
 import public Flux.Core.Router
 import public Data.SortedMap
+import Data.String
 
 %default total
 
@@ -136,11 +137,17 @@ withRoutes r a = { router := r } a
 notFound : Context -> Context
 notFound ctx = setStatus 404 (send (fromString "Not Found") ctx)
 
+methodNotAllowed : List Method -> Context -> Context
+methodNotAllowed methods ctx =
+  setHeader "Allow" (joinBy ", " (map show methods)) $
+  setStatus 405 (send (fromString "Method Not Allowed") ctx)
+
 dispatch : Router Handler -> Context -> HTTPProg Context
 dispatch router ctx =
   case matchRoute ctx.request.method ctx.request.uri router of
-    Just (params, handler) => handler ({ pathParams := params } ctx)
-    Nothing                => pure (notFound ctx)
+    Matched params handler => handler ({ pathParams := params } ctx)
+    WrongMethod methods    => pure (methodNotAllowed methods ctx)
+    NoMatch                => pure (notFound ctx)
 
 -- Run the full application for one request: before-middleware, route
 -- dispatch (or 404), after-middleware, then render to wire bytes.
