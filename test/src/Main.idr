@@ -6,6 +6,8 @@ import TestJSON
 import TestMiddleware
 import TestLogging
 import TestConfig
+import TestCookies
+import TestSession
 import System
 
 %default covering
@@ -51,8 +53,12 @@ main = do
   configOk     <- runTests "Config" configTests
   middlewareTests <- TestMiddleware.runAllTests
   middlewareOk    <- runTests "Middleware" middlewareTests
+  cookiesOk       <- runTests "Cookies" TestCookies.runAllTests
+  sessionTests    <- TestSession.runAllTests
+  sessionOk       <- runTests "Session" sessionTests
 
   if routerOk && httpOk && jsonOk && middlewareOk && loggingOk && configOk
+     && cookiesOk && sessionOk
     then do
       putStrLn "All tests passed!"
       exitSuccess

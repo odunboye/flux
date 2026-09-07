@@ -23,6 +23,8 @@ modules = Main
         , TestMiddleware
         , TestLogging
         , TestConfig
+        , TestCookies
+        , TestSession
 
 -- main file (i.e. file to load at REPL)
 main = Main

@@ -20,6 +20,8 @@ import public Flux.Server.Health
 -- Built-in middleware
 import public Flux.Middleware.RequestId
 import public Flux.Middleware.Timing
+import public Flux.Middleware.Cookies
+import public Flux.Middleware.Session
 
 -- Version
 export

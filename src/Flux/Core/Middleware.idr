@@ -16,9 +16,41 @@ import Data.String
 public export
 data ResponseBody = Buffered ByteString | Streamed (Maybe Nat) (HTTPStream ByteString)
 
+||| A cookie to set on the response. Lives here (rather than in
+||| `Flux.Middleware.Cookies`, which builds on this) because `Context`
+||| needs it: HTTP allows several `Set-Cookie` headers on one response,
+||| which `respHeaders : SortedMap String String` (one value per key)
+||| can't represent, so cookies get their own list instead. Build one with
+||| `cookie` (sensible defaults) rather than the constructor directly.
+public export
+record SetCookie where
+  constructor MkSetCookie
+  name     : String
+  value    : String
+  path     : String
+  maxAge   : Maybe Integer
+  httpOnly : Bool
+  secure   : Bool
+
+||| A cookie with sensible defaults: root path, HttpOnly, no Max-Age (a
+||| session cookie, cleared when the browser closes), not Secure (set
+||| `{ secure := True } (cookie n v)` explicitly when serving over TLS).
+export
+cookie : String -> String -> SetCookie
+cookie name value = MkSetCookie name value "/" Nothing True False
+
+export
+renderSetCookie : SetCookie -> String
+renderSetCookie c =
+  let base      := "\{c.name}=\{c.value}; Path=\{c.path}"
+      withAge   := maybe base (\ms => base ++ "; Max-Age=\{show ms}") c.maxAge
+      withHttp  := if c.httpOnly then withAge ++ "; HttpOnly" else withAge
+      withSecure := if c.secure then withHttp ++ "; Secure" else withHttp
+   in withSecure
+
 -- Request plus everything a handler/middleware chain needs to build a
 -- response: matched path params, arbitrary per-request state, and the
--- response being assembled (status, headers, body).
+-- response being assembled (status, headers, cookies, body).
 public export
 record Context where
   constructor MkContext
@@ -27,11 +59,12 @@ record Context where
   state       : SortedMap String String
   statusCode  : Nat
   respHeaders : SortedMap String String
+  respCookies : List SetCookie
   respBody    : ResponseBody
 
 export
 emptyContext : Request -> Context
-emptyContext req = MkContext req emptyParams empty 200 empty (Buffered (fromString ""))
+emptyContext req = MkContext req emptyParams empty 200 empty [] (Buffered (fromString ""))
 
 export
 setState : String -> String -> Context -> Context
@@ -54,6 +87,10 @@ setHeaders : List (String, String) -> Context -> Context
 setHeaders hs ctx = foldl (\c,(k,v) => setHeader k v c) ctx hs
 
 export
+addCookie : SetCookie -> Context -> Context
+addCookie c ctx = { respCookies $= (c ::) } ctx
+
+export
 send : ByteString -> Context -> Context
 send body ctx = { respBody := Buffered body } ctx
 
@@ -66,6 +103,9 @@ export
 sendStream : Maybe Nat -> HTTPStream ByteString -> Context -> Context
 sendStream len body ctx = { respBody := Streamed len body } ctx
 
+cookieHeaders : Context -> List (String, String)
+cookieHeaders ctx = map (\c => ("Set-Cookie", renderSetCookie c)) ctx.respCookies
+
 -- Assemble the final context into an emitting HTTP wire response: the
 -- status line and headers as one emission, followed by the (possibly
 -- chunk-encoded) body.
@@ -74,13 +114,13 @@ render : Context -> HTTPStream ByteString
 render ctx =
   case ctx.respBody of
     Buffered body =>
-      let hs := toList ctx.respHeaders ++ [("Content-Length", show (length body))]
+      let hs := toList ctx.respHeaders ++ cookieHeaders ctx ++ [("Content-Length", show (length body))]
        in emit (fastConcat [encodeResponse ctx.statusCode hs, body])
     Streamed (Just len) body =>
-      let hs := toList ctx.respHeaders ++ [("Content-Length", show len)]
+      let hs := toList ctx.respHeaders ++ cookieHeaders ctx ++ [("Content-Length", show len)]
        in emit (encodeResponse ctx.statusCode hs) >> body
     Streamed Nothing body =>
-      let hs := toList ctx.respHeaders ++ [("Transfer-Encoding", "chunked")]
+      let hs := toList ctx.respHeaders ++ cookieHeaders ctx ++ [("Transfer-Encoding", "chunked")]
        in emit (encodeResponse ctx.statusCode hs) >> chunkEncode body
 
 ||| An application-level failure a handler wants rendered directly, e.g.
