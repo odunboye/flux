@@ -292,6 +292,13 @@ sendJSONError : Nat -> String -> Context -> Context
 sendJSONError code msg =
   setStatus code . sendJSON (JObject (fromList [("error", JString msg)]))
 
+||| An `ErrorRenderer` (see `Flux.Core.Middleware.App.onError`) that renders
+||| a caught `AppError` as a JSON `{"error": "..."}` body instead of the
+||| plain-text `defaultErrorRenderer`. Register with `withErrorRenderer`.
+export
+jsonErrorRenderer : ErrorRenderer
+jsonErrorRenderer err = sendJSONError err.status err.message
+
 -- Decode JSON string to value
 export
 decode : FromJSON a => String -> Maybe a

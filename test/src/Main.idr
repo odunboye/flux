@@ -45,10 +45,11 @@ main = do
   routerOk     <- runTests "Router" TestRouter.runAllTests
   httpOk       <- runTests "HTTP" TestHTTP.runAllTests
   jsonOk       <- runTests "JSON" TestJSON.runAllTests
-  middlewareOk <- runTests "Middleware" TestMiddleware.runAllTests
   loggingOk    <- runTests "Logging" TestLogging.runAllTests
   configTests  <- TestConfig.runAllTests
   configOk     <- runTests "Config" configTests
+  middlewareTests <- TestMiddleware.runAllTests
+  middlewareOk    <- runTests "Middleware" middlewareTests
 
   if routerOk && httpOk && jsonOk && middlewareOk && loggingOk && configOk
     then do
