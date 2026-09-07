@@ -1,10 +1,15 @@
 module TestRouter
 
-import Router
-import HTTP
+import Flux.Core.Router
+import Flux.Core.HTTP
 import Data.SortedMap
 
 %default total
+
+-- A dummy handler payload; `Router`/`matchRoute` are generic over it, so a
+-- plain `Nat` is enough to exercise routing without touching `Handler`.
+dummy : Nat
+dummy = 0
 
 -- Test parsePattern returns non-empty results
 export
@@ -48,7 +53,7 @@ testMatchPathMismatch =
 export
 testEmptyRouter : Bool
 testEmptyRouter =
-  case matchRoute GET "/any" empty of
+  case matchRoute GET "/any" (the (Router Nat) empty) of
     Nothing => True
     Just _ => False
 
@@ -56,9 +61,7 @@ testEmptyRouter =
 export
 testAddRoute : Bool
 testAddRoute =
-  let handler : Handler
-      handler _ = empty
-      router = addRoute GET "/test" handler empty
+  let router = addRoute GET "/test" dummy empty
    in case matchRoute GET "/test" router of
         Just _ => True
         Nothing => False
@@ -67,9 +70,7 @@ testAddRoute =
 export
 testGetHelper : Bool
 testGetHelper =
-  let handler : Handler
-      handler _ = empty
-      router = get "/api" handler empty
+  let router = get "/api" dummy empty
    in case matchRoute GET "/api" router of
         Just _ => True
         Nothing => False
@@ -78,9 +79,7 @@ testGetHelper =
 export
 testPostHelper : Bool
 testPostHelper =
-  let handler : Handler
-      handler _ = empty
-      router = post "/api" handler empty
+  let router = post "/api" dummy empty
    in case matchRoute POST "/api" router of
         Just _ => True
         Nothing => False
@@ -89,9 +88,7 @@ testPostHelper =
 export
 testMethodMismatch : Bool
 testMethodMismatch =
-  let handler : Handler
-      handler _ = empty
-      router = get "/api" handler empty
+  let router = get "/api" dummy empty
    in case matchRoute POST "/api" router of
         Nothing => True
         Just _ => False
@@ -100,11 +97,7 @@ testMethodMismatch =
 export
 testMultipleRoutes : Bool
 testMultipleRoutes =
-  let h1 : Handler
-      h1 _ = empty
-      h2 : Handler
-      h2 _ = empty
-      router = get "/posts" h2 (get "/users" h1 empty)
+  let router = get "/posts" dummy (get "/users" dummy empty)
    in case (matchRoute GET "/users" router, matchRoute GET "/posts" router) of
         (Just _, Just _) => True
         _ => False
@@ -113,9 +106,7 @@ testMultipleRoutes =
 export
 testRouteWithParams : Bool
 testRouteWithParams =
-  let handler : Handler
-      handler _ = empty
-      router = get "/users/:id" handler empty
+  let router = get "/users/:id" dummy empty
    in case matchRoute GET "/users/42" router of
         Just (params, _) =>
           case getParam "id" params of
@@ -123,25 +114,22 @@ testRouteWithParams =
             _ => False
         Nothing => False
 
--- Test handleRoute returns non-empty response (simplified - just check route matches)
+-- Test that routes match in declaration order (first added, first tried)
 export
-testHandleRouteFound : Bool
-testHandleRouteFound =
-  let handler : Handler
-      handler _ = empty
-      router = get "/test" handler empty
-   in case matchRoute GET "/test" router of
-        Just _ => True
-        Nothing => False
+testDeclarationOrder : Bool
+testDeclarationOrder =
+  let router = get "/users/:id" 1 (get "/users/me" 2 empty)
+   in case matchRoute GET "/users/me" router of
+        Just (_, 2) => True
+        _ => False
 
--- Test handleRoute not found (404) - simplified
+-- Test route not found (404 territory)
 export
-testHandleRouteNotFound : Bool
-testHandleRouteNotFound =
-  let router = empty
-   in case matchRoute GET "/nonexistent" router of
-        Nothing => True
-        Just _ => False
+testRouteNotFound : Bool
+testRouteNotFound =
+  case matchRoute GET "/nonexistent" (the (Router Nat) empty) of
+    Nothing => True
+    Just _ => False
 
 -- Run all router tests
 export
@@ -158,6 +146,6 @@ runAllTests = [
   ("methodMismatch", testMethodMismatch),
   ("multipleRoutes", testMultipleRoutes),
   ("routeWithParams", testRouteWithParams),
-  ("handleRouteFound", testHandleRouteFound),
-  ("handleRouteNotFound", testHandleRouteNotFound)
+  ("declarationOrder", testDeclarationOrder),
+  ("routeNotFound", testRouteNotFound)
   ]

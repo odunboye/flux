@@ -1,6 +1,6 @@
 module TestLogging
 
-import Logging
+import Flux.Server.Logging
 
 %default total
 

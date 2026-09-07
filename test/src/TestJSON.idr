@@ -1,6 +1,6 @@
 module TestJSON
 
-import JSON
+import Flux.Data.JSON
 import Data.SortedMap
 
 %default total

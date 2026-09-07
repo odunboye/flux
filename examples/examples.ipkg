@@ -1,0 +1,14 @@
+package flux-examples
+version = 0.1.0
+authors = "Odun Adeboye"
+brief   = "Runnable example servers built on Flux"
+
+depends = flux
+
+modules = EchoServer
+        , Main
+
+main = Main
+
+executable = "flux-examples"
+sourcedir = "src"

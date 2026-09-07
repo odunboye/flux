@@ -1,52 +1,58 @@
 module TestMiddleware
 
-import Middleware
-import Router
+import Flux.Core.Middleware
+import Flux.Core.Router
 
 %default total
-%language ElabReflection
 
--- Test emptyApp
 export
 testEmptyApp : Bool
 testEmptyApp =
   case emptyApp of
-    MkApp r _ =>
+    MkApp r _ _ =>
       case matchRoute GET "/any" r of
         Nothing => True
         Just _ => False
 
--- Test use middleware
+-- `use` adds to the before-chain
 export
 testUse : Bool
 testUse =
   let mw : Middleware
-      mw = \c => c
-      app0 = emptyApp
-      app1 = use mw app0
+      mw = pure
+      app1 = use mw emptyApp
    in case app1 of
-        MkApp _ mid => length mid == 1
+        MkApp _ before _ => length before == 1
 
--- Test withRoutes
-export partial
+-- `useAfter` adds to the after-chain, independently of `use`
+export
+testUseAfter : Bool
+testUseAfter =
+  let mw : Middleware
+      mw = pure
+      app1 = useAfter mw emptyApp
+   in case app1 of
+        MkApp _ before after => length before == 0 && length after == 1
+
+export
 testWithRoutes : Bool
 testWithRoutes =
   let handler : Handler
-      handler = \_ => empty
+      handler = pure
       router = get "/test" handler empty
-      app0 = emptyApp
-      app1 = withRoutes router app0
+      app1 = withRoutes router emptyApp
    in case app1 of
-        MkApp r _ =>
+        MkApp r _ _ =>
           case matchRoute GET "/test" r of
             Just _ => True
             Nothing => False
 
 -- Run all middleware tests
-export partial
+export
 runAllTests : List (String, Bool)
 runAllTests = [
   ("emptyApp", testEmptyApp),
   ("use", testUse),
+  ("useAfter", testUseAfter),
   ("withRoutes", testWithRoutes)
   ]
