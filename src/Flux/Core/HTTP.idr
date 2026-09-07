@@ -275,24 +275,72 @@ addr : Bits16 -> IP4Addr
 addr = IP4 [127,0,0,1]
 
 --------------------------------------------------------------------------------
--- Server driver
+-- Chunked transfer-encoding
 --------------------------------------------------------------------------------
--- These combinators turn a request-handling computation (`Request ->
--- HTTPProg ByteString`, allowed to perform IO and other effects) into a
--- running socket server. They are generic over what actually builds the
--- response so a single implementation backs both the router/middleware
--- based `Flux.Core.Middleware.runApp` and simple standalone responders.
+-- Frames a stream of response-body `ByteString`s per RFC 7230's chunked
+-- transfer-coding: each emitted chunk becomes "<hex length>\r\n<bytes>\r\n",
+-- terminated by a final "0\r\n\r\n". Used for streamed response bodies
+-- whose total length isn't known upfront (see `Flux.Core.Middleware`'s
+-- `ResponseBody`/`sendStream`).
+
+hexDigit : Nat -> Char
+hexDigit 0 = '0'
+hexDigit 1 = '1'
+hexDigit 2 = '2'
+hexDigit 3 = '3'
+hexDigit 4 = '4'
+hexDigit 5 = '5'
+hexDigit 6 = '6'
+hexDigit 7 = '7'
+hexDigit 8 = '8'
+hexDigit 9 = '9'
+hexDigit 10 = 'a'
+hexDigit 11 = 'b'
+hexDigit 12 = 'c'
+hexDigit 13 = 'd'
+hexDigit 14 = 'e'
+hexDigit _  = 'f'
 
 export
-respondWith : (Request -> HTTPProg ByteString) -> Maybe Request -> HTTPStream ByteString
+toHex : Nat -> String
+toHex 0 = "0"
+toHex n = pack (reverse (go n))
+  where
+    go : Nat -> List Char
+    go 0 = []
+    go k = assert_total $ hexDigit (k `mod` 16) :: go (k `div` 16)
+
+chunkFrame : ByteString -> ByteString
+chunkFrame bs = fastConcat [fromString (toHex (length bs)), fromString "\r\n", bs, fromString "\r\n"]
+
+chunkTerminator : ByteString
+chunkTerminator = fromString "0\r\n\r\n"
+
+export
+chunkEncode : HTTPStream ByteString -> HTTPStream ByteString
+chunkEncode = scanFull () (\_,bs => (Just (chunkFrame bs), ())) (const (Just chunkTerminator))
+
+--------------------------------------------------------------------------------
+-- Server driver
+--------------------------------------------------------------------------------
+-- These combinators turn a request-handling computation into a running
+-- socket server. A `Responder` builds the *entire* wire response itself
+-- (status line, headers, and body, however many chunks that takes) - it's
+-- generic over what actually builds the response so a single
+-- implementation backs both the router/middleware based
+-- `Flux.Core.Middleware.runApp` and simple standalone responders.
+public export
+0 Responder : Type
+Responder = Request -> HTTPStream ByteString
+
+export
+respondWith : Responder -> Maybe Request -> HTTPStream ByteString
 respondWith f Nothing  = pure ()
-respondWith f (Just r) = Prelude.do
-  resp <- exec (f r)
-  cons resp r.body
+respondWith f (Just r) = f r
 
 export covering
 echoWith :
-     (Request -> HTTPProg ByteString)
+     Responder
   -> Socket AF_INET
   -> HTTPPull ByteString (Maybe Request)
   -> AsyncStream Poll [Errno] Void
@@ -302,7 +350,7 @@ echoWith f cli p =
     Right () => pure ()
 
 export covering
-serveWith : (Request -> HTTPProg ByteString) -> Socket AF_INET -> Async Poll [] ()
+serveWith : Responder -> Socket AF_INET -> Async Poll [] ()
 serveWith f cli =
   flip guarantee (close' cli) $
     mpull $ handleErrors (\(Here x) => stderrLn "\{x}") $
@@ -311,7 +359,7 @@ serveWith f cli =
       |> echoWith f cli
 
 export covering
-runServer : (Request -> HTTPProg ByteString) -> Bits16 -> (n : Nat) -> (0 p : IsSucc n) => Prog [Errno] Void
+runServer : Responder -> Bits16 -> (n : Nat) -> (0 p : IsSucc n) => Prog [Errno] Void
 runServer f port n =
   shutdownOn [SIGINT, SIGTERM] $
     foreachPar n (serveWith f) (acceptOn AF_INET SOCK_STREAM (addr port))
@@ -320,7 +368,7 @@ runServer f port n =
 ||| to port 8080 with 128 workers) and runs the server. Pass the tail of
 ||| `getArgs` (i.e. with the program name dropped) as `args`.
 export covering
-runServerArgs : (Request -> HTTPProg ByteString) -> List String -> Prog [Errno] Void
+runServerArgs : Responder -> List String -> Prog [Errno] Void
 runServerArgs f ["server", port, n] =
   case cast {to = Nat} n of
     S k => runServer f (cast port) (S k)

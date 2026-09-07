@@ -2,8 +2,10 @@ module TestHTTP
 
 import Flux.Core.HTTP
 import Data.SortedMap
+import Data.IORef
+import System
 
-%default total
+%default covering
 
 -- method
 
@@ -131,11 +133,58 @@ export
 testParseQueryEmptyString : Bool
 testParseQueryEmptyString = null (SortedMap.toList (parseQuery ""))
 
--- Run all HTTP wire-parser tests
+-- toHex
+
 export
-runAllTests : List (String, Bool)
-runAllTests = [
-  ("methodGet", testMethodGet),
+testToHexSmall : Bool
+testToHexSmall = toHex 0 == "0" && toHex 5 == "5" && toHex 15 == "f"
+
+export
+testToHexLarge : Bool
+testToHexLarge = toHex 16 == "10" && toHex 255 == "ff" && toHex 256 == "100"
+
+-- chunkEncode: runs the real async stream and checks the wire framing.
+
+runStream : HTTPStream ByteString -> IO ByteString
+runStream stream = do
+  ref <- newIORef []
+  runProg $
+    handleErrors
+      (\case
+        Here e         => liftIO (putStrLn "runStream: unexpected Errno: \{e}")
+        There (Here e) => liftIO (putStrLn "runStream: unexpected HTTPErr: \{e}"))
+      (foreach (\v => liftIO (modifyIORef ref (v ::))) stream)
+  chunks <- readIORef ref
+  pure (fastConcat (reverse chunks))
+
+export
+testChunkEncodeSingle : IO Bool
+testChunkEncodeSingle = do
+  out <- runStream (chunkEncode (emit (fromString "hello")))
+  pure (toString out == "5\r\nhello\r\n0\r\n\r\n")
+
+export
+testChunkEncodeMultiple : IO Bool
+testChunkEncodeMultiple = do
+  out <- runStream (chunkEncode (emit (fromString "hello") >> emit (fromString "world!")))
+  pure (toString out == "5\r\nhello\r\n6\r\nworld!\r\n0\r\n\r\n")
+
+export
+testChunkEncodeEmpty : IO Bool
+testChunkEncodeEmpty = do
+  out <- runStream (chunkEncode (pure ()))
+  pure (toString out == "0\r\n\r\n")
+
+-- Run all HTTP wire-parser tests (mixing pure and IO-backed cases, since
+-- chunk-encoding needs the real async runtime to exercise)
+export
+runAllTests : IO (List (String, Bool))
+runAllTests = do
+  chunkSingle   <- testChunkEncodeSingle
+  chunkMultiple <- testChunkEncodeMultiple
+  chunkEmpty    <- testChunkEncodeEmpty
+  pure $
+   [ ("methodGet", testMethodGet),
   ("methodAllVariants", testMethodAllVariants),
   ("methodUnknown", testMethodUnknown),
   ("version11", testVersion11),
@@ -156,5 +205,10 @@ runAllTests = [
   ("parseQuerySingle", testParseQuerySingle),
   ("parseQueryMultiple", testParseQueryMultiple),
   ("parseQueryNoValue", testParseQueryNoValue),
-  ("parseQueryEmptyString", testParseQueryEmptyString)
+  ("parseQueryEmptyString", testParseQueryEmptyString),
+  ("toHexSmall", testToHexSmall),
+  ("toHexLarge", testToHexLarge),
+  ("chunkEncodeSingle", chunkSingle),
+  ("chunkEncodeMultiple", chunkMultiple),
+  ("chunkEncodeEmpty", chunkEmpty)
   ]

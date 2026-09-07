@@ -7,6 +7,15 @@ import Data.String
 
 %default total
 
+||| A response body: either a single buffered `ByteString` (the common
+||| case - `send`/`sendText`/`sendJSON` all produce this), or a stream to
+||| write out chunk-by-chunk. `Streamed (Just n) body` claims a known
+||| Content-Length of `n` bytes; `Streamed Nothing body` means the length
+||| isn't known upfront, so `render` chunk-transfer-encodes it instead
+||| (see `Flux.Core.HTTP.chunkEncode`).
+public export
+data ResponseBody = Buffered ByteString | Streamed (Maybe Nat) (HTTPStream ByteString)
+
 -- Request plus everything a handler/middleware chain needs to build a
 -- response: matched path params, arbitrary per-request state, and the
 -- response being assembled (status, headers, body).
@@ -18,11 +27,11 @@ record Context where
   state       : SortedMap String String
   statusCode  : Nat
   respHeaders : SortedMap String String
-  respBody    : ByteString
+  respBody    : ResponseBody
 
 export
 emptyContext : Request -> Context
-emptyContext req = MkContext req emptyParams empty 200 empty (fromString "")
+emptyContext req = MkContext req emptyParams empty 200 empty (Buffered (fromString ""))
 
 export
 setState : String -> String -> Context -> Context
@@ -46,18 +55,33 @@ setHeaders hs ctx = foldl (\c,(k,v) => setHeader k v c) ctx hs
 
 export
 send : ByteString -> Context -> Context
-send body ctx = { respBody := body } ctx
+send body ctx = { respBody := Buffered body } ctx
 
 export
 sendText : String -> Context -> Context
 sendText str = setHeader "Content-Type" "text/plain" . send (fromString str)
 
--- Assemble the final context into a raw HTTP wire response.
+||| Streams a response body instead of buffering it - see `ResponseBody`.
 export
-render : Context -> ByteString
+sendStream : Maybe Nat -> HTTPStream ByteString -> Context -> Context
+sendStream len body ctx = { respBody := Streamed len body } ctx
+
+-- Assemble the final context into an emitting HTTP wire response: the
+-- status line and headers as one emission, followed by the (possibly
+-- chunk-encoded) body.
+export
+render : Context -> HTTPStream ByteString
 render ctx =
-  let hs := toList ctx.respHeaders ++ [("Content-Length", show (length ctx.respBody))]
-   in fastConcat [encodeResponse ctx.statusCode hs, ctx.respBody]
+  case ctx.respBody of
+    Buffered body =>
+      let hs := toList ctx.respHeaders ++ [("Content-Length", show (length body))]
+       in emit (fastConcat [encodeResponse ctx.statusCode hs, body])
+    Streamed (Just len) body =>
+      let hs := toList ctx.respHeaders ++ [("Content-Length", show len)]
+       in emit (encodeResponse ctx.statusCode hs) >> body
+    Streamed Nothing body =>
+      let hs := toList ctx.respHeaders ++ [("Transfer-Encoding", "chunked")]
+       in emit (encodeResponse ctx.statusCode hs) >> chunkEncode body
 
 ||| An application-level failure a handler wants rendered directly, e.g.
 ||| `throw (MkAppError 404 "user not found")`. Caught and rendered by
@@ -197,14 +221,18 @@ internalServerError onError = onError (MkAppError 500 "Internal Server Error")
 -- request) since a caught failure discards whatever the before-chain had
 -- already accumulated onto the Context up to that point.
 export
-runApp : App -> Request -> HTTPProg ByteString
-runApp (MkApp router before after onError) req =
-  handleErrors
+runApp : App -> Responder
+runApp (MkApp router before after onError) req = Prelude.do
+  -- Fully resolve the AppProg pipeline (catching AppError/Errno) into a
+  -- plain Context *before* crossing into the HTTPStream/wire-level world,
+  -- since AppProg's error set ([Errno,AppError]) and HTTPStream's
+  -- ([Errno,HTTPErr]) are different and can't be mixed in one `exec`.
+  ctx <- exec $ handleErrors
     (\case
-      Here _         => pure $ render $ internalServerError onError (emptyContext req)
-      There (Here e) => pure $ render $ onError e (emptyContext req))
+      Here _         => pure $ internalServerError onError (emptyContext req)
+      There (Here e) => pure $ onError e (emptyContext req))
     (Prelude.do
       ctx0 <- runChain before (emptyContext req)
       ctx1 <- dispatch router ctx0
-      ctx2 <- runChain after ctx1
-      pure (render ctx2))
+      runChain after ctx1)
+  render ctx

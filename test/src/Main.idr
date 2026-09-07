@@ -43,7 +43,8 @@ main = do
   putStrLn "========================="
 
   routerOk     <- runTests "Router" TestRouter.runAllTests
-  httpOk       <- runTests "HTTP" TestHTTP.runAllTests
+  httpTests    <- TestHTTP.runAllTests
+  httpOk       <- runTests "HTTP" httpTests
   jsonOk       <- runTests "JSON" TestJSON.runAllTests
   loggingOk    <- runTests "Logging" TestLogging.runAllTests
   configTests  <- TestConfig.runAllTests

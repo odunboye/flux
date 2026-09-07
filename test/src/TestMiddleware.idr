@@ -60,19 +60,21 @@ testWithRoutes =
 dummyRequest : Request
 dummyRequest = R GET "/" empty V11 empty 0 Nothing (pure ())
 
--- Runs an HTTPProg computation for real, via the async runtime, and
--- returns its result - needed because runApp's error-catching is a
--- runtime behavior, not something visible from its type alone.
-runOnce : HTTPProg a -> IO (Maybe a)
-runOnce prog = do
-  ref <- newIORef Nothing
+-- Runs an HTTPStream for real, via the async runtime, concatenating
+-- everything it emits - needed because runApp's error-catching (and, once
+-- streaming responses are involved, its chunking) is a runtime behavior,
+-- not something visible from its type alone.
+runOnce : HTTPStream ByteString -> IO ByteString
+runOnce stream = do
+  ref <- newIORef []
   runProg $
     handleErrors
       (\case
         Here e         => liftIO (putStrLn "runOnce: unexpected Errno: \{e}")
         There (Here e) => liftIO (putStrLn "runOnce: unexpected HTTPErr: \{e}"))
-      (foreach (\v => liftIO (writeIORef ref (Just v))) (eval prog))
-  readIORef ref
+      (foreach (\v => liftIO (modifyIORef ref (v ::))) stream)
+  chunks <- readIORef ref
+  pure (fastConcat (reverse chunks))
 
 export
 testRunAppCatchesAppError : IO Bool
@@ -80,8 +82,7 @@ testRunAppCatchesAppError = do
   let failingHandler : Handler
       failingHandler _ = throw (MkAppError 404 "not found")
       myApp = withRoutes (get "/" failingHandler empty) emptyApp
-  Just resp <- runOnce (runApp myApp dummyRequest)
-    | Nothing => pure False
+  resp <- runOnce (runApp myApp dummyRequest)
   let respStr = toString resp
   pure $ isInfixOf "404" respStr && isInfixOf "not found" respStr
 
@@ -91,8 +92,7 @@ testRunAppCatchesErrno = do
   let failingHandler : Handler
       failingHandler _ = throw EPERM
       myApp = withRoutes (get "/" failingHandler empty) emptyApp
-  Just resp <- runOnce (runApp myApp dummyRequest)
-    | Nothing => pure False
+  resp <- runOnce (runApp myApp dummyRequest)
   let respStr = toString resp
   pure $ isInfixOf "500" respStr
 
@@ -103,8 +103,7 @@ testWithErrorRenderer = do
       failingHandler _ = throw (MkAppError 418 "teapot")
       myApp = withErrorRenderer (\err => setStatus err.status . sendText ("custom: " ++ err.message)) $
                 withRoutes (get "/" failingHandler empty) emptyApp
-  Just resp <- runOnce (runApp myApp dummyRequest)
-    | Nothing => pure False
+  resp <- runOnce (runApp myApp dummyRequest)
   let respStr = toString resp
   pure $ isInfixOf "418" respStr && isInfixOf "custom: teapot" respStr
 
