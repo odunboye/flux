@@ -6,6 +6,8 @@ import public FS.Socket
 import Data.List1
 
 import public IO.Async.Loop.Posix
+import IO.Async.Loop.Poller
+import IO.Async.Signal
 
 import public System
 
@@ -18,9 +20,41 @@ public export
 0 Prog : List Type -> Type -> Type
 Prog = AsyncStream Poll
 
+||| Runs the second stream (typically an accept loop) until any of the
+||| given signals arrives, then lets it terminate normally rather than
+||| erroring. `Flux.Core.HTTP.runProg` blocks these signals at the process
+||| level so they reach here instead of killing the process outright.
+|||
+||| `runServer` wraps its accept loop in `shutdownOn [SIGINT, SIGTERM]`: no
+||| new connections are accepted once a signal arrives, but connections
+||| already in flight are allowed to finish (`foreachPar`'s internal
+||| semaphore-drain guarantees this - see the `async`/`streams` library's
+||| `finally`/`guaranteeCase` semantics) before the process exits.
+|||
+||| PLATFORM NOTE: this relies on `async-posix`'s `awaitSignals`, which
+||| calls the POSIX.1b `sigwaitinfo()` syscall. That syscall does not
+||| exist on macOS/Darwin - the `posix` package's own C support explicitly
+||| excludes it there (`#ifndef __APPLE__` around `li_sigwaitinfo` in
+||| `idris2-linux/posix/support/posix.c`) - so on macOS, sending SIGINT or
+||| SIGTERM to a running Flux server crashes it
+||| (`Exception in foreign-procedure: no entry for "li_sigwaitinfo"`)
+||| instead of shutting it down cleanly. This is a pre-existing limitation
+||| of the dependency stack, not specific to `shutdownOn` - the same crash
+||| already happened with plain SIGINT before this function existed, via
+||| `simpleApp`'s built-in handling. Signal-based shutdown only works on
+||| Linux; verify it there, not on macOS.
+export
+shutdownOn : List Signal -> Prog [Errno] o -> Prog [Errno] o
+shutdownOn sigs = haltOn (eval (awaitSignals sigs))
+
+||| Runs a `Prog`, blocking SIGINT/SIGTERM at the process level so
+||| `shutdownOn` can react to them instead of the OS killing the process
+||| immediately. See `shutdownOn`'s platform note: this only works on Linux.
 export covering
 runProg : Prog [Errno] Void -> IO ()
-runProg prog = simpleApp $ mpull (handle [stderrLn . interpolate] prog)
+runProg prog = do
+  n <- asyncThreads
+  app n [SIGINT, SIGTERM] posixPoller (mpull (handle [stderrLn . interpolate] prog))
 
 public export
 data HTTPErr : Type where
@@ -278,7 +312,9 @@ serveWith f cli =
 
 export covering
 runServer : (Request -> HTTPProg ByteString) -> Bits16 -> (n : Nat) -> (0 p : IsSucc n) => Prog [Errno] Void
-runServer f port n = foreachPar n (serveWith f) (acceptOn AF_INET SOCK_STREAM (addr port))
+runServer f port n =
+  shutdownOn [SIGINT, SIGTERM] $
+    foreachPar n (serveWith f) (acceptOn AF_INET SOCK_STREAM (addr port))
 
 ||| Parses CLI args of the shape `["server", port, workers]` (falling back
 ||| to port 8080 with 128 workers) and runs the server. Pass the tail of
