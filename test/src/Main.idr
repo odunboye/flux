@@ -8,6 +8,7 @@ import TestLogging
 import TestConfig
 import TestCookies
 import TestSession
+import TestStatic
 import System
 
 %default covering
@@ -56,9 +57,10 @@ main = do
   cookiesOk       <- runTests "Cookies" TestCookies.runAllTests
   sessionTests    <- TestSession.runAllTests
   sessionOk       <- runTests "Session" sessionTests
+  staticOk        <- runTests "Static" TestStatic.runAllTests
 
   if routerOk && httpOk && jsonOk && middlewareOk && loggingOk && configOk
-     && cookiesOk && sessionOk
+     && cookiesOk && sessionOk && staticOk
     then do
       putStrLn "All tests passed!"
       exitSuccess

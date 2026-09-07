@@ -28,6 +28,7 @@ modules = Flux.Core.HTTP
         , Flux.Middleware.Timing
         , Flux.Middleware.Cookies
         , Flux.Middleware.Session
+        , Flux.Middleware.Static
         , Flux
 
 -- main file (i.e. file to load at REPL) - this is a library, not a

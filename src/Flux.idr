@@ -22,6 +22,7 @@ import public Flux.Middleware.RequestId
 import public Flux.Middleware.Timing
 import public Flux.Middleware.Cookies
 import public Flux.Middleware.Session
+import public Flux.Middleware.Static
 
 -- Version
 export
