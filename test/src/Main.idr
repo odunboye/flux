@@ -5,9 +5,10 @@ import TestHTTP
 import TestJSON
 import TestMiddleware
 import TestLogging
+import TestConfig
 import System
 
-%default total
+%default covering
 
 reportTest : (String, Bool) -> IO ()
 reportTest (name, True) = putStrLn ("  [PASS] " ++ name)
@@ -26,44 +27,30 @@ printResults tests passed failed = do
   putStrLn ("Total: " ++ show (passed + failed) ++ " | Passed: " ++ show passed ++ " | Failed: " ++ show failed)
   putStrLn "========================================"
 
-runTests : List (String, Bool) -> IO ()
-runTests tests = printResults tests (length (filter snd tests)) (length (filter (not . snd) tests))
+-- Runs one suite's already-collected results, printing a report and
+-- returning whether everything in it passed.
+runTests : String -> List (String, Bool) -> IO Bool
+runTests label tests = do
+  putStrLn ""
+  putStrLn ("=== Running " ++ label ++ " Tests ===")
+  printResults tests (length (filter snd tests)) (length (filter (not . snd) tests))
+  pure (all snd tests)
 
-runAllSuites : IO ()
-runAllSuites = do
-  putStrLn ""
-  putStrLn "=== Running Router Tests ==="
-  runTests TestRouter.runAllTests
-  putStrLn ""
-  putStrLn "=== Running HTTP Tests ==="
-  runTests TestHTTP.runAllTests
-  putStrLn ""
-  putStrLn "=== Running JSON Tests ==="
-  runTests TestJSON.runAllTests
-  putStrLn ""
-  putStrLn "=== Running Middleware Tests ==="
-  runTests TestMiddleware.runAllTests
-  putStrLn ""
-  putStrLn "=== Running Logging Tests ==="
-  runTests TestLogging.runAllTests
-
-allPassed : Bool
-allPassed =
-  all snd TestRouter.runAllTests &&
-  all snd TestHTTP.runAllTests &&
-  all snd TestJSON.runAllTests &&
-  all snd TestMiddleware.runAllTests &&
-  all snd TestLogging.runAllTests
-
-covering
 main : IO ()
 main = do
   putStrLn ""
   putStrLn "FLUX FRAMEWORK TEST SUITE"
   putStrLn "========================="
-  putStrLn ""
-  runAllSuites
-  if allPassed
+
+  routerOk     <- runTests "Router" TestRouter.runAllTests
+  httpOk       <- runTests "HTTP" TestHTTP.runAllTests
+  jsonOk       <- runTests "JSON" TestJSON.runAllTests
+  middlewareOk <- runTests "Middleware" TestMiddleware.runAllTests
+  loggingOk    <- runTests "Logging" TestLogging.runAllTests
+  configTests  <- TestConfig.runAllTests
+  configOk     <- runTests "Config" configTests
+
+  if routerOk && httpOk && jsonOk && middlewareOk && loggingOk && configOk
     then do
       putStrLn "All tests passed!"
       exitSuccess

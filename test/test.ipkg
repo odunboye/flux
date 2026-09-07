@@ -22,6 +22,7 @@ modules = Main
         , TestJSON
         , TestMiddleware
         , TestLogging
+        , TestConfig
 
 -- main file (i.e. file to load at REPL)
 main = Main
