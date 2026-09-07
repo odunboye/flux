@@ -1,9 +1,9 @@
 package flux
-version = 0.1.0
+version = 0.2.0
 authors = "Odun Adeboye"
 -- maintainers =
 -- license =
--- brief =
+brief   = "A production-grade HTTP server framework for Idris2"
 -- readme =
 -- homepage =
 -- sourceloc =
@@ -17,22 +17,20 @@ depends    = streams-posix
            , async-posix
 
 -- modules to install
-modules = Flux
-        , HTTP
-        , HTTP11
-        , Router
-        , Middleware
-        , Logging
-        , JSON
-        , Config
-        , RequestId
-        , Timing
-        , Health
-        , Examples
-        , Main
+modules = Flux.Core.HTTP
+        , Flux.Core.Router
+        , Flux.Core.Middleware
+        , Flux.Data.JSON
+        , Flux.Server.Config
+        , Flux.Server.Logging
+        , Flux.Server.Health
+        , Flux.Middleware.RequestId
+        , Flux.Middleware.Timing
+        , Flux
 
--- main file (i.e. file to load at REPL)
-main = Main
+-- main file (i.e. file to load at REPL) - this is a library, not a
+-- standalone executable; see examples/ for a runnable server.
+main = Flux
 
 -- name of executable
 --executable = flux-server

@@ -1,25 +1,25 @@
 module Flux
 
 -- Core HTTP
-import HTTP
+import public Flux.Core.HTTP
 
 -- Routing
-import Router
+import public Flux.Core.Router
 
--- Middleware
-import Middleware
-
--- Logging
-import Logging
+-- Context, handlers, middleware, App
+import public Flux.Core.Middleware
 
 -- JSON support
-import JSON
+import public Flux.Data.JSON
 
--- Production modules
-import Config
-import RequestId
-import Timing
-import Health
+-- Server-level concerns
+import public Flux.Server.Config
+import public Flux.Server.Logging
+import public Flux.Server.Health
+
+-- Built-in middleware
+import public Flux.Middleware.RequestId
+import public Flux.Middleware.Timing
 
 -- Version
 export

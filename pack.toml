@@ -9,3 +9,8 @@ type = "local"
 path = "test"
 ipkg = "test.ipkg"
 
+[custom.all.flux-examples]
+type = "local"
+path = "examples"
+ipkg = "examples.ipkg"
+
