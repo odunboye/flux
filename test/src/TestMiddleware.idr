@@ -58,7 +58,7 @@ testWithRoutes =
 
 -- A bare request with no body, just enough to drive runApp end-to-end.
 dummyRequest : Request
-dummyRequest = R GET "/" empty V11 empty 0 Nothing (pure ())
+dummyRequest = R GET "/" empty V11 empty 0 Nothing (pure (pure ()))
 
 -- Runs an HTTPStream for real, via the async runtime, concatenating
 -- everything it emits - needed because runApp's error-catching (and, once

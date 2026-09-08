@@ -10,7 +10,7 @@ import Data.SortedMap
 %default covering
 
 dummyRequest : Request
-dummyRequest = R GET "/" empty V11 empty 0 Nothing (pure ())
+dummyRequest = R GET "/" empty V11 empty 0 Nothing (pure (pure ()))
 
 -- Runs an AppProg computation for real, via the async runtime.
 runAppProg : AppProg a -> IO (Maybe a)
@@ -55,7 +55,7 @@ testSessionRoundTrip = do
     | Nothing => pure False
 
   -- Second request: carries the session cookie from the first response.
-  let req2 = R GET "/" empty V11 (fromList [("cookie", "flux_session=" ++ sid)]) 0 Nothing (pure ())
+  let req2 = R GET "/" empty V11 (fromList [("cookie", "flux_session=" ++ sid)]) 0 Nothing (pure (pure ()))
   Just ctx2 <- runAppProg (mw (emptyContext req2))
     | Nothing => pure False
   pure (getSession "username" ctx2 == Just "alice")

@@ -36,10 +36,10 @@ testRenderSetCookieNotHttpOnly =
 
 dummyRequestWithCookies : String -> Request
 dummyRequestWithCookies cookieHeader =
-  R GET "/" empty V11 (fromList [("cookie", cookieHeader)]) 0 Nothing (pure ())
+  R GET "/" empty V11 (fromList [("cookie", cookieHeader)]) 0 Nothing (pure (pure ()))
 
 dummyRequestNoCookies : Request
-dummyRequestNoCookies = R GET "/" empty V11 empty 0 Nothing (pure ())
+dummyRequestNoCookies = R GET "/" empty V11 empty 0 Nothing (pure (pure ()))
 
 export
 testParseCookiesSingle : Bool

@@ -79,6 +79,19 @@ public export
 0 HTTPStream : Type -> Type
 HTTPStream o = AsyncPull Poll o [Errno,HTTPErr] ()
 
+||| A request body: emits up to `length` bytes, and - once exhausted -
+||| *results in* the connection's byte stream continuing right after it
+||| (whatever the next pipelined request's bytes are, if any). This is
+||| deliberately not exposed for `Responder`s/`Handler`s to read directly:
+||| the driver (`Flux.Core.HTTP.respondWith`) is the sole, single-pass
+||| consumer of a request's body, since it needs that continuation to
+||| correctly parse further requests on a persistent connection - draining
+||| it (or reading it) a second time independently would read whatever
+||| bytes happen to be next on the wire (i.e. corrupt the next request).
+public export
+0 HTTPBody : Type
+HTTPBody = HTTPPull ByteString (HTTPStream ByteString)
+
 ||| An effectful computation (parsing, IO, business logic) that doesn't
 ||| itself stream bytes. Handlers and middleware live in this monad; use
 ||| `exec` to lift one into an `HTTPPull`/`HTTPStream` pipeline.
@@ -134,7 +147,7 @@ record Request where
   headers : Headers
   length  : Nat
   type    : Maybe String
-  body    : HTTPStream ByteString
+  body    : HTTPBody
 
 export
 requestMethod : Request -> Method
@@ -228,6 +241,11 @@ parseQuery qs  = foldl insertPair empty (forget (split (== '&') qs))
         Just (_, val) => insert k val acc
         Nothing       => insert k "" acc
 
+||| Parses one request from the front of `p`. `body` (see `HTTPBody`)
+||| emits up to Content-Length bytes and then results in whatever comes
+||| after - draining it (the driver's job, exactly once - see `HTTPBody`'s
+||| docs) is how a persistent connection finds the start of the next
+||| request instead of losing already-buffered bytes to a fresh read.
 export
 assemble :
      HTTPPull (List ByteString) (HTTPStream ByteString)
@@ -241,7 +259,7 @@ assemble p = Prelude.do
       (path,qs) := splitQuery tgt
       qmap := parseQuery qs
   when (cl > MaxContentSize) (throw ContentSizeExceeded)
-  pure $ Just (R met path qmap vrs hs cl ct $ C.take cl body)
+  pure $ Just (R met path qmap vrs hs cl ct $ C.splitAt cl body)
 
 export
 request : HTTPStream ByteString -> HTTPPull o (Maybe Request)
@@ -334,30 +352,71 @@ public export
 0 Responder : Type
 Responder = Request -> HTTPStream ByteString
 
+-- Responds to one request, then drains whatever's left of its body -
+-- responders don't touch it (see HTTPBody's docs) - capturing the
+-- connection's byte stream continuing right after it. That continuation,
+-- not a fresh read off the socket, is what the next loop iteration must
+-- parse the next request from: a single `bytes cli n` read can return
+-- more than one pipelined request's worth of bytes at once, and only the
+-- continuation captured here (rather than a fresh read, which would only
+-- ever see whatever arrives *after* that point) preserves the rest of
+-- what was already read. Returns whether there was a request at all:
+-- False means the byte source hit EOF (the client closed the
+-- connection), signalling the caller to stop reading more requests off it.
 export
-respondWith : Responder -> Maybe Request -> HTTPStream ByteString
-respondWith f Nothing  = pure ()
-respondWith f (Just r) = f r
+respondWith : Responder -> Maybe Request -> HTTPPull ByteString (Bool, HTTPStream ByteString)
+respondWith f Nothing  = pure (False, pure ())
+respondWith f (Just r) = Prelude.do
+  f r
+  rest <- drain r.body
+  pure (True, rest)
 
 export covering
 echoWith :
      Responder
   -> Socket AF_INET
   -> HTTPPull ByteString (Maybe Request)
-  -> AsyncStream Poll [Errno] Void
+  -> AsyncPull Poll Void [Errno] (Bool, HTTPStream ByteString)
 echoWith f cli p =
   extractErr HTTPErr (writeTo cli (p >>= respondWith f)) >>= \case
-    Left _   => emit badRequest |> writeTo cli
-    Right () => pure ()
+    Left _  => (emit badRequest |> writeTo cli) $> (False, pure ())
+    Right b => pure b
 
+-- Reads and responds to one request off `byteStream`, then recurses onto
+-- whatever's left of it for the next one - all as a single continuous
+-- Pull (rather than looping by re-entering the Async layer via `pullIn`
+-- on every iteration, which measured ~10ms of avoidable per-request
+-- latency here) - until `echoWith` reports EOF (client closed the
+-- connection). `byteStream` must be the connection's one, single,
+-- continuously-threaded byte source (see `serveWith`) - not re-created
+-- per call, which would silently drop any already-read bytes belonging
+-- to a pipelined next request.
+covering
+servePull : Responder -> Socket AF_INET -> HTTPStream ByteString -> AsyncPull Poll Void [Errno] ()
+servePull f cli byteStream = Prelude.do
+  (continue, rest) <- byteStream |> request |> echoWith f cli
+  when continue (servePull f cli rest)
+
+disableNagle : Socket AF_INET -> Async Poll [Errno] ()
+disableNagle cli = setNoDelay cli True
+
+||| Serves one connection, looping to handle further requests on it
+||| (HTTP/1.1 persistent connections) until the client closes it, a
+||| malformed request is received, or the connection is canceled (e.g. by
+||| `shutdownOn`, mid-request - a currently in-flight request/response
+||| still completes first, since `servePull` isn't interrupted until it
+||| next yields, but no further requests are read off this connection
+||| once canceled).
 export covering
 serveWith : Responder -> Socket AF_INET -> Async Poll [] ()
 serveWith f cli =
-  flip guarantee (close' cli) $
-    mpull $ handleErrors (\(Here x) => stderrLn "\{x}") $
-         bytes cli 0xfff
-      |> request
-      |> echoWith f cli
+  flip guarantee (close' cli) $ Prelude.do
+    -- Without this, Nagle's algorithm can batch/delay the writes that
+    -- make up a response on a connection kept open across multiple
+    -- requests, adding tens of milliseconds of latency per request that
+    -- a one-request-per-connection socket never lived long enough to hit.
+    handleErrors (\(Here x) => stderrLn "\{x}") (disableNagle cli)
+    mpull $ handleErrors (\(Here x) => stderrLn "\{x}") $ servePull f cli (bytes cli 0xfff)
 
 export covering
 runServer : Responder -> Bits16 -> (n : Nat) -> (0 p : IsSucc n) => Prog [Errno] Void
