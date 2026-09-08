@@ -4,15 +4,16 @@ An HTTP/1.1 server framework for Idris2, built from scratch on top of
 [`idris2-streams`](https://github.com/stefan-hoeck/idris2-streams)'
 `async`/`streams-posix` — no C server library, no FFI to an existing web
 server. The wire protocol (request parsing, persistent connections,
-chunked transfer-encoding), the router, the middleware/`Context` pipeline,
-and everything built on top of them (JSON, cookies, sessions, static
-files, health checks) are all implemented directly in this repo.
+chunked transfer-encoding), the router, and the middleware/`Context`
+pipeline are all implemented directly in this repo; JSON (see "JSON"
+below) is the one thing layered on top that isn't - everything else
+built on top (cookies, sessions, static files, health checks) is.
 
 ## Project goals
 
 The goal is a **usable, honestly-documented** framework: routing,
 middleware, JSON, cookies/sessions, static files, structured error
-handling and streaming responses all work and are tested (142 unit tests,
+handling and streaming responses all work and are tested (137 unit tests,
 `test/`). What sets this README apart from a typical framework's docs is
 that every non-obvious tradeoff, gap, and half-solved problem uncovered
 while building it is written down rather than smoothed over — see
@@ -48,13 +49,14 @@ FLUX_SERVER_PORT=8080 ./build/exec/flux-examples --from-env
 ```idris
 import Flux
 
+%language ElabReflection
+
 record User where
   constructor MkUser
   id   : Integer
   name : String
 
-ToJSON User where
-  toJSON u = JObject (fromList [("id", toJSON u.id), ("name", toJSON u.name)])
+%runElab derive "User" [ToJSON]
 
 getUser : Handler
 getUser ctx = case getParam "id" ctx.pathParams of
@@ -113,8 +115,8 @@ does not get to keep those mutations in the error response. Any other
 failure (`Errno`, from a lower-level IO error inside a handler) is also
 caught, not left to silently drop the connection with zero bytes sent —
 it renders as a generic 500 through the same `onError`. Two renderers ship:
-`defaultErrorRenderer` (plain text) and `Flux.Data.JSON.jsonErrorRenderer`
-(`{"error": "..."}`).
+`defaultErrorRenderer` (plain text) and `Flux.Middleware.JSON.jsonErrorRenderer`
+(`{"error":"..."}`).
 
 Responses are either fully buffered (`send`/`sendText`/`sendJSON`) or
 streamed (`sendStream (Just len) body` for a known length, `sendStream
@@ -146,28 +148,44 @@ the wire level.
 
 ## JSON
 
-`Flux.Data.JSON` is a small, dependency-free `JSON` value type plus a
-hand-written recursive-descent parser/encoder and `ToJSON`/`FromJSON`
-interfaces (instances for `Bool`/`Int`/`Integer`/`Double`/`String`/`JSON`/
-`List a`/`SortedMap String a`). `JNumber` is a `Double` — no distinct
-integer representation, so a JSON integer round-trips through a float
-(exact up to 2^53, same caveat as JavaScript's `JSON.parse`). The parser
-has no depth limit and is not resistant to pathological input (deeply
-nested arrays/objects) — it hasn't been fuzzed or hardened against
-adversarial payloads, just tested against well-formed ones.
-
-The parser used to be badly broken for anything beyond a bare scalar:
-`parseValue` (and `parseArray`/`parseObject`'s inner loops) never
-returned their leftover position after consuming a value, so nothing
-past the first array element or first object key could ever parse
-correctly, and separately every decoded *string* came out reversed
-(`"Carol"` decoded as `"loraC"`) - `parseStringLit` built its result in
-correct order but then reversed it again on completion. Neither bug was
-caught by the original tests, which only ever decoded `"true"`/`"42.5"`.
+Flux used to have its own small, dependency-free `JSON` value type and
+hand-written recursive-descent parser/encoder. That parser was badly
+broken for anything beyond a bare scalar - multi-key objects and
+multi-element arrays never parsed past their first entry (nothing
+returned the leftover input position after consuming a value), and
+every decoded *string* came out reversed (`"Carol"` decoded as
+`"loraC"` - the accumulator was built in the correct order, then
+reversed again on completion). Neither bug was caught by the original
+tests, which only ever decoded bare scalars like `"true"`/`"42.5"`.
 Found and fixed while building `readBody` (a JSON-decoding POST handler
-was the first thing to actually decode an object) - both are fixed now,
-with regression coverage for multi-key objects, multi-element arrays,
-nesting, and string content (17 unit tests total, `test/src/TestJSON.idr`).
+was the first thing to actually decode an object) - but even fixed, it
+still had no depth limit and wasn't hardened against adversarial input,
+being plain, natively-recursive descent.
+
+JSON support is now [`json-simple`](https://github.com/stefan-hoeck/idris2-json)
+(the `JSON.Simple`/`JSON.Simple.Derive` modules), built on `ilex-json` (a
+real DFA-based lexer) - both from the same author as the rest of this
+project's dependency stack. This is a strict upgrade on every front that
+mattered: elaborator-derived `ToJSON`/`FromJSON` instances
+(`%runElab derive "User" [ToJSON]` instead of hand-writing one - see
+`examples/src/Main.idr`'s `User`/`NewUser`) instead of hand-written ones,
+`JInteger`/`JDouble` instead of one `Double` silently losing integer
+precision, real `\uXXXX` Unicode escape handling, and - the specific
+hardening gap this was about - a stack-based (not natively-recursive)
+parser, confirmed directly (not assumed) to parse a 100,000-level-deep
+nested array without crashing, before any of this was wired in. The
+tradeoff: `ilex-json`/`elab-util` are now real dependencies - "small,
+dependency-free JSON" is no longer accurate, and wasn't worth clinging
+to once the alternative was this much more correct.
+
+`Flux.Middleware.JSON` is what's left in Flux's own namespace: just the
+glue tying `json-simple`'s `ToJSON`/`encode` to `Context`/`ErrorRenderer`
+(`sendJSON`, `sendJSONError`, `jsonErrorRenderer`, `jsonResponse`/
+`jsonError` for outside the router, `isJSON`) - import `JSON.Simple`
+directly for the `JSON` type/interfaces themselves, the same as any
+other `json-simple` user would. `test/src/TestJSON.idr` tests only this
+glue now (JSON encode/decode correctness is `json-simple`'s own concern,
+and its own test suite's job, not re-tested here).
 
 ## Config
 
@@ -424,7 +442,7 @@ pack build test/test.ipkg
 ./test/build/exec/flux-test
 ```
 
-142 tests across 10 suites (router, HTTP wire parsing, JSON, middleware,
+137 tests across 10 suites (router, HTTP wire parsing, JSON, middleware,
 logging, config, cookies, sessions, static files) — mostly pure/unit-style
 with no real socket or database involved, though a handful (the `runApp`
 error-catching tests, and `readBody`'s success/failure/keep-alive tests
@@ -453,7 +471,8 @@ above) - both remain manual.
       caught and rendered without dropping the connection
 - [x] Streaming/chunked responses (`sendStream`), used by static file
       serving
-- [x] JSON encode/decode, `ToJSON`/`FromJSON`, JSON error rendering
+- [x] JSON via `json-simple` (derivable `ToJSON`/`FromJSON`), JSON error
+      rendering — see "JSON"
 - [x] Cookies, in-memory sessions — sharded, real random IDs
       (`/dev/urandom`), expiry + background GC; still single-process,
       not durable across restarts — see "Cookies & sessions"
@@ -518,8 +537,9 @@ whether this is production-ready for their use case:
   everything.** Live keep-alive/close/host-binding behavior and anything
   requiring sustained load (benchmarking) are still manual-only - see
   "Running the tests".
-- **The JSON parser is not hardened.** No depth limit, not fuzz-tested,
-  and numbers are `Double` (no distinct integer type, so large integers
-  lose precision the same way `JSON.parse` in JavaScript does).
+- **New dependencies for JSON.** Swapping Flux's own hand-rolled (and
+  buggy) JSON parser for `json-simple`/`ilex-json` (see "JSON") means
+  this is no longer a dependency-free part of the framework - a
+  deliberate tradeoff, not an oversight.
 - **No multipart/form-data, WebSockets, HTTP/2, or rate limiting.**
   None of these exist in any form yet.

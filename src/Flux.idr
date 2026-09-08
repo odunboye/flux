@@ -9,8 +9,11 @@ import public Flux.Core.Router
 -- Context, handlers, middleware, App
 import public Flux.Core.Middleware
 
--- JSON support
-import public Flux.Data.JSON
+-- JSON support: the value type/ToJSON/FromJSON/encode/decode come
+-- straight from json-simple; Flux.Middleware.JSON is just the glue
+-- (sendJSON, jsonErrorRenderer, isJSON) tying it to Context/Request.
+import public JSON.Simple
+import public Flux.Middleware.JSON
 
 -- Server-level concerns
 import public Flux.Server.Config

@@ -1,159 +1,123 @@
+||| Tests for Flux.Middleware.JSON - the Flux-specific glue between
+||| json-simple and Context/Request/ErrorRenderer. JSON encode/decode
+||| correctness itself is json-simple's own responsibility (and its own
+||| test suite's job), not re-tested here - see that module's doc
+||| comment for why Flux used to have its own hand-rolled parser (with
+||| real bugs) and no longer does.
 module TestJSON
 
-import Flux.Data.JSON
+import Flux.Core.HTTP
+import Flux.Core.Middleware
+import Flux.Middleware.JSON
+import JSON.Simple.Derive
 import Data.SortedMap
 
 %default total
 %language ElabReflection
 
--- Test toJSON for Bool
-export partial
-testToJSONBool : Bool
-testToJSONBool =
-  toJSON True == JBool True
+record Widget where
+  constructor MkWidget
+  name  : String
+  count : Nat
 
--- Test toJSON for String
-export partial
-testToJSONString : Bool
-testToJSONString =
-  toJSON "hello" == JString "hello"
+%runElab derive "Widget" [Show,Eq,ToJSON,FromJSON]
 
--- Test toJSON for Number
-export partial
-testToJSONNumber : Bool
-testToJSONNumber =
-  toJSON (the Double 42.0) == JNumber 42.0
+dummyRequest : Request
+dummyRequest = R GET "/" empty V11 empty 0 Nothing (pure (pure ()))
 
--- Test fromJSON for Bool
-export partial
-testFromJSONBool : Bool
-testFromJSONBool =
-  case fromJSON {a = Bool} (JBool True) of
-    Just b => b == True
-    Nothing => False
+dummyRequestWithType : Maybe String -> Request
+dummyRequestWithType ty = R GET "/" empty V11 empty 0 ty (pure (pure ()))
 
--- Test fromJSON failure
-export partial
-testFromJSONFailure : Bool
-testFromJSONFailure =
-  case fromJSON {a = Bool} (JNumber 1.0) of
-    Nothing => True
-    Just _ => False
+-- sendJSON
 
--- Test encode null
-export partial
-testEncodeNull : Bool
-testEncodeNull =
-  encode JNull == "null"
+export
+testSendJSONSetsContentType : Bool
+testSendJSONSetsContentType =
+  let ctx = sendJSON (MkWidget "cog" 3) (emptyContext dummyRequest)
+   in Data.SortedMap.lookup "Content-Type" ctx.respHeaders == Just "application/json"
 
--- Test encode bool
-export partial
-testEncodeBool : Bool
-testEncodeBool =
-  encode (JBool True) == "true"
+export
+testSendJSONEncodesBody : Bool
+testSendJSONEncodesBody =
+  case sendJSON (MkWidget "cog" 3) (emptyContext dummyRequest) of
+    ctx => case ctx.respBody of
+      Buffered bs => decodeEither {a = Widget} (toString bs) == Right (MkWidget "cog" 3)
+      Streamed _ _ => False
 
--- Test encode string
-export partial
-testEncodeString : Bool
-testEncodeString =
-  encode (JString "hello") == "\"hello\""
+-- sendJSONError / jsonErrorRenderer
 
--- Test encode number
-export partial
-testEncodeNumber : Bool
-testEncodeNumber =
-  encode (JNumber 42.0) == "42.0"
+export
+testSendJSONErrorSetsStatus : Bool
+testSendJSONErrorSetsStatus =
+  let ctx = sendJSONError 404 "not found" (emptyContext dummyRequest)
+   in ctx.statusCode == 404
 
--- Test Eq JSON
-export partial
-testEqJSON : Bool
-testEqJSON =
-  (JBool True == JBool True) &&
-  (JBool True /= JBool False)
+export
+testSendJSONErrorBodyShapeIsErrorObject : Bool
+testSendJSONErrorBodyShapeIsErrorObject =
+  case sendJSONError 400 "bad request" (emptyContext dummyRequest) of
+    ctx => case ctx.respBody of
+      Buffered bs => toString bs == "{\"error\":\"bad request\"}"
+      Streamed _ _ => False
 
--- Test decode JSON string
-export partial
-testDecode : Bool
-testDecode =
-  case decode {a = Bool} "true" of
-    Just True => True
-    _ => False
+export
+testJsonErrorRendererMatchesSendJSONError : Bool
+testJsonErrorRendererMatchesSendJSONError =
+  let ctx = jsonErrorRenderer (MkAppError 418 "teapot") (emptyContext dummyRequest)
+   in ctx.statusCode == 418 &&
+      (case ctx.respBody of
+        Buffered bs  => toString bs == "{\"error\":\"teapot\"}"
+        Streamed _ _ => False)
 
--- Test decode JSON number
-export partial
-testDecodeNumber : Bool
-testDecodeNumber =
-  case decode {a = Double} "42.5" of
-    Just 42.5 => True
-    _ => False
+-- isJSON
 
--- Regression coverage for a set of pre-existing parser bugs found and
--- fixed while implementing readBody (see Flux.Data.JSON's docs on
--- parseValue/parseStringLit): none of the above tests ever decoded an
--- object, an array, or a string value (only "true"/"42.5" scalars), so
--- none of them caught that multi-key objects, multi-element arrays, and
--- string values (reversed on decode!) were all broken.
+export
+testIsJSONTrueForApplicationJSON : Bool
+testIsJSONTrueForApplicationJSON = isJSON (dummyRequestWithType (Just "application/json"))
 
-export partial
-testDecodeStringValue : Bool
-testDecodeStringValue =
-  case json "\"hello\"" of
-    Right (JString "hello") => True
-    _                       => False
+export
+testIsJSONTrueWithCharset : Bool
+testIsJSONTrueWithCharset = isJSON (dummyRequestWithType (Just "application/json; charset=utf-8"))
 
-export partial
-testDecodeObjectMultiKey : Bool
-testDecodeObjectMultiKey =
-  case json "{\"name\":\"Carol\",\"email\":\"carol@example.com\"}" of
-    Right (JObject kvs) =>
-      Data.SortedMap.lookup "name" kvs  == Just (JString "Carol") &&
-      Data.SortedMap.lookup "email" kvs == Just (JString "carol@example.com")
-    _ => False
+export
+testIsJSONFalseForOtherType : Bool
+testIsJSONFalseForOtherType = not (isJSON (dummyRequestWithType (Just "text/plain")))
 
-export partial
-testDecodeArrayMultiElement : Bool
-testDecodeArrayMultiElement =
-  case json "[1,2,3]" of
-    Right (JArray [JNumber 1.0, JNumber 2.0, JNumber 3.0]) => True
-    _                                                      => False
+export
+testIsJSONFalseForNoType : Bool
+testIsJSONFalseForNoType = not (isJSON (dummyRequestWithType Nothing))
 
-export partial
-testDecodeNestedObjectAndArray : Bool
-testDecodeNestedObjectAndArray =
-  case json "{\"a\":[1,2],\"b\":{\"c\":3}}" of
-    Right (JObject kvs) =>
-      Data.SortedMap.lookup "a" kvs == Just (JArray [JNumber 1.0, JNumber 2.0]) &&
-      Data.SortedMap.lookup "b" kvs == Just (JObject (fromList [("c", JNumber 3.0)]))
-    _ => False
+-- jsonResponse / jsonError (standalone, outside Context)
 
-export partial
-testDecodeWhitespaceTolerant : Bool
-testDecodeWhitespaceTolerant =
-  case json "  {  \"a\" : 1 , \"b\" : 2 }  " of
-    Right (JObject kvs) =>
-      Data.SortedMap.lookup "a" kvs == Just (JNumber 1.0) &&
-      Data.SortedMap.lookup "b" kvs == Just (JNumber 2.0)
-    _ => False
+export
+testJsonResponseBody : Bool
+testJsonResponseBody =
+  Data.ByteString.isInfixOf (fromString "{\"name\":\"cog\",\"count\":3}") (jsonResponse (MkWidget "cog" 3))
+
+export
+testJsonResponseSetsContentType : Bool
+testJsonResponseSetsContentType =
+  Data.ByteString.isInfixOf (fromString "Content-Type: application/json") (jsonResponse (MkWidget "cog" 3))
+
+export
+testJsonErrorStandaloneBody : Bool
+testJsonErrorStandaloneBody =
+  Data.ByteString.isInfixOf (fromString "{\"error\":\"oops\"}") (jsonError 500 "oops")
 
 -- Run all JSON tests
-export partial
+export
 runAllTests : List (String, Bool)
-runAllTests = [
-  ("toJSONBool", testToJSONBool),
-  ("toJSONString", testToJSONString),
-  ("toJSONNumber", testToJSONNumber),
-  ("fromJSONBool", testFromJSONBool),
-  ("fromJSONFailure", testFromJSONFailure),
-  ("encodeNull", testEncodeNull),
-  ("encodeBool", testEncodeBool),
-  ("encodeString", testEncodeString),
-  ("encodeNumber", testEncodeNumber),
-  ("eqJSON", testEqJSON),
-  ("decode", testDecode),
-  ("decodeNumber", testDecodeNumber),
-  ("decodeStringValue", testDecodeStringValue),
-  ("decodeObjectMultiKey", testDecodeObjectMultiKey),
-  ("decodeArrayMultiElement", testDecodeArrayMultiElement),
-  ("decodeNestedObjectAndArray", testDecodeNestedObjectAndArray),
-  ("decodeWhitespaceTolerant", testDecodeWhitespaceTolerant)
+runAllTests =
+  [ ("sendJSONSetsContentType", testSendJSONSetsContentType)
+  , ("sendJSONEncodesBody", testSendJSONEncodesBody)
+  , ("sendJSONErrorSetsStatus", testSendJSONErrorSetsStatus)
+  , ("sendJSONErrorBodyShapeIsErrorObject", testSendJSONErrorBodyShapeIsErrorObject)
+  , ("jsonErrorRendererMatchesSendJSONError", testJsonErrorRendererMatchesSendJSONError)
+  , ("isJSONTrueForApplicationJSON", testIsJSONTrueForApplicationJSON)
+  , ("isJSONTrueWithCharset", testIsJSONTrueWithCharset)
+  , ("isJSONFalseForOtherType", testIsJSONFalseForOtherType)
+  , ("isJSONFalseForNoType", testIsJSONFalseForNoType)
+  , ("jsonResponseBody", testJsonResponseBody)
+  , ("jsonResponseSetsContentType", testJsonResponseSetsContentType)
+  , ("jsonErrorStandaloneBody", testJsonErrorStandaloneBody)
   ]

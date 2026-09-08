@@ -3,7 +3,8 @@ module Flux.Server.Health
 import public Flux.Core.HTTP
 import public Flux.Core.Router
 import public Flux.Core.Middleware
-import public Flux.Data.JSON
+import public JSON.Simple
+import Flux.Middleware.JSON
 import public Data.SortedMap
 import Data.List
 import Data.String
@@ -49,11 +50,11 @@ record CheckResult where
 export
 ToJSON CheckResult where
   toJSON (MkCheckResult name status msg) =
-    JObject (fromList [
-      ("name", toJSON name),
-      ("status", toJSON status),
-      ("message", maybe JNull toJSON msg)
-    ])
+    JObject
+      [ ("name", toJSON name)
+      , ("status", toJSON status)
+      , ("message", maybe JNull toJSON msg)
+      ]
 
 -- Health status record
 public export
@@ -67,12 +68,12 @@ record HealthStatusRecord where
 export
 ToJSON HealthStatusRecord where
   toJSON (MkHealthStatusRecord status version checks ts) =
-    JObject (fromList [
-      ("status", toJSON status),
-      ("version", toJSON version),
-      ("checks", toJSON checks),
-      ("timestamp", toJSON ts)
-    ])
+    JObject
+      [ ("status", toJSON status)
+      , ("version", toJSON version)
+      , ("checks", toJSON checks)
+      , ("timestamp", toJSON ts)
+      ]
 
 -- Health check function type
 public export
@@ -130,7 +131,7 @@ healthHandler registry version ctx = do
 -- Liveness probe: the process is up, no checks run
 export
 livenessHandler : Handler
-livenessHandler ctx = pure $ sendJSON (JObject (fromList [("status", JString "alive")])) ctx
+livenessHandler ctx = pure $ sendJSON (JObject [("status", JString "alive")]) ctx
 
 -- Readiness probe: reflects the actual check results
 export
@@ -138,15 +139,15 @@ readinessHandler : HealthRegistry -> String -> Handler
 readinessHandler registry version ctx = do
   status <- liftIO (mkHealthStatus registry version)
   let ready = status.status /= Unhealthy
-  pure $ sendJSON (JObject (fromList
+  pure $ sendJSON (JObject
     [ ("status", JString (if ready then "ready" else "not ready"))
     , ("version", toJSON version)
-    ])) ctx
+    ]) ctx
 
 -- Startup probe: the process has finished booting
 export
 startupHandler : Handler
-startupHandler ctx = pure $ sendJSON (JObject (fromList [("status", JString "started")])) ctx
+startupHandler ctx = pure $ sendJSON (JObject [("status", JString "started")]) ctx
 
 --------------------------------------------------------------------------------
 -- Built-in checks

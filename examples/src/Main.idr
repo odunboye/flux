@@ -13,7 +13,9 @@ module Main
 import Flux.Core.HTTP
 import Flux.Core.Router
 import Flux.Core.Middleware
-import Flux.Data.JSON
+import JSON.Simple
+import JSON.Simple.Derive
+import Flux.Middleware.JSON
 import Flux.Server.Config
 import Flux.Server.Health
 import Flux.Server.Logging
@@ -29,6 +31,7 @@ import Data.Vect
 import System
 
 %default covering
+%language ElabReflection
 
 public export
 record User where
@@ -37,10 +40,9 @@ record User where
   name  : String
   email : String
 
-export
-ToJSON User where
-  toJSON (MkUser id name email) =
-    JObject (fromList [("id", toJSON id), ("name", toJSON name), ("email", toJSON email)])
+-- Demonstrates json-simple's derived instances: this used to be a
+-- hand-written ToJSON User instance - one line here instead.
+%runElab derive "User" [ToJSON]
 
 seedUsers : List User
 seedUsers =
@@ -135,12 +137,12 @@ listUsers store ctx = do
       pageSize   := min maxPageSize (max 1 (parseNatParam (getQuery "pageSize" ctx.request) defaultPageSize))
       offset     := (page `minus` 1) * pageSize
       items      := take pageSize (drop offset sorted)
-  pure $ sendJSON (JObject (fromList
+  pure $ sendJSON (JObject
     [ ("users", toJSON items)
     , ("page", toJSON (cast {to = Integer} page))
     , ("pageSize", toJSON (cast {to = Integer} pageSize))
     , ("total", toJSON (cast {to = Integer} totalCount))
-    ])) ctx
+    ]) ctx
 
 -- Demonstrates AppError: an invalid/missing id renders as a JSON error
 -- via jsonErrorRenderer (see buildApp) instead of the handler having to
@@ -199,12 +201,7 @@ record NewUser where
   name  : String
   email : String
 
-FromJSON NewUser where
-  fromJSON (JObject kvs) = do
-    JString n <- Data.SortedMap.lookup "name" kvs  | _ => Nothing
-    JString e <- Data.SortedMap.lookup "email" kvs | _ => Nothing
-    pure (MkNewUser n e)
-  fromJSON _ = Nothing
+%runElab derive "NewUser" [FromJSON]
 
 -- Demonstrates readBody: reads and JSON-decodes a POST body via the
 -- router/Handler layer (previously impossible - see the README's
@@ -219,7 +216,7 @@ createUser store ctx = do
   case result of
     Left BodyTooLarge => pure (setStatus 413 (sendText "request body too large\n" ctx))
     Left _            => pure (setStatus 400 (sendText "could not read request body\n" ctx))
-    Right bytes       => case decode {a = NewUser} (toString bytes) of
+    Right bytes       => case decodeMaybe {a = NewUser} (Data.ByteString.toString bytes) of
       Nothing => throw (MkAppError 400 "invalid JSON body - expected {\"name\":...,\"email\":...}")
       Just nu => do
         uid <- liftIO (nextUserId store)
@@ -245,7 +242,7 @@ visits ctx = do
   let current = fromMaybe 0 (getSession "count" ctx >>= parseId)
       next     = current + 1
       ctx'     = setSession "count" (show next) ctx
-  pure (sendJSON (JObject (fromList [("visits", toJSON next)])) ctx')
+  pure (sendJSON (JObject [("visits", toJSON next)]) ctx')
 
 -- Demonstrates graceful shutdown: start this server, curl /slow, and
 -- send SIGTERM (on Linux - see Flux.Core.HTTP.shutdownOn's platform
