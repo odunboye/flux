@@ -21,9 +21,11 @@ import Flux.Middleware.RequestId
 import Flux.Middleware.Timing
 import Flux.Middleware.Session
 import Flux.Middleware.Static
+import Flux.Middleware.Internal.Stripe
+import Data.Linear.Ref1
 import Data.SortedMap
 import Data.List
-import Data.IORef
+import Data.Vect
 import System
 
 %default covering
@@ -50,16 +52,95 @@ parseId : String -> Maybe Integer
 parseId s =
   if s /= "" && all isDigit (unpack s) then Just (cast s) else Nothing
 
+-- Sharded the same way Flux.Middleware.RequestId/Session shard their own
+-- state (Flux.Middleware.Internal.Stripe): a single shared IORef here
+-- was found, under real concurrent POST load, to (a) contend badly
+-- between writers - the same class of problem RequestId/Session already
+-- had - and (b) let listUsers's full-store scan grow unbounded, since
+-- nothing capped how large the store could get. Striping fixes (a); the
+-- pagination in listUsers below fixes (b) - striping alone wouldn't
+-- have, since the total amount of data to sort/serialize when *listing
+-- everything* doesn't shrink just because it's stored across 16 cells
+-- instead of one.
 0 UserStore : Type
-UserStore = Data.IORef.IORef (SortedMap Integer User)
+UserStore = Vect 16 (Ref World (SortedMap Integer User))
+
+newUserStore : List User -> IO UserStore
+newUserStore seed = do
+  stripes <- newStripes empty
+  traverse_ (\u => mod (index (keyStripe (show u.id)) stripes) (insert u.id u)) seed
+  pure stripes
+
+userStripe : Integer -> UserStore -> Ref World (SortedMap Integer User)
+userStripe uid store = index (keyStripe (show uid)) store
+
+getUserById : UserStore -> Integer -> IO (Maybe User)
+getUserById store uid = do
+  m <- readref (userStripe uid store)
+  pure (Data.SortedMap.lookup uid m)
+
+putUserById : UserStore -> Integer -> User -> IO ()
+putUserById store uid u = mod (userStripe uid store) (insert uid u)
+
+deleteUserById : UserStore -> Integer -> IO ()
+deleteUserById store uid = mod (userStripe uid store) (delete uid)
+
+allUsers : UserStore -> IO (List User)
+allUsers store = do
+  maps <- traverse readref store
+  pure (concatMap Data.SortedMap.values (toList maps))
+
+-- Demo-scale simplification: reading every stripe's current max and then
+-- writing the new user isn't one atomic step, so two POSTs racing each
+-- other can compute the same "next" id - a real app would want a proper
+-- atomic sequence (or just random/UUID ids, sidestepping the question
+-- entirely) instead of "1 + the current maximum".
+nextUserId : UserStore -> IO Integer
+nextUserId store = do
+  us <- allUsers store
+  pure (1 + foldl max 0 (map (.id) us))
 
 root : Handler
 root ctx = pure (sendText "Welcome to Flux!\n" ctx)
 
+defaultPageSize : Nat
+defaultPageSize = 20
+
+maxPageSize : Nat
+maxPageSize = 100
+
+parseNatParam : Maybe String -> Nat -> Nat
+parseNatParam Nothing        def = def
+parseNatParam (Just "")      def = def
+parseNatParam (Just s)       def =
+  if all isDigit (unpack s) then cast s else def
+
+-- Demonstrates pagination: GET /api/users?page=2&pageSize=10. Bounds
+-- both the response size and the per-request JSON-encoding cost to
+-- pageSize regardless of how large the store has grown - the O(total
+-- users) cost of gathering and sorting every stripe's contents to find
+-- the right page remains (an in-memory demo has no index to page
+-- against directly; a real datastore would).
 listUsers : UserStore -> Handler
 listUsers store ctx = do
-  users <- liftIO (Data.IORef.readIORef store)
-  pure (sendJSON (Data.SortedMap.values users) ctx)
+  users <- liftIO (allUsers store)
+  -- NB: "total" can't be used as a binding name here - it's a reserved
+  -- totality-annotation keyword in this Idris2 version (as in `%default
+  -- total`), not just an ordinary identifier; using it as a let-bound
+  -- name breaks the parser in a way that has nothing to do with the
+  -- multi-binding let itself. Named totalCount instead.
+  let sorted     := sortBy (\a, b => compare a.id b.id) users
+      totalCount := length sorted
+      page       := max 1 (parseNatParam (getQuery "page" ctx.request) 1)
+      pageSize   := min maxPageSize (max 1 (parseNatParam (getQuery "pageSize" ctx.request) defaultPageSize))
+      offset     := (page `minus` 1) * pageSize
+      items      := take pageSize (drop offset sorted)
+  pure $ sendJSON (JObject (fromList
+    [ ("users", toJSON items)
+    , ("page", toJSON (cast {to = Integer} page))
+    , ("pageSize", toJSON (cast {to = Integer} pageSize))
+    , ("total", toJSON (cast {to = Integer} totalCount))
+    ])) ctx
 
 -- Demonstrates AppError: an invalid/missing id renders as a JSON error
 -- via jsonErrorRenderer (see buildApp) instead of the handler having to
@@ -74,8 +155,8 @@ requireUserId ctx = case getParam "id" ctx.pathParams >>= parseId of
 getUser : UserStore -> Handler
 getUser store ctx = do
   uid <- requireUserId ctx
-  users <- liftIO (Data.IORef.readIORef store)
-  case Data.SortedMap.lookup uid users of
+  mu  <- liftIO (getUserById store uid)
+  case mu of
     Just u  => pure (sendJSON u ctx)
     Nothing => throw (MkAppError 404 "user not found")
 
@@ -86,12 +167,12 @@ updateUser store ctx = do
   case getQuery "name" ctx.request of
     Nothing      => throw (MkAppError 400 "missing ?name= query param")
     Just newName => do
-      users <- liftIO (Data.IORef.readIORef store)
-      case Data.SortedMap.lookup uid users of
+      mu <- liftIO (getUserById store uid)
+      case mu of
         Nothing => throw (MkAppError 404 "user not found")
         Just u  => do
           let u' = { name := newName } u
-          liftIO (Data.IORef.modifyIORef store (insert uid u'))
+          liftIO (putUserById store uid u')
           pure (sendJSON u' ctx)
 
 -- The maximum size accepted for a createUser request body. Deliberately
@@ -112,9 +193,6 @@ FromJSON NewUser where
     pure (MkNewUser n e)
   fromJSON _ = Nothing
 
-nextUserId : SortedMap Integer User -> Integer
-nextUserId users = 1 + foldl max 0 (map (.id) (Data.SortedMap.values users))
-
 -- Demonstrates readBody: reads and JSON-decodes a POST body via the
 -- router/Handler layer (previously impossible - see the README's
 -- Limitations section this was written to close). A body over
@@ -131,21 +209,20 @@ createUser store ctx = do
     Right bytes       => case decode {a = NewUser} (toString bytes) of
       Nothing => throw (MkAppError 400 "invalid JSON body - expected {\"name\":...,\"email\":...}")
       Just nu => do
-        users <- liftIO (Data.IORef.readIORef store)
-        let uid = nextUserId users
-            u   = MkUser uid nu.name nu.email
-        liftIO (Data.IORef.modifyIORef store (insert uid u))
+        uid <- liftIO (nextUserId store)
+        let u = MkUser uid nu.name nu.email
+        liftIO (putUserById store uid u)
         pure (setStatus 201 (sendJSON u ctx))
 
 -- Demonstrates DELETE.
 deleteUser : UserStore -> Handler
 deleteUser store ctx = do
   uid <- requireUserId ctx
-  users <- liftIO (Data.IORef.readIORef store)
-  case Data.SortedMap.lookup uid users of
+  mu  <- liftIO (getUserById store uid)
+  case mu of
     Nothing => throw (MkAppError 404 "user not found")
     Just _  => do
-      liftIO (Data.IORef.modifyIORef store (delete uid))
+      liftIO (deleteUserById store uid)
       pure (setStatus 204 ctx)
 
 -- Demonstrates cookies/sessions: a per-visitor counter that persists
@@ -169,7 +246,7 @@ slow ctx = do
 
 buildApp : BatchedAccessLog -> IO App
 buildApp blog = do
-  usersStore   <- Data.IORef.newIORef (fromList (map (\u => (u.id, u)) seedUsers))
+  usersStore   <- newUserStore seedUsers
   reqId        <- requestId
   sessionStore <- newSessionStore
   sessionMw    <- session sessionStore
@@ -221,3 +298,4 @@ main = do
     _ :: t                 => runProgWith [accessFlushLoop 50.ms blog] (runServerArgs (runApp application) t)
     []                      => runProgWith [accessFlushLoop 50.ms blog] (runServerArgs (runApp application) [])
   flushAccessLog blog
+
