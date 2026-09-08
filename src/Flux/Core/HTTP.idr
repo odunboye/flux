@@ -51,30 +51,46 @@ shutdownOn : List Signal -> Prog [Errno] o -> Prog [Errno] o
 shutdownOn sigs = haltOn (eval (awaitSignals sigs))
 
 ||| Reads `IDRIS2_ASYNC_THREADS` the same way `async-posix`'s own
-||| `asyncThreads` does, but defaults to a single thread (not 2) when it
-||| isn't set.
+||| `asyncThreads` does, but defaults to 2 threads when it isn't set -
+||| an explicit choice matching where this project's own benchmarking
+||| found the sweet spot to be, not an accident of inheriting
+||| `async-posix`'s own (also 2) default.
 |||
-||| Benchmarking found more OS threads make persistent-connection
-||| throughput dramatically *worse* for this workload, not better - a
-||| monotonic regression consistent with contention on the async
-||| runtime's shared work-stealing queue (each worker thread's scheduler
-||| loop acquires a single mutex, `s.lock`, to steal/park for work). At
-||| 100 concurrent connections: 1 thread measured ~8700 req/s, 2 threads
-||| (the library's own default) ~1100, 4 threads ~570 - each additional
-||| thread made things worse, not better. This makes sense for a
-||| cooperative-fiber-per-connection I/O-bound server (same shape as
-||| Node.js's single-threaded event loop): the bottleneck is scheduling
-||| overhead, not CPU parallelism, so more threads just means more lock
-||| contention with no compensating benefit. Set `IDRIS2_ASYNC_THREADS`
-||| explicitly to override this - e.g. if your handlers do enough
-||| CPU-bound work that true parallelism is worth the contention cost.
+||| Benchmarking (100 concurrent connections, `wrk`, this project's
+||| example server, repeatable across interleaved trials with the
+||| server fully restarted between each) found 2 threads reliably
+||| ~2x faster than 1: ~21k req/s at 1 thread vs ~44k at 2. But going
+||| *past* 2 threads collapses throughput catastrophically - 4 threads
+||| measured ~1.5k req/s, 8 threads ~0.9k - each additional thread
+||| beyond 2 makes things worse, not better. This matches a known,
+||| unfixed bug in the underlying `idris2-async` scheduler: every fiber
+||| forked from the accept loop stays pinned to whichever worker
+||| happens to be running the accept loop at the time, so beyond a
+||| couple of workers most sit idle while one or two do all the work,
+||| and the resulting contention outweighs any parallelism gained. A
+||| fix (round-robin fiber scheduling instead of pinning) was built and
+||| reverted after it was found to dramatically worsen a separate, rare
+||| connection-leak race in the same scheduler - see the `idris2-async`
+||| fork's git history for details. Until that's fixed safely, 2
+||| threads is the best default; set `IDRIS2_ASYNC_THREADS` explicitly
+||| to go lower (e.g. 1, for the simplest possible behavior) or higher
+||| only if you've confirmed your own workload doesn't hit the same
+||| cliff.
+|||
+||| An earlier version of this doc comment claimed 2 threads *itself*
+||| regressed throughput (to ~1100 req/s) relative to 1 thread
+||| (~8700 req/s). That claim was wrong - traced to a benchmarking-
+||| harness bug (a prior test round leaked an orphaned server process
+||| that kept answering requests on the same port across a supposedly
+||| clean restart, inflating one side of the comparison) rather than a
+||| real effect. Corrected here after a clean, interleaved re-test.
 export
 defaultAsyncThreads : IO (Subset Nat IsSucc)
 defaultAsyncThreads = do
   s <- getEnv "IDRIS2_ASYNC_THREADS"
   pure $ case cast {to = Nat} <$> s of
     Just (S k) => Element (S k) %search
-    _          => Element 1 %search
+    _          => Element 2 %search
 
 ||| Like `runProg`, but also runs the given no-error, no-result
 ||| computations concurrently with `prog` for as long as the server
