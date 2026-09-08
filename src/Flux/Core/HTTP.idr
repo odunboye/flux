@@ -48,13 +48,41 @@ export
 shutdownOn : List Signal -> Prog [Errno] o -> Prog [Errno] o
 shutdownOn sigs = haltOn (eval (awaitSignals sigs))
 
+||| Reads `IDRIS2_ASYNC_THREADS` the same way `async-posix`'s own
+||| `asyncThreads` does, but defaults to a single thread (not 2) when it
+||| isn't set.
+|||
+||| Benchmarking found more OS threads make persistent-connection
+||| throughput dramatically *worse* for this workload, not better - a
+||| monotonic regression consistent with contention on the async
+||| runtime's shared work-stealing queue (each worker thread's scheduler
+||| loop acquires a single mutex, `s.lock`, to steal/park for work). At
+||| 100 concurrent connections: 1 thread measured ~8700 req/s, 2 threads
+||| (the library's own default) ~1100, 4 threads ~570 - each additional
+||| thread made things worse, not better. This makes sense for a
+||| cooperative-fiber-per-connection I/O-bound server (same shape as
+||| Node.js's single-threaded event loop): the bottleneck is scheduling
+||| overhead, not CPU parallelism, so more threads just means more lock
+||| contention with no compensating benefit. Set `IDRIS2_ASYNC_THREADS`
+||| explicitly to override this - e.g. if your handlers do enough
+||| CPU-bound work that true parallelism is worth the contention cost.
+export
+defaultAsyncThreads : IO (Subset Nat IsSucc)
+defaultAsyncThreads = do
+  s <- getEnv "IDRIS2_ASYNC_THREADS"
+  pure $ case cast {to = Nat} <$> s of
+    Just (S k) => Element (S k) %search
+    _          => Element 1 %search
+
 ||| Runs a `Prog`, blocking SIGINT/SIGTERM at the process level so
 ||| `shutdownOn` can react to them instead of the OS killing the process
-||| immediately. See `shutdownOn`'s platform note: this only works on Linux.
+||| immediately. See `shutdownOn`'s platform note: this only works on
+||| Linux. See `defaultAsyncThreads`'s doc for why this defaults to a
+||| single OS thread rather than `async-posix`'s own default of two.
 export covering
 runProg : Prog [Errno] Void -> IO ()
 runProg prog = do
-  n <- asyncThreads
+  n <- defaultAsyncThreads
   app n [SIGINT, SIGTERM] posixPoller (mpull (handle [stderrLn . interpolate] prog))
 
 public export
