@@ -4,6 +4,8 @@ import public Data.SortedMap
 import public FS.Posix
 import public FS.Socket
 import Data.List1
+import Data.Linear.Ref1
+import Data.Linear.Deferred
 
 import public IO.Async.Loop.Posix
 import IO.Async.Loop.Poller
@@ -434,22 +436,80 @@ echoWith f cli p =
 -- continuously-threaded byte source (see `serveWith`) - not re-created
 -- per call, which would silently drop any already-read bytes belonging
 -- to a pipelined next request.
+--
+-- `activity` is "petted" (see `idleTimeout`) after every request that
+-- actually completes, so a connection making steady progress is never
+-- killed by `serveWith`'s idle timeout no matter how long it's been
+-- open - only a connection that stops progressing entirely is.
 covering
-servePull : Responder -> Socket AF_INET -> HTTPStream ByteString -> AsyncPull Poll Void [Errno] ()
-servePull f cli byteStream = Prelude.do
+servePull :
+     Responder -> Socket AF_INET -> Ref World Nat -> HTTPStream ByteString
+  -> AsyncPull Poll Void [Errno] ()
+servePull f cli activity byteStream = Prelude.do
   (continue, rest) <- byteStream |> request |> echoWith f cli
-  when continue (servePull f cli rest)
+  when continue $ do
+    liftIO (mod activity S)
+    servePull f cli activity rest
 
 disableNagle : Socket AF_INET -> Async Poll [Errno] ()
 disableNagle cli = setNoDelay cli True
 
+||| How long a connection may go without completing a request before
+||| `idleTimeout` gives up on it and lets `serveWith`'s `guarantee`
+||| close it. Not a tuning knob for typical use - see `idleTimeout`'s
+||| doc comment for what this actually guards against.
+export
+idleConnectionTimeout : Clock Duration
+idleConnectionTimeout = 60.s
+
+||| Runs `str`, but interrupts it if `activity` hasn't changed for
+||| `dur` - unlike `FS.Concurrent.timeout`, which fires `dur` after
+||| being entered regardless of what's happened since, this resets
+||| every time whoever owns `activity` bumps it (see `servePull`),
+||| so it only fires on genuine, sustained inactivity.
+|||
+||| `serveWith` wraps every connection's `servePull` in this as a
+||| defense against a connection getting stuck forever with no further
+||| progress possible - not a fix for any specific cause, a backstop
+||| against all of them, expected or not: a slow/idle client that
+||| never sends another request is the everyday case this also
+||| happens to cover, but the case this was actually added for is a
+||| confirmed, rare (~5% of idle gaps, in this project's testing), not
+||| fully root-caused race in the underlying `idris2-async` scheduler,
+||| where a socket's readiness notification can be lost entirely,
+||| leaving `servePull` waiting on a callback that will never fire and
+||| the connection's fiber (and its file descriptor) leaked for the
+||| life of the process. Without this, that specific bug has no
+||| ceiling - each occurrence holds a connection open forever. With
+||| it, the worst case is bounded to `idleConnectionTimeout`
+||| (twice that, worst case, since this checks for activity once per
+||| `dur` rather than reacting the instant it stops).
+export covering
+idleTimeout : {auto th : TimerH e} -> Ref World Nat -> Clock Duration -> AsyncStream e es o -> AsyncStream e es o
+idleTimeout activity dur str = do
+  def <- deferredOf ()
+  _   <- acquire (start {es = []} $ watchdog def) cancel
+  interruptOnAny def str
+
+  where
+    covering
+    watchdog : Deferred World () -> Async e [] ()
+    watchdog def = do
+      before <- liftIO (readref activity)
+      sleep dur
+      after  <- liftIO (readref activity)
+      if before == after
+        then putDeferred def ()
+        else watchdog def
+
 ||| Serves one connection, looping to handle further requests on it
 ||| (HTTP/1.1 persistent connections) until the client closes it, a
-||| malformed request is received, or the connection is canceled (e.g. by
-||| `shutdownOn`, mid-request - a currently in-flight request/response
-||| still completes first, since `servePull` isn't interrupted until it
-||| next yields, but no further requests are read off this connection
-||| once canceled).
+||| malformed request is received, the connection goes idle for longer
+||| than `idleConnectionTimeout` (see `idleTimeout`), or the connection
+||| is canceled (e.g. by `shutdownOn`, mid-request - a currently
+||| in-flight request/response still completes first, since `servePull`
+||| isn't interrupted until it next yields, but no further requests are
+||| read off this connection once canceled).
 export covering
 serveWith : Responder -> Socket AF_INET -> Async Poll [] ()
 serveWith f cli =
@@ -459,7 +519,10 @@ serveWith f cli =
     -- requests, adding tens of milliseconds of latency per request that
     -- a one-request-per-connection socket never lived long enough to hit.
     handleErrors (\(Here x) => stderrLn "\{x}") (disableNagle cli)
-    mpull $ handleErrors (\(Here x) => stderrLn "\{x}") $ servePull f cli (bytes cli 0xfff)
+    activity <- newref 0
+    mpull $ handleErrors (\(Here x) => stderrLn "\{x}") $
+      idleTimeout activity idleConnectionTimeout $
+        servePull f cli activity (bytes cli 0xfff)
 
 export covering
 runServer : Responder -> Bits16 -> (n : Nat) -> (0 p : IsSucc n) => Prog [Errno] Void
