@@ -18,11 +18,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build flux
-        run: pack build flux.ipkg
+        run: pack --no-prompt build flux.ipkg
 
       - name: Build and run unit tests
         run: |
-          pack build test/test.ipkg
+          pack --no-prompt build test/test.ipkg
           ./test/build/exec/flux-test
 
   # Just confirms the example server (and its use of every public
@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build the example server
-        run: pack build examples/examples.ipkg
+        run: pack --no-prompt build examples/examples.ipkg
 
   # End-to-end smoke test over a real TCP connection - the one thing the
   # unit suite explicitly doesn't cover (see README's "Running the
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build the example server
-        run: pack build examples/examples.ipkg
+        run: pack --no-prompt build examples/examples.ipkg
 
       - name: Start the server and exercise it over a real connection
         working-directory: examples
