@@ -2,6 +2,7 @@ module Main
 
 import TestRouter
 import TestHTTP
+import TestHTTPProperties
 import TestJSON
 import TestMiddleware
 import TestLogging
@@ -49,6 +50,8 @@ main = do
   routerOk     <- runTests "Router" TestRouter.runAllTests
   httpTests    <- TestHTTP.runAllTests
   httpOk       <- runTests "HTTP" httpTests
+  httpPropTests <- TestHTTPProperties.runAllTests
+  httpPropOk    <- runTests "HTTP Properties" httpPropTests
   jsonOk       <- runTests "JSON" TestJSON.runAllTests
   loggingOk    <- runTests "Logging" TestLogging.runAllTests
   configTests  <- TestConfig.runAllTests
@@ -62,7 +65,7 @@ main = do
   healthTests     <- TestHealth.runAllTests
   healthOk        <- runTests "Health" healthTests
 
-  if routerOk && httpOk && jsonOk && middlewareOk && loggingOk && configOk
+  if routerOk && httpOk && httpPropOk && jsonOk && middlewareOk && loggingOk && configOk
      && cookiesOk && sessionOk && staticOk && healthOk
     then do
       putStrLn "All tests passed!"

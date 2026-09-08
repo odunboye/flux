@@ -14,11 +14,13 @@ authors = "Odun Adeboye"
 
 -- packages to add to search path
 depends = flux
+        , hedgehog
 
 -- modules to install
 modules = Main
         , TestRouter
         , TestHTTP
+        , TestHTTPProperties
         , TestJSON
         , TestMiddleware
         , TestLogging

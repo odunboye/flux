@@ -13,7 +13,7 @@ built on top (cookies, sessions, static files, health checks) is.
 
 The goal is a **usable, honestly-documented** framework: routing,
 middleware, JSON, cookies/sessions, static files, structured error
-handling and streaming responses all work and are tested (137 unit tests,
+handling and streaming responses all work and are tested (146 unit tests,
 `test/`). What sets this README apart from a typical framework's docs is
 that every non-obvious tradeoff, gap, and half-solved problem uncovered
 while building it is written down rather than smoothed over — see
@@ -442,13 +442,38 @@ pack build test/test.ipkg
 ./test/build/exec/flux-test
 ```
 
-137 tests across 10 suites (router, HTTP wire parsing, JSON, middleware,
-logging, config, cookies, sessions, static files) — mostly pure/unit-style
-with no real socket or database involved, though a handful (the `runApp`
-error-catching tests, and `readBody`'s success/failure/keep-alive tests
-in `TestMiddleware.idr`) do run the real `Async`/`Pull` scheduler end to
-end against a synthetic in-memory body/request, rather than simulating
-it. Nothing here goes over an actual TCP connection.
+146 tests across 11 suites (router, HTTP wire parsing, HTTP wire parsing
+*properties*, JSON, middleware, logging, config, cookies, sessions,
+static files, health) — mostly pure/unit-style with no real socket or
+database involved, though a handful (the `runApp` error-catching tests,
+`readBody`'s success/failure/keep-alive tests in `TestMiddleware.idr`,
+and `TestHTTPProperties.idr`'s `request` round-trip) do run the real
+`Async`/`Pull` scheduler end to end against a synthetic in-memory body/
+request, rather than simulating it. Nothing here goes over an actual TCP
+connection.
+
+`test/src/TestHTTPProperties.idr` is [`idris2-hedgehog`](https://github.com/stefan-hoeck/idris2-hedgehog)
+(property-based testing, QuickCheck-style, with integrated shrinking)
+against `Flux.Core.HTTP`'s wire parser (`method`/`version`/`startLine`/
+`headers`/`splitQuery`/`parseQuery`/`request`) - added specifically
+because that parser is exactly the same shape of hand-rolled, stateful
+parsing code as the JSON parser that had three real, compounding bugs
+this session (see "JSON"), none of which any hand-picked example ever
+caught. It's already paid for itself once: a first, naive "headers
+round-trip exactly" property failed within 45 generated cases on a
+header value that was pure whitespace (`" "`, parsed back as `""`) - on
+inspection, Flux was behaving *correctly* (RFC 7230 strips a header
+value's surrounding whitespace, so an all-whitespace value legitimately
+becomes empty), but the property's own assumption was too naive. Fixing
+it to expect `trim v` instead of `v` is what's in the suite now - a
+precise, correct specification the hand-picked examples never had to
+state explicitly. One real limitation found building this: hedgehog's
+`property`/`forAll` do-block runs in a purely generator-based monad with
+no `IO` support at all, so it can't run anything needing the real async
+runtime (`request` itself) - worked around for those specific cases via
+`Hedgehog.Gen.sample`, drawing random input in plain `IO` and asserting
+in an ordinary loop instead, at the cost of hedgehog's automatic
+shrinking on a failing case.
 
 `.github/workflows/ci.yml` runs on every push/PR: building `flux.ipkg`
 and running `flux-test`, building `examples/examples.ipkg`, and a live
@@ -493,6 +518,8 @@ above) - both remain manual.
       "Middleware & Context"
 - [x] CI (`.github/workflows/ci.yml`): builds, unit tests, and one live
       HTTP smoke test on every push/PR — see "Running the tests"
+- [x] Property-based tests (`idris2-hedgehog`) against the HTTP wire
+      parser — see "Running the tests"
 - [ ] TLS/HTTPS — put a reverse proxy in front for TLS termination; this
       project has no TLS support of its own
 - [ ] Multipart/form-data parsing, WebSockets, HTTP/2, rate limiting
