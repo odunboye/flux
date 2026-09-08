@@ -14,19 +14,28 @@ module Flux.Middleware.Session
 import public Flux.Core.HTTP
 import public Flux.Core.Middleware
 import Flux.Middleware.Cookies
-import Data.IORef
+import Data.Linear.Ref1
 import Data.List
 import Data.String
 
 %default covering
 
+||| `sessions` is a `Data.Linear.Ref1` reference, updated via `mod` (a
+||| lock-free compare-and-swap loop) in `persistSession`: with more than
+||| one async worker thread, concurrent requests can genuinely run these
+||| updates in parallel on different OS threads, and a bare
+||| read-then-write on a plain `Data.IORef` is not atomic across threads -
+||| two concurrent persists could each read the same map and one's insert
+||| would be silently lost. CAS-retry also scales better under contention
+||| than a `Mutex` would, since it never blocks a thread in the kernel.
 public export
-0 SessionStore : Type
-SessionStore = Data.IORef.IORef (SortedMap String (SortedMap String String))
+record SessionStore where
+  constructor MkSessionStore
+  sessions : Ref World (SortedMap String (SortedMap String String))
 
 export
 newSessionStore : IO SessionStore
-newSessionStore = Data.IORef.newIORef empty
+newSessionStore = MkSessionStore <$> newref empty
 
 sessionIdCookie : String
 sessionIdCookie = "flux_session"
@@ -53,23 +62,27 @@ setSession key value = setState (sessionPrefix ++ key) value
 ||| (see `getSession`). Register with `use`, before any handler that reads
 ||| session data. Call once at startup - `Middleware` values close over
 ||| the counter used to generate fresh session IDs.
-resolveSessionId : Data.IORef.IORef Nat -> Maybe String -> AppProg String
+|||
+||| The counter is a `Data.Linear.Ref1` reference too, incremented via
+||| `update` for the same reason `sessions` uses `mod`: concurrent
+||| requests on different worker threads can race on a bare `IORef`
+||| read-then-write.
+resolveSessionId : Ref World Nat -> Maybe String -> AppProg String
 resolveSessionId _       (Just sid) = pure sid
 resolveSessionId counter Nothing    = liftIO $ do
-  n <- Data.IORef.readIORef counter
-  Data.IORef.writeIORef counter (S n)
+  n <- update counter (\n => (S n, n))
   pure ("sess-" ++ show n)
 
 export
 session : SessionStore -> IO Middleware
 session store = do
-  counter <- Data.IORef.newIORef 0
+  counter <- newref 0
   pure $ \ctx => Prelude.do
     let existing := getCookie sessionIdCookie ctx
     sid <- resolveSessionId counter existing
     sessionData <- liftIO $ do
-      sessions <- Data.IORef.readIORef store
-      pure (fromMaybe empty (Data.SortedMap.lookup sid sessions))
+      allSessions <- readref (sessions store)
+      pure (fromMaybe empty (Data.SortedMap.lookup sid allSessions))
     let ctxWithData := foldl (\c,(k,v) => setSession k v c) ctx (SortedMap.toList sessionData)
         ctxWithCookie := case existing of
           Just _  => ctxWithData
@@ -95,5 +108,5 @@ persistSession store ctx =
   case getState sessionIdKey ctx of
     Nothing  => pure ctx
     Just sid => Prelude.do
-      liftIO $ Data.IORef.modifyIORef store (insert sid (extractSessionData ctx))
+      liftIO $ mod (sessions store) (insert sid (extractSessionData ctx))
       pure ctx

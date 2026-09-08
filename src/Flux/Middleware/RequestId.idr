@@ -2,7 +2,7 @@ module Flux.Middleware.RequestId
 
 import public Flux.Core.HTTP
 import public Flux.Core.Middleware
-import Data.IORef
+import Data.Linear.Ref1
 import Data.SortedMap
 
 %default total
@@ -22,13 +22,21 @@ requestIdKey = "requestId"
 ||| A fresh process-local, monotonically increasing ID generator. Create one
 ||| at startup and reuse the returned action for the lifetime of the server
 ||| (see `requestId`, which does this for you).
+|||
+||| The counter is a `Data.Linear.Ref1` reference, incremented via `update`
+||| (a lock-free compare-and-swap loop): with more than one async worker
+||| thread, concurrent requests can genuinely run this action in parallel
+||| on different OS threads, and a bare read-then-write on a plain
+||| `Data.IORef` is not atomic across threads - two requests could read
+||| the same value and one increment would be lost, handing out a
+||| duplicate ID. CAS-retry also scales better under contention than a
+||| `Mutex` would, since it never blocks a thread in the kernel.
 export
 newIdGenerator : IO (IO String)
 newIdGenerator = do
-  ref <- newIORef 0
+  ref <- newref 0
   pure $ do
-    n <- readIORef ref
-    writeIORef ref (n + 1)
+    n <- update ref (\n => (S n, n))
     pure ("req-" ++ show n)
 
 ||| Request-ID middleware parameterised over the ID generator: reuses an

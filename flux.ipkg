@@ -15,6 +15,7 @@ brief   = "A production-grade HTTP server framework for Idris2"
 -- packages to add to search path
 depends    = streams-posix
            , async-posix
+           , ref1
 
 -- modules to install
 modules = Flux.Core.HTTP
