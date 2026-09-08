@@ -364,12 +364,13 @@ runServer f port n =
   shutdownOn [SIGINT, SIGTERM] $
     foreachPar n (serveWith f) (acceptOn AF_INET SOCK_STREAM (addr port))
 
-||| Parses CLI args of the shape `["server", port, workers]` (falling back
-||| to port 8080 with 128 workers) and runs the server. Pass the tail of
-||| `getArgs` (i.e. with the program name dropped) as `args`.
+||| Parses CLI args of the shape `[port, workers]` (falling back to port
+||| 8080 with 128 workers for any other shape, including no args at all)
+||| and runs the server. Pass the tail of `getArgs` (i.e. with the program
+||| name dropped) as `args`.
 export covering
 runServerArgs : Responder -> List String -> Prog [Errno] Void
-runServerArgs f ["server", port, n] =
+runServerArgs f [port, n] =
   case cast {to = Nat} n of
     S k => runServer f (cast port) (S k)
     0   => runServer f (cast port) 128
