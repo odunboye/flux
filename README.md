@@ -260,14 +260,26 @@ TLS). `Flux.Middleware.Session` builds an in-memory, cookie-backed session
 store on top of it, sharded 16 ways the same way request IDs are (see
 "Concurrency" below).
 
-This is explicitly a minimal implementation, documented as such in the
-module itself: sessions never expire and are never garbage-collected — a
-long-running server accumulates one entry per distinct visitor forever —
-and session IDs are a process-local counter (`"sess-<stripe>-<n>"`), not
-a cryptographically random token (this dependency stack has no obvious
-CSPRNG), so they're guessable. Fine for a demo or low-stakes app; not an
-unforgeable auth credential without real hardening (a proper random ID,
-expiry, and a persistent store).
+Session IDs are 128 bits of real OS entropy, hex-encoded — not a
+guessable counter. `Flux.Middleware.Internal.Random` reads directly from
+`/dev/urandom` via `System.Posix.File` (already used the same way for
+regular files by `Flux.Middleware.Static`): Idris2's own `System.Random`
+turned out not to be suitable here (traced to Chez's plain `random`/JS's
+`Math.random()` — non-cryptographic, not OS-entropy-seeded per call),
+and nothing else in the dependency tree exposes a labeled CSPRNG, but
+`/dev/urandom` needed no new C code — the existing POSIX file wrapper
+has no restriction to regular files and no Darwin-specific gap.
+
+Sessions now expire after a configurable idle period
+(`newSessionStore`'s `ttlMs` — `session` treats an expired cookie
+exactly like no cookie at all, issuing a fresh id) and a background
+sweep, `sessionGCLoop` (raced alongside the server the same way as
+`accessFlushLoop` — see `examples/src/Main.idr`), actually reclaims
+expired entries so a long-running server doesn't accumulate them
+forever. What's still explicitly out of scope: persistence across
+restarts and sharing sessions across more than one process — this
+remains in-memory and single-process; swap in a real backend (Redis,
+a DB) for either of those.
 
 ## Static files
 
@@ -420,8 +432,9 @@ above) - both remain manual.
 - [x] Streaming/chunked responses (`sendStream`), used by static file
       serving
 - [x] JSON encode/decode, `ToJSON`/`FromJSON`, JSON error rendering
-- [x] Cookies, in-memory sessions (sharded, not production-hardened —
-      see "Cookies & sessions")
+- [x] Cookies, in-memory sessions — sharded, real random IDs
+      (`/dev/urandom`), expiry + background GC; still single-process,
+      not durable across restarts — see "Cookies & sessions"
 - [x] Static file serving with path-traversal protection
 - [x] Health/liveness/readiness/startup routes (checks are placeholders
       by default — see "Health checks")
@@ -470,9 +483,10 @@ whether this is production-ready for their use case:
 - **Health checks are fake by default.** `registerStandardChecks` always
   reports healthy; nothing checks a real database, cache, or system
   resource unless you write your own `HealthCheck`s.
-- **Sessions are not secure or durable.** Guessable IDs (a process-local
-  counter, no CSPRNG available in this stack), no expiry, no GC, no
-  persistence across restarts.
+- **Sessions are not durable.** IDs are now real random tokens with
+  expiry and GC (see "Cookies & sessions") - what's left is
+  single-process-only: no persistence across restarts, no sharing across
+  a cluster.
 - **No TLS.** Terminate TLS in a reverse proxy; this project speaks
   plain HTTP only.
 - **CI covers unit tests, both builds, and one live smoke test - not

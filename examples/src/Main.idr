@@ -181,6 +181,19 @@ updateUser store ctx = do
 createUserMaxBytes : Nat
 createUserMaxBytes = 4096
 
+-- How long a session may go without a request before it's treated as
+-- expired and eventually reclaimed by sessionGCLoop (see
+-- Flux.Middleware.Session's doc comment) - 30 minutes.
+sessionTTLMs : Integer
+sessionTTLMs = 1_800_000
+
+-- How often the background sweep actually reclaims expired sessions -
+-- doesn't need to be anywhere near as frequent as the TTL itself, since
+-- an already-expired session is invisible to `session`'s own idle check
+-- regardless of whether the sweep has gotten to it yet.
+sessionGCInterval : Clock Duration
+sessionGCInterval = 60.s
+
 record NewUser where
   constructor MkNewUser
   name  : String
@@ -244,12 +257,12 @@ slow ctx = do
   liftIO (System.sleep 3)
   pure (sendText "Finished after 3 seconds\n" ctx)
 
-buildApp : BatchedAccessLog -> IO App
+buildApp : BatchedAccessLog -> IO (App, SessionStore)
 buildApp blog = do
   usersStore   <- newUserStore seedUsers
   reqId        <- requestId
-  sessionStore <- newSessionStore
-  sessionMw    <- session sessionStore
+  sessionStore <- newSessionStore sessionTTLMs
+  let sessionMw = session sessionStore
   let appRouter : Router Handler
       appRouter =
            empty
@@ -264,17 +277,18 @@ buildApp blog = do
         |> get    "/static/*path" (staticHandler "public" defaultMimeFor)
         |> healthRoutes emptyRegistry "0.2.0"
 
-  pure $ app
-    |> withErrorRenderer jsonErrorRenderer
-    |> use corsAllowAll
-    |> use secureHeaders
-    |> use reqId
-    |> use timing
-    |> use sessionMw
-    |> useAfter responseTime
-    |> useAfter (requestAccessLog blog)
-    |> useAfter (persistSession sessionStore)
-    |> withRoutes appRouter
+  let application = app
+        |> withErrorRenderer jsonErrorRenderer
+        |> use corsAllowAll
+        |> use secureHeaders
+        |> use reqId
+        |> use timing
+        |> use sessionMw
+        |> useAfter responseTime
+        |> useAfter (requestAccessLog blog)
+        |> useAfter (persistSession sessionStore)
+        |> withRoutes appRouter
+  pure (application, sessionStore)
 
 -- Demonstrates runServerFromConfig: every tuning knob (host/port/
 -- workers/maxBodySize/timeout) comes from a real ServerConfig instead of
@@ -282,20 +296,23 @@ buildApp blog = do
 -- ./flux-examples --from-env. Try posting a body over 1MB (the default
 -- maxBodySize, unless FLUX_SERVER_MAXBODYSIZE overrides it) to any POST
 -- route to see the config-driven limit actually enforced.
-runFromEnv : App -> BatchedAccessLog -> IO ()
-runFromEnv application blog = do
+runFromEnv : App -> SessionStore -> BatchedAccessLog -> IO ()
+runFromEnv application sessionStore blog = do
   cfg <- serverConfigFromEnv
-  runProgWith [accessFlushLoop 50.ms blog] (runServerFromConfig (runApp application) cfg)
+  runProgWith
+    [accessFlushLoop 50.ms blog, sessionGCLoop sessionGCInterval sessionStore]
+    (runServerFromConfig (runApp application) cfg)
 
 covering
 main : IO ()
 main = do
-  blog        <- newBatchedAccessLog
-  application <- buildApp blog
+  blog                    <- newBatchedAccessLog
+  (application, sessions) <- buildApp blog
   args <- getArgs
+  let background = [accessFlushLoop 50.ms blog, sessionGCLoop sessionGCInterval sessions]
   case args of
-    _ :: "--from-env" :: _ => runFromEnv application blog
-    _ :: t                 => runProgWith [accessFlushLoop 50.ms blog] (runServerArgs (runApp application) t)
-    []                      => runProgWith [accessFlushLoop 50.ms blog] (runServerArgs (runApp application) [])
+    _ :: "--from-env" :: _ => runFromEnv application sessions blog
+    _ :: t                 => runProgWith background (runServerArgs (runApp application) t)
+    []                      => runProgWith background (runServerArgs (runApp application) [])
   flushAccessLog blog
 
