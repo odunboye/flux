@@ -60,11 +60,13 @@ testWithRoutes =
 dummyRequest : Request
 dummyRequest = R GET "/" empty V11 empty 0 Nothing (pure (pure ()))
 
--- Runs an HTTPStream for real, via the async runtime, concatenating
--- everything it emits - needed because runApp's error-catching (and, once
--- streaming responses are involved, its chunking) is a runtime behavior,
--- not something visible from its type alone.
-runOnce : HTTPStream ByteString -> IO ByteString
+-- Runs an HTTPPull for real, via the async runtime, concatenating
+-- everything it emits and discarding its result (a BodyOutcome, for
+-- runApp's output specifically - not needed to check what got emitted) -
+-- needed because runApp's error-catching (and, once streaming responses
+-- are involved, its chunking) is a runtime behavior, not something
+-- visible from its type alone.
+runOnce : HTTPPull ByteString r -> IO ByteString
 runOnce stream = do
   ref <- newIORef []
   runProg $
@@ -72,7 +74,7 @@ runOnce stream = do
       (\case
         Here e         => liftIO (putStrLn "runOnce: unexpected Errno: \{e}")
         There (Here e) => liftIO (putStrLn "runOnce: unexpected HTTPErr: \{e}"))
-      (foreach (\v => liftIO (modifyIORef ref (v ::))) stream)
+      (ignore (foreach (\v => liftIO (modifyIORef ref (v ::))) stream))
   chunks <- readIORef ref
   pure (fastConcat (reverse chunks))
 
@@ -107,6 +109,103 @@ testWithErrorRenderer = do
   let respStr = toString resp
   pure $ isInfixOf "418" respStr && isInfixOf "custom: teapot" respStr
 
+--------------------------------------------------------------------------------
+-- readBody: a Handler reading Context.request.body via the router layer
+--------------------------------------------------------------------------------
+
+-- A synthetic HTTPBody emitting the given chunks, then resulting in an
+-- empty continuation - enough to drive readBody without a real socket.
+mkBody : List ByteString -> HTTPBody
+mkBody []        = pure (pure ())
+mkBody (c :: cs) = emit c >> mkBody cs
+
+dummyRequestWithBody : List ByteString -> Request
+dummyRequestWithBody chunks =
+  R POST "/" empty V11 empty (sum (map length chunks)) Nothing (mkBody chunks)
+
+-- Like runOnce, but also keeps runApp's BodyOutcome result instead of
+-- discarding it - needed to check whether a connection was reported
+-- ContinueWith (keep-alive) or CloseAfterResponse.
+runAppOnce : HTTPPull ByteString BodyOutcome -> IO (ByteString, BodyOutcome)
+runAppOnce stream = do
+  ref    <- newIORef []
+  outRef <- newIORef CloseAfterResponse
+  runProg $
+    handleErrors
+      (\case
+        Here e         => liftIO (putStrLn "runAppOnce: unexpected Errno: \{e}")
+        There (Here e) => liftIO (putStrLn "runAppOnce: unexpected HTTPErr: \{e}"))
+      (Prelude.do
+        outcome <- foreach (\v => liftIO (modifyIORef ref (v ::))) stream
+        liftIO (writeIORef outRef outcome))
+  chunks  <- readIORef ref
+  outcome <- readIORef outRef
+  pure (fastConcat (reverse chunks), outcome)
+
+isContinue : BodyOutcome -> Bool
+isContinue (ContinueWith _) = True
+isContinue CloseAfterResponse = False
+
+export
+testReadBodySuccess : IO Bool
+testReadBodySuccess = do
+  let req = dummyRequestWithBody [fromString "hello ", fromString "world"]
+      handler : Handler
+      handler ctx = do
+        Right bytes <- readBody 1024 ctx
+          | Left _ => pure (setStatus 500 (sendText "read failed" ctx))
+        pure (sendText (toString bytes) ctx)
+      myApp = withRoutes (post "/" handler empty) emptyApp
+  (resp, outcome) <- runAppOnce (runApp myApp req)
+  pure $ isInfixOf "hello world" (toString resp) && isContinue outcome
+
+export
+testReadBodyTooLargeClosesConnection : IO Bool
+testReadBodyTooLargeClosesConnection = do
+  let req = dummyRequestWithBody [fromString (pack (replicate 100 'x'))]
+      handler : Handler
+      handler ctx = do
+        result <- readBody 10 ctx
+        case result of
+          Left BodyTooLarge => pure (setStatus 413 (sendText "too large" ctx))
+          Left _            => pure (setStatus 400 (sendText "bad" ctx))
+          Right _           => pure (setStatus 200 (sendText "should not happen" ctx))
+      myApp = withRoutes (post "/" handler empty) emptyApp
+  (resp, outcome) <- runAppOnce (runApp myApp req)
+  pure $ isInfixOf "413" (toString resp) && not (isContinue outcome)
+
+-- The specific bug found and fixed while implementing this: runApp resets
+-- to a *fresh* Context whenever anything throws, which would silently
+-- lose an ordinary Context field recording "the body was read" - a
+-- Handler that reads the body successfully and *then* throws for an
+-- unrelated reason must still report ContinueWith, not lose it to that
+-- reset. See readBody's doc comment.
+export
+testReadBodySurvivesLaterThrow : IO Bool
+testReadBodySurvivesLaterThrow = do
+  let req = dummyRequestWithBody [fromString "ok"]
+      handler : Handler
+      handler ctx = do
+        Right _ <- readBody 1024 ctx
+          | Left _ => pure (setStatus 500 (sendText "read failed" ctx))
+        throw (MkAppError 400 "unrelated failure after reading body")
+      myApp = withRoutes (post "/" handler empty) emptyApp
+  (resp, outcome) <- runAppOnce (runApp myApp req)
+  pure $ isInfixOf "400" (toString resp) && isContinue outcome
+
+-- Baseline: a Handler that never touches the body at all still keeps the
+-- connection alive (runApp drains it itself) - the ordinary, most common
+-- case, unaffected by any of the above.
+export
+testUntouchedBodyKeepsConnectionAlive : IO Bool
+testUntouchedBodyKeepsConnectionAlive = do
+  let req = dummyRequestWithBody [fromString "ignored"]
+      handler : Handler
+      handler ctx = pure (sendText "ok" ctx)
+      myApp = withRoutes (post "/" handler empty) emptyApp
+  (_, outcome) <- runAppOnce (runApp myApp req)
+  pure (isContinue outcome)
+
 -- Run all middleware tests (mixing pure and IO-backed cases, since the
 -- end-to-end runApp tests are inherently effectful)
 export
@@ -115,6 +214,10 @@ runAllTests = do
   appErrorResult    <- testRunAppCatchesAppError
   errnoResult       <- testRunAppCatchesErrno
   errorRendererResult <- testWithErrorRenderer
+  readBodySuccessResult      <- testReadBodySuccess
+  readBodyTooLargeResult     <- testReadBodyTooLargeClosesConnection
+  readBodySurvivesThrowResult <- testReadBodySurvivesLaterThrow
+  untouchedBodyResult        <- testUntouchedBodyKeepsConnectionAlive
   pure
     [ ("emptyApp", testEmptyApp)
     , ("use", testUse)
@@ -123,4 +226,8 @@ runAllTests = do
     , ("runAppCatchesAppError", appErrorResult)
     , ("runAppCatchesErrno", errnoResult)
     , ("withErrorRenderer", errorRendererResult)
+    , ("readBodySuccess", readBodySuccessResult)
+    , ("readBodyTooLargeClosesConnection", readBodyTooLargeResult)
+    , ("readBodySurvivesLaterThrow", readBodySurvivesThrowResult)
+    , ("untouchedBodyKeepsConnectionAlive", untouchedBodyResult)
     ]

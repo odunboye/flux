@@ -3,6 +3,7 @@ module Flux.Core.Middleware
 import public Flux.Core.HTTP
 import public Flux.Core.Router
 import public Data.SortedMap
+import Data.Linear.Ref1
 import Data.String
 
 %default total
@@ -48,9 +49,20 @@ renderSetCookie c =
       withSecure := if c.secure then withHttp ++ "; Secure" else withHttp
    in withSecure
 
+||| Tracks, across one request's entire before/dispatch/after pipeline,
+||| whether anything ran `readBody` and what that means for the
+||| connection afterward - see `readBody`'s doc comment for why this has
+||| to live outside `Context` proper (as a mutable cell `Context` merely
+||| carries a reference to) rather than as an ordinary field threaded
+||| through return values.
+public export
+data BodyReadState = Untouched | Consumed (HTTPStream ByteString) | Unsafe
+
 -- Request plus everything a handler/middleware chain needs to build a
 -- response: matched path params, arbitrary per-request state, and the
--- response being assembled (status, headers, cookies, body).
+-- response being assembled (status, headers, cookies, body). `bodyRef`
+-- is `Nothing` for any `Context` built outside `runApp` (e.g. directly
+-- in a test); `runApp` always supplies one - see `readBody`.
 public export
 record Context where
   constructor MkContext
@@ -61,10 +73,11 @@ record Context where
   respHeaders : SortedMap String String
   respCookies : List SetCookie
   respBody    : ResponseBody
+  bodyRef     : Maybe (Ref World BodyReadState)
 
 export
 emptyContext : Request -> Context
-emptyContext req = MkContext req emptyParams empty 200 empty [] (Buffered (fromString ""))
+emptyContext req = MkContext req emptyParams empty 200 empty [] (Buffered (fromString "")) Nothing
 
 export
 setState : String -> String -> Context -> Context
@@ -156,6 +169,69 @@ export
 runChain : List Middleware -> Context -> AppProg Context
 runChain []        ctx = pure ctx
 runChain (m :: ms) ctx = m ctx >>= runChain ms
+
+--------------------------------------------------------------------------------
+-- Reading a request body
+--------------------------------------------------------------------------------
+
+public export
+data BodyError = BodyTooLarge | BodyMalformed | BodyIOError
+
+-- HTTPErr's three constructors plus Errno, mapped onto BodyError.
+-- HeaderSizeExceeded/InvalidRequest shouldn't actually occur reading a
+-- body (they're wire-parsing errors from earlier in the request), but
+-- HTTPErr is shared with parsing, so this handles them (as BodyMalformed)
+-- rather than assert_total-ing past them.
+mapBodyErr : HSum [Errno,HTTPErr] -> BodyError
+mapBodyErr (Here _)                           = BodyIOError
+mapBodyErr (There (Here ContentSizeExceeded)) = BodyTooLarge
+mapBodyErr (There (Here _))                   = BodyMalformed
+
+||| Reads and fully collects a `Handler`'s request body (up to `maxBytes`),
+||| returning `Left BodyTooLarge` if it exceeds that, or `Left BodyMalformed`/
+||| `Left BodyIOError` for a lower-level failure while reading it.
+|||
+||| **A failed read forces the connection closed after this response** -
+||| `runApp` will report `CloseAfterResponse` (see `Flux.Core.HTTP.BodyOutcome`)
+||| regardless of what the `Handler` does afterward, even if it goes on to
+||| return an otherwise-ordinary `Context`. This isn't a policy choice, it's
+||| forced by what the underlying library can express: once a bounded read
+||| over the body aborts partway through, there is no continuation that
+||| safely resumes parsing the next pipelined request from wherever the wire
+||| position was left - the position is genuinely, unrecoverably lost.
+|||
+||| A *successful* read does **not** force the connection closed - the
+||| connection stays alive for further pipelined requests using the real
+||| continuation past the body, not the stale, already-partially-consumed
+||| `Context.request.body` value (reusing that directly, e.g. via
+||| `Flux.Core.HTTP.respondWith`'s ordinary `drain`, would silently reissue
+||| live socket reads from wherever the connection cursor happens to sit,
+||| not replay anything - so it never happens once a `Handler` has read the
+||| body).
+|||
+||| This all needs a side-effecting cell (`Context.bodyRef`) rather than an
+||| ordinary `Context` field, because `runApp` resets to a *fresh* `Context`
+||| whenever anything throws (see its doc comment) - a plain field recording
+||| "the body was read" would be silently discarded by exactly the case that
+||| matters (a `Handler` reads the body successfully, then something else it
+||| does afterward throws an unrelated `AppError`). A mutable cell, once
+||| written, survives that reset; `runApp` reads it once, after the whole
+||| pipeline has resolved either way.
+export covering
+readBody : (maxBytes : Nat) -> Context -> AppProg (Either BodyError ByteString)
+readBody maxBytes ctx = do
+  let bounded = C.limit ContentSizeExceeded maxBytes ctx.request.body
+  outcome <- weakenErrors (pull (foldPair (:<) [<] bounded))
+  case outcome of
+    Succeeded (sb,cont) => do
+      maybe (pure ()) (\r => writeref r (Consumed cont)) ctx.bodyRef
+      pure (Right (fastConcat (sb <>> [])))
+    Error errs => do
+      maybe (pure ()) (\r => writeref r Unsafe) ctx.bodyRef
+      pure (Left (mapBodyErr errs))
+    Canceled => do
+      maybe (pure ()) (\r => writeref r Unsafe) ctx.bodyRef
+      pure (Left BodyIOError)
 
 --------------------------------------------------------------------------------
 -- Built-in middleware
@@ -260,19 +336,34 @@ internalServerError onError = onError (MkAppError 500 "Internal Server Error")
 -- Both cases necessarily render onto a *fresh* Context (just the original
 -- request) since a caught failure discards whatever the before-chain had
 -- already accumulated onto the Context up to that point.
-export
+--
+-- `bref` (a fresh `BodyReadState` cell, one per request) is created here
+-- and handed to every Context in the pipeline via `bodyRef` so `readBody`
+-- can reach it; it's read *after* the handleErrors above resolves, not
+-- through whichever Context comes out of it - a mutable cell is what lets
+-- "a Handler successfully read the body, then something unrelated threw"
+-- still report the real continuation instead of losing it to the reset
+-- above (see `readBody`'s doc comment).
+export covering
 runApp : App -> Responder
 runApp (MkApp router before after onError) req = Prelude.do
-  -- Fully resolve the AppProg pipeline (catching AppError/Errno) into a
-  -- plain Context *before* crossing into the HTTPStream/wire-level world,
-  -- since AppProg's error set ([Errno,AppError]) and HTTPStream's
-  -- ([Errno,HTTPErr]) are different and can't be mixed in one `exec`.
-  ctx <- exec $ handleErrors
-    (\case
-      Here _         => pure $ internalServerError onError (emptyContext req)
-      There (Here e) => pure $ onError e (emptyContext req))
-    (Prelude.do
-      ctx0 <- runChain before (emptyContext req)
-      ctx1 <- dispatch router ctx0
-      runChain after ctx1)
+  (ctx, st) <- exec $ Prelude.do
+    bref <- newref Untouched
+    let start := { bodyRef := Just bref } (emptyContext req)
+    result <- handleErrors
+      (\case
+        Here _         => pure $ internalServerError onError (emptyContext req)
+        There (Here e) => pure $ onError e (emptyContext req))
+      (Prelude.do
+        ctx0 <- runChain before start
+        ctx1 <- dispatch router ctx0
+        runChain after ctx1)
+    st <- readref bref
+    pure (result, st)
   render ctx
+  case st of
+    -- Nothing touched the body - drain it here, exactly as `respondWith`
+    -- unconditionally used to, to find the real leftover continuation.
+    Untouched  => map ContinueWith (drain req.body)
+    Consumed c => pure (ContinueWith c)
+    Unsafe     => pure CloseAfterResponse

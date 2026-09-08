@@ -88,6 +88,49 @@ updateUser store ctx = do
           liftIO (Data.IORef.modifyIORef store (insert uid u'))
           pure (sendJSON u' ctx)
 
+-- The maximum size accepted for a createUser request body. Deliberately
+-- small here so the "too large" branch below is easy to trigger in
+-- manual testing (curl a body over 4096 bytes).
+createUserMaxBytes : Nat
+createUserMaxBytes = 4096
+
+record NewUser where
+  constructor MkNewUser
+  name  : String
+  email : String
+
+FromJSON NewUser where
+  fromJSON (JObject kvs) = do
+    JString n <- Data.SortedMap.lookup "name" kvs  | _ => Nothing
+    JString e <- Data.SortedMap.lookup "email" kvs | _ => Nothing
+    pure (MkNewUser n e)
+  fromJSON _ = Nothing
+
+nextUserId : SortedMap Integer User -> Integer
+nextUserId users = 1 + foldl max 0 (map (.id) (Data.SortedMap.values users))
+
+-- Demonstrates readBody: reads and JSON-decodes a POST body via the
+-- router/Handler layer (previously impossible - see the README's
+-- Limitations section this was written to close). A body over
+-- createUserMaxBytes gets 413 and the connection closes afterward
+-- (readBody forces this - see its doc comment); a body under the limit
+-- keeps the connection alive for further pipelined requests exactly like
+-- any other request.
+createUser : UserStore -> Handler
+createUser store ctx = do
+  result <- readBody createUserMaxBytes ctx
+  case result of
+    Left BodyTooLarge => pure (setStatus 413 (sendText "request body too large\n" ctx))
+    Left _            => pure (setStatus 400 (sendText "could not read request body\n" ctx))
+    Right bytes       => case decode {a = NewUser} (toString bytes) of
+      Nothing => throw (MkAppError 400 "invalid JSON body - expected {\"name\":...,\"email\":...}")
+      Just nu => do
+        users <- liftIO (Data.IORef.readIORef store)
+        let uid = nextUserId users
+            u   = MkUser uid nu.name nu.email
+        liftIO (Data.IORef.modifyIORef store (insert uid u))
+        pure (setStatus 201 (sendJSON u ctx))
+
 -- Demonstrates DELETE.
 deleteUser : UserStore -> Handler
 deleteUser store ctx = do
@@ -129,6 +172,7 @@ buildApp blog = do
            empty
         |> get    "/" root
         |> get    "/api/users" (listUsers usersStore)
+        |> post   "/api/users" (createUser usersStore)
         |> get    "/api/users/:id" (getUser usersStore)
         |> put    "/api/users/:id" (updateUser usersStore)
         |> delete "/api/users/:id" (deleteUser usersStore)

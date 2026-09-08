@@ -409,28 +409,42 @@ chunkEncode = scanFull () (\_,bs => (Just (chunkFrame bs), ())) (const (Just chu
 -- generic over what actually builds the response so a single
 -- implementation backs both the router/middleware based
 -- `Flux.Core.Middleware.runApp` and simple standalone responders.
+||| What a `Responder` decides should happen to the connection after it
+||| finishes emitting one response: `ContinueWith cont` hands back the byte
+||| stream to resume parsing the next pipelined request from (ordinarily
+||| just `r.body`, untouched - see `respondWith`); `CloseAfterResponse`
+||| means the connection must not be reused, because whatever ran over
+||| `r.body` (see `Flux.Core.Middleware.readBody`) failed partway through
+||| and left the wire position unrecoverable - there is no continuation
+||| that could safely resume parsing from it.
+public export
+data BodyOutcome = ContinueWith (HTTPStream ByteString) | CloseAfterResponse
+
 public export
 0 Responder : Type
-Responder = Request -> HTTPStream ByteString
+Responder = Request -> HTTPPull ByteString BodyOutcome
 
--- Responds to one request, then drains whatever's left of its body -
--- responders don't touch it (see HTTPBody's docs) - capturing the
--- connection's byte stream continuing right after it. That continuation,
--- not a fresh read off the socket, is what the next loop iteration must
--- parse the next request from: a single `bytes cli n` read can return
--- more than one pipelined request's worth of bytes at once, and only the
--- continuation captured here (rather than a fresh read, which would only
--- ever see whatever arrives *after* that point) preserves the rest of
--- what was already read. Returns whether there was a request at all:
--- False means the byte source hit EOF (the client closed the
--- connection), signalling the caller to stop reading more requests off it.
+-- Responds to one request via `f`, which reports what to do with the
+-- connection afterward (see `BodyOutcome`) - ordinarily `ContinueWith
+-- r.body`, the connection's byte stream continuing right after the
+-- request just handled. That continuation, not a fresh read off the
+-- socket, is what the next loop iteration must parse the next request
+-- from: a single `bytes cli n` read can return more than one pipelined
+-- request's worth of bytes at once, and only the continuation captured
+-- here (rather than a fresh read, which would only ever see whatever
+-- arrives *after* that point) preserves the rest of what was already
+-- read. Returns whether there was a request at all: False means either
+-- the byte source hit EOF (the client closed the connection) or `f`
+-- reported `CloseAfterResponse`, either way signalling the caller to stop
+-- reading more requests off this connection.
 export
 respondWith : Responder -> Maybe Request -> HTTPPull ByteString (Bool, HTTPStream ByteString)
 respondWith f Nothing  = pure (False, pure ())
 respondWith f (Just r) = Prelude.do
-  f r
-  rest <- drain r.body
-  pure (True, rest)
+  outcome <- f r
+  case outcome of
+    ContinueWith rest   => pure (True, rest)
+    CloseAfterResponse  => pure (False, pure ())
 
 export covering
 echoWith :
