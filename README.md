@@ -12,7 +12,7 @@ files, health checks) are all implemented directly in this repo.
 
 The goal is a **usable, honestly-documented** framework: routing,
 middleware, JSON, cookies/sessions, static files, structured error
-handling and streaming responses all work and are tested (130 unit tests,
+handling and streaming responses all work and are tested (142 unit tests,
 `test/`). What sets this README apart from a typical framework's docs is
 that every non-obvious tradeoff, gap, and half-solved problem uncovered
 while building it is written down rather than smoothed over — see
@@ -243,13 +243,35 @@ trail; fine for an access log.
 
 `Flux.Server.Health` provides `/health`, `/healthz`, `/ready`, `/live`,
 `/startup` routes (`healthRoutes`) backed by a `HealthRegistry` of
-`IO CheckResult` checks. **The five "standard" checks
-(`databaseCheck`, `cacheCheck`, `externalServiceCheck`, `memoryCheck`,
-`diskCheck`) are placeholders that always report `Healthy`** — none of
-them touch a real database, cache, or the actual process's memory/disk
-usage. `registerStandardChecks` wires all of them in, so a server using
-it will always report healthy regardless of actual state unless you
-write and register your own `HealthCheck`s.
+`IO CheckResult` checks (`addCheck`/`emptyRegistry`).
+
+There used to be five bundled "standard" checks, all hardcoded
+placeholders that unconditionally reported `Healthy` regardless of
+anything real — worse than no health checks at all for anything that
+actually trusts the result (an orchestrator's liveness/readiness probe,
+say). `databaseCheck`/`cacheCheck`/`externalServiceCheck` are gone
+outright: what "healthy" means for a specific database or cache
+connection is application-specific, and Flux has no database/cache
+client of its own to check generically — write your own, it's just
+`HealthCheck = IO CheckResult`. `diskCheck` is gone too, for a
+different reason: a real implementation exists in principle
+(`statvfs`, POSIX, both platforms) via this project's own dependency
+tree, but as shipped there every `Statvfs`/`FileStats` field accessor
+is linked against the wrong library — calling it fails at runtime with
+a missing-symbol error on both platforms as currently shipped upstream
+— and working around that means reimplementing the struct-marshaling
+FFI code from scratch (real memory-safety risk if gotten wrong), not
+attempted here.
+
+`memoryCheck (thresholdMB : Integer) : IO CheckResult` **is real**: it
+reads the process's own RSS from `/proc/self/status` — the same plain
+file-IO approach `Flux.Middleware.Internal.Random` uses for
+`/dev/urandom`, no FFI. Linux-only (`/proc` doesn't exist on Darwin) —
+reports `Degraded`, never a false `Healthy`, anywhere it can't get a
+real answer, whether that's the platform or an unexpected
+`/proc/self/status` format. `mkHealthStatus`'s `timestamp` field is
+also now a real Unix timestamp (`System.Clock`), not the hardcoded `0`
+it used to be.
 
 ## Cookies & sessions
 
@@ -402,7 +424,7 @@ pack build test/test.ipkg
 ./test/build/exec/flux-test
 ```
 
-130 tests across 9 suites (router, HTTP wire parsing, JSON, middleware,
+142 tests across 10 suites (router, HTTP wire parsing, JSON, middleware,
 logging, config, cookies, sessions, static files) — mostly pure/unit-style
 with no real socket or database involved, though a handful (the `runApp`
 error-catching tests, and `readBody`'s success/failure/keep-alive tests
@@ -436,8 +458,9 @@ above) - both remain manual.
       (`/dev/urandom`), expiry + background GC; still single-process,
       not durable across restarts — see "Cookies & sessions"
 - [x] Static file serving with path-traversal protection
-- [x] Health/liveness/readiness/startup routes (checks are placeholders
-      by default — see "Health checks")
+- [x] Health/liveness/readiness/startup routes; a real `memoryCheck`
+      (Linux) — no more fake always-`Healthy` placeholders — see
+      "Health checks"
 - [x] Env-var config loading (`Config`), wired into the running server
       via `runServerFromConfig` (`host`/`workers`/`maxBodySize`/`timeout`)
       — see "Config"
@@ -480,9 +503,11 @@ whether this is production-ready for their use case:
 - **Graceful shutdown doesn't work on macOS** — crashes on SIGINT/SIGTERM
   due to a missing syscall in the dependency stack's Darwin support.
   Linux-only in practice.
-- **Health checks are fake by default.** `registerStandardChecks` always
-  reports healthy; nothing checks a real database, cache, or system
-  resource unless you write your own `HealthCheck`s.
+- **No disk-space health check.** `diskCheck` was removed rather than
+  shipped broken - see "Health checks" for the upstream `statvfs`
+  linking bug behind that. `memoryCheck` is real, but Linux-only.
+  Database/cache/external-service checks were never something Flux
+  could provide generically - write your own via `addCheck`.
 - **Sessions are not durable.** IDs are now real random tokens with
   expiry and GC (see "Cookies & sessions") - what's left is
   single-process-only: no persistence across restarts, no sharing across

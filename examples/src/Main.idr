@@ -275,7 +275,7 @@ buildApp blog = do
         |> get    "/visits" visits
         |> get    "/slow" slow
         |> get    "/static/*path" (staticHandler "public" defaultMimeFor)
-        |> healthRoutes emptyRegistry "0.2.0"
+        |> healthRoutes (addCheck (memoryCheck 512) emptyRegistry) "0.2.0"
 
   let application = app
         |> withErrorRenderer jsonErrorRenderer

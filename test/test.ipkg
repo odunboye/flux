@@ -26,6 +26,7 @@ modules = Main
         , TestCookies
         , TestSession
         , TestStatic
+        , TestHealth
 
 -- main file (i.e. file to load at REPL)
 main = Main

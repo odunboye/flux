@@ -5,6 +5,10 @@ import public Flux.Core.Router
 import public Flux.Core.Middleware
 import public Flux.Data.JSON
 import public Data.SortedMap
+import Data.List
+import Data.String
+import System.Clock
+import System.File
 
 %default total
 
@@ -113,7 +117,8 @@ mkHealthStatus : HealthRegistry -> String -> IO HealthStatusRecord
 mkHealthStatus registry version = do
   checks <- runChecks registry
   let status = overallStatus checks
-  pure (MkHealthStatusRecord status version checks 0)
+  now <- seconds <$> clockTime UTC
+  pure (MkHealthStatusRecord status version checks now)
 
 -- Health endpoint handler: runs every registered check
 export
@@ -143,51 +148,74 @@ export
 startupHandler : Handler
 startupHandler ctx = pure $ sendJSON (JObject (fromList [("status", JString "started")])) ctx
 
--- Common health checks
+--------------------------------------------------------------------------------
+-- Built-in checks
+--------------------------------------------------------------------------------
+-- An earlier version of this section had five "standard" checks
+-- (database/cache/externalService/memory/disk), all hardcoded
+-- placeholders that unconditionally returned Healthy regardless of
+-- anything real - a server using registerStandardChecks always reported
+-- healthy no matter what, which is worse than not having health checks
+-- at all (a monitoring system trusting it wouldn't catch a real outage).
+--
+-- database/cache/externalService are gone outright: what "healthy"
+-- means for a specific database or cache connection is inherently
+-- application-specific, and Flux has no database/cache client of its
+-- own to check generically - write your own via addCheck, e.g.
+-- `addCheck (do ok <- pingMyDb; pure (MkCheckResult "database" (if ok then Healthy else Unhealthy) Nothing)) registry`.
+--
+-- disk is also gone, but for a different reason: a real implementation
+-- exists in principle (statvfs, POSIX, both platforms) via
+-- System.Posix.File.Stats in this project's own dependency tree - but
+-- as shipped there, every Statvfs/FileStats field accessor is linked
+-- against the wrong library (`linux-idris` instead of `posix-idris`,
+-- where the C symbols actually live), and Flux doesn't depend on the
+-- `linux` package at all (nor could it - linux.c doesn't compile on
+-- Darwin). Calling it would fail at runtime with a missing-symbol
+-- error, on both platforms, as currently shipped upstream. Working
+-- around it means reimplementing the struct-marshaling FFI code
+-- from scratch (raw pointer/struct layout, real memory-safety risk if
+-- gotten wrong) - not attempted here; write your own if you need it,
+-- or fix it upstream.
+--
+-- memory is real: it reads the process's own RSS from
+-- /proc/self/status, the same way Flux.Middleware.Internal.Random reads
+-- /dev/urandom - plain file IO, no FFI. Only available on Linux (/proc
+-- doesn't exist on Darwin) - reports Degraded, not a false Healthy,
+-- anywhere it can't get a real answer, whether that's the platform or
+-- an unexpected /proc/self/status format.
 
--- Database connection check
+-- Extracts the "VmRSS:" line's kB figure from /proc/self/status's
+-- contents, e.g. "VmRSS:\t   12345 kB" -> Just 12345. Exported for
+-- direct unit testing (test/src/TestHealth.idr) - the one piece of
+-- this check's logic that doesn't depend on the host actually having
+-- /proc, or on real RSS content.
 export
-databaseCheck : IO CheckResult
-databaseCheck = do
-  -- Placeholder - would check actual DB connection
-  pure (MkCheckResult "database" Healthy (Just "Connected"))
+parseVmRSSKb : String -> Maybe Integer
+parseVmRSSKb contents =
+  case find (isPrefixOf "VmRSS:") (lines contents) of
+    Nothing   => Nothing
+    Just line =>
+      case filter isDigit (unpack line) of
+        [] => Nothing
+        ds => Just (cast (pack ds))
 
--- Cache connection check
-export
-cacheCheck : IO CheckResult
-cacheCheck = do
-  -- Placeholder - would check actual cache connection
-  pure (MkCheckResult "cache" Healthy (Just "Connected"))
-
--- External service check
-export
-externalServiceCheck : String -> IO CheckResult
-externalServiceCheck name = do
-  -- Placeholder - would check actual service
-  pure (MkCheckResult name Healthy Nothing)
-
--- Memory check
-export
-memoryCheck : Integer -> IO CheckResult  -- threshold in MB
-memoryCheck threshold = do
-  -- Placeholder - would check actual memory
-  pure (MkCheckResult "memory" Healthy Nothing)
-
--- Disk check
-export
-diskCheck : Integer -> IO CheckResult  -- threshold percentage
-diskCheck threshold = do
-  -- Placeholder - would check actual disk usage
-  pure (MkCheckResult "disk" Healthy Nothing)
-
--- Register standard health checks
-export
-registerStandardChecks : HealthRegistry -> HealthRegistry
-registerStandardChecks registry =
-  addCheck databaseCheck $
-  addCheck cacheCheck $
-  addCheck (memoryCheck 1024) $
-  addCheck (diskCheck 90) registry
+||| Checks the process's own resident memory (RSS) against `thresholdMB`
+||| - Linux only (reads /proc/self/status; reports Degraded rather than
+||| a false Healthy anywhere else, including on Darwin, where /proc
+||| doesn't exist at all - see this section's doc comment above).
+export covering
+memoryCheck : (thresholdMB : Integer) -> IO CheckResult
+memoryCheck thresholdMB = do
+  Right contents <- readFile "/proc/self/status"
+    | Left _ => pure (MkCheckResult "memory" Degraded (Just "unsupported on this platform (no /proc/self/status)"))
+  case parseVmRSSKb contents of
+    Nothing    => pure (MkCheckResult "memory" Degraded (Just "could not parse /proc/self/status"))
+    Just rssKb =>
+      let rssMB := rssKb `div` 1024
+       in pure $ if rssMB > thresholdMB
+            then MkCheckResult "memory" Unhealthy (Just "RSS \{show rssMB}MB exceeds threshold \{show thresholdMB}MB")
+            else MkCheckResult "memory" Healthy (Just "RSS \{show rssMB}MB")
 
 -- Register the standard health/liveness/readiness/startup routes
 export
