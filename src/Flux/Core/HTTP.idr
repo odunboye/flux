@@ -74,6 +74,23 @@ defaultAsyncThreads = do
     Just (S k) => Element (S k) %search
     _          => Element 1 %search
 
+||| Like `runProg`, but also runs the given no-error, no-result
+||| computations concurrently with `prog` for as long as the server
+||| runs - e.g. `Flux.Server.Logging.flushLoop`'s periodic log flush.
+|||
+||| Each one is canceled the moment `prog` itself stops, the same way
+||| `shutdownOn` already stops the accept loop: they run for exactly as
+||| long as the server does, they are not a place to depend on a final
+||| action happening at shutdown (a background task's own cancellation
+||| doesn't wait for its current step to finish first). Do that
+||| yourself, after `runProgWith` returns.
+export covering
+runProgWith : List (Async Poll [] ()) -> Prog [Errno] Void -> IO ()
+runProgWith background prog = do
+  n <- defaultAsyncThreads
+  app n [SIGINT, SIGTERM] posixPoller $
+    race_ (mpull (handle [stderrLn . interpolate] prog) :: background)
+
 ||| Runs a `Prog`, blocking SIGINT/SIGTERM at the process level so
 ||| `shutdownOn` can react to them instead of the OS killing the process
 ||| immediately. See `shutdownOn`'s platform note: this only works on
@@ -81,9 +98,7 @@ defaultAsyncThreads = do
 ||| single OS thread rather than `async-posix`'s own default of two.
 export covering
 runProg : Prog [Errno] Void -> IO ()
-runProg prog = do
-  n <- defaultAsyncThreads
-  app n [SIGINT, SIGTERM] posixPoller (mpull (handle [stderrLn . interpolate] prog))
+runProg = runProgWith []
 
 public export
 data HTTPErr : Type where

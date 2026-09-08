@@ -72,3 +72,18 @@ requestLog logger ctx = do
   liftIO $ logHTTP logger $
     MkHTTPLogContext (show (requestMethod ctx.request)) (requestUri ctx.request) ctx.statusCode elapsed
   pure ctx
+
+||| Logs method, path, status code and duration for every request, the
+||| same as `requestLog`, but appends the raw `HTTPLogContext` to a
+||| `BatchedAccessLog` instead of building the formatted line here -
+||| see its doc comment for why that matters under real multi-thread
+||| concurrency. Prefer this over `requestLog` for a server running
+||| with more than one async worker thread. Register with `useAfter`,
+||| after `timing` has been registered with `use`.
+export
+requestAccessLog : BatchedAccessLog -> Middleware
+requestAccessLog blog ctx = do
+  elapsed <- liftIO (elapsedSince ctx)
+  liftIO $ logAccess blog $
+    MkHTTPLogContext (show (requestMethod ctx.request)) (requestUri ctx.request) ctx.statusCode elapsed
+  pure ctx

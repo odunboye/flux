@@ -118,15 +118,13 @@ slow ctx = do
   liftIO (System.sleep 3)
   pure (sendText "Finished after 3 seconds\n" ctx)
 
-buildApp : IO App
-buildApp = do
+buildApp : BatchedAccessLog -> IO App
+buildApp blog = do
   usersStore   <- Data.IORef.newIORef (fromList (map (\u => (u.id, u)) seedUsers))
   reqId        <- requestId
   sessionStore <- newSessionStore
   sessionMw    <- session sessionStore
-  let logger = mkLogger Info
-
-      appRouter : Router Handler
+  let appRouter : Router Handler
       appRouter =
            empty
         |> get    "/" root
@@ -147,13 +145,18 @@ buildApp = do
     |> use timing
     |> use sessionMw
     |> useAfter responseTime
-    |> useAfter (requestLog logger)
+    |> useAfter (requestAccessLog blog)
     |> useAfter (persistSession sessionStore)
     |> withRoutes appRouter
 
 covering
 main : IO ()
 main = do
-  application <- buildApp
-  _ :: t <- getArgs | [] => runProg (runServerArgs (runApp application) [])
-  runProg (runServerArgs (runApp application) t)
+  blog        <- newBatchedAccessLog
+  application <- buildApp blog
+  args <- getArgs
+  let progArgs = case args of
+        _ :: t => t
+        []     => []
+  runProgWith [accessFlushLoop 50.ms blog] (runServerArgs (runApp application) progArgs)
+  flushAccessLog blog
