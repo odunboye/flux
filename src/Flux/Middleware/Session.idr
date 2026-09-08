@@ -14,28 +14,36 @@ module Flux.Middleware.Session
 import public Flux.Core.HTTP
 import public Flux.Core.Middleware
 import Flux.Middleware.Cookies
+import Flux.Middleware.Internal.Stripe
 import Data.Linear.Ref1
+import Data.Fin
 import Data.List
 import Data.String
+import Data.Vect
 
 %default covering
 
-||| `sessions` is a `Data.Linear.Ref1` reference, updated via `mod` (a
-||| lock-free compare-and-swap loop) in `persistSession`: with more than
-||| one async worker thread, concurrent requests can genuinely run these
-||| updates in parallel on different OS threads, and a bare
-||| read-then-write on a plain `Data.IORef` is not atomic across threads -
-||| two concurrent persists could each read the same map and one's insert
-||| would be silently lost. CAS-retry also scales better under contention
-||| than a `Mutex` would, since it never blocks a thread in the kernel.
+||| `sessions` is sharded into 16 independent `Data.Linear.Ref1`
+||| stripes (see `Flux.Middleware.Internal.Stripe`), each updated via
+||| `mod` (a lock-free compare-and-swap loop) in `persistSession`. A
+||| session's ID picks its stripe deterministically (`keyStripe`), so
+||| `session` and `persistSession` always agree on which one holds it.
+|||
+||| A single shared map, however it's guarded, is still one cache line
+||| that every worker thread's concurrent requests all contend for -
+||| under real parallel load that contention itself becomes the
+||| bottleneck. Sharding by session ID spreads different sessions
+||| across independent cache lines instead, while still letting a
+||| lookup for a given session go straight to the one stripe that could
+||| hold it.
 public export
 record SessionStore where
   constructor MkSessionStore
-  sessions : Ref World (SortedMap String (SortedMap String String))
+  sessions : Vect 16 (Ref World (SortedMap String (SortedMap String String)))
 
 export
 newSessionStore : IO SessionStore
-newSessionStore = MkSessionStore <$> newref empty
+newSessionStore = MkSessionStore <$> newStripes empty
 
 sessionIdCookie : String
 sessionIdCookie = "flux_session"
@@ -61,27 +69,28 @@ setSession key value = setState (sessionPrefix ++ key) value
 ||| otherwise), then loads that session's stored data into Context state
 ||| (see `getSession`). Register with `use`, before any handler that reads
 ||| session data. Call once at startup - `Middleware` values close over
-||| the counter used to generate fresh session IDs.
+||| the counters used to generate fresh session IDs.
 |||
-||| The counter is a `Data.Linear.Ref1` reference too, incremented via
-||| `update` for the same reason `sessions` uses `mod`: concurrent
-||| requests on different worker threads can race on a bare `IORef`
-||| read-then-write.
-resolveSessionId : Ref World Nat -> Maybe String -> AppProg String
+||| Fresh IDs look like `"sess-<stripe>-<n>"` rather than a single
+||| incrementing `"sess-<n>"`, for the same reason `RequestId`'s
+||| generator is striped: one shared counter is one contended cache
+||| line under real concurrency, no matter how it's guarded.
+resolveSessionId : Vect 16 (Ref World Nat) -> Maybe String -> AppProg String
 resolveSessionId _       (Just sid) = pure sid
 resolveSessionId counter Nothing    = liftIO $ do
-  n <- update counter (\n => (S n, n))
-  pure ("sess-" ++ show n)
+  i <- randomStripe
+  n <- update (index i counter) (\n => (S n, n))
+  pure ("sess-" ++ show (finToNat i) ++ "-" ++ show n)
 
 export
 session : SessionStore -> IO Middleware
 session store = do
-  counter <- newref 0
+  counter <- newStripes 0
   pure $ \ctx => Prelude.do
     let existing := getCookie sessionIdCookie ctx
     sid <- resolveSessionId counter existing
     sessionData <- liftIO $ do
-      allSessions <- readref (sessions store)
+      allSessions <- readref (index (keyStripe sid) (sessions store))
       pure (fromMaybe empty (Data.SortedMap.lookup sid allSessions))
     let ctxWithData := foldl (\c,(k,v) => setSession k v c) ctx (SortedMap.toList sessionData)
         ctxWithCookie := case existing of
@@ -108,5 +117,5 @@ persistSession store ctx =
   case getState sessionIdKey ctx of
     Nothing  => pure ctx
     Just sid => Prelude.do
-      liftIO $ mod (sessions store) (insert sid (extractSessionData ctx))
+      liftIO $ mod (index (keyStripe sid) (sessions store)) (insert sid (extractSessionData ctx))
       pure ctx

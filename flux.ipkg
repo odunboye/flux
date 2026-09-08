@@ -25,6 +25,7 @@ modules = Flux.Core.HTTP
         , Flux.Server.Config
         , Flux.Server.Logging
         , Flux.Server.Health
+        , Flux.Middleware.Internal.Stripe
         , Flux.Middleware.RequestId
         , Flux.Middleware.Timing
         , Flux.Middleware.Cookies
