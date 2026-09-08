@@ -8,7 +8,7 @@ depends = flux
 modules = EchoServer
         , Main
 
-main = EchoServer --Main
+main = Main
 
 executable = "flux-examples"
 sourcedir = "src"
