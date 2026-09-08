@@ -159,22 +159,39 @@ export
 ParseResult : Type -> Type
 ParseResult a = Either ParseError (a, String)
 
+-- Every function below that consumes more than a fixed number of
+-- characters (a value, a string literal, a key/value pair) returns its
+-- leftover input alongside its result - required for any of the
+-- multi-element constructs (parseArray/parseObject) to advance past what
+-- an inner parseValue/parseKV call actually consumed, rather than
+-- re-parsing from the same position forever. An earlier version of this
+-- parser didn't do this consistently (parseValue/parseTrue/parseFalse/
+-- parseNull/the old parseKV/parseItems/parseKVs all discarded or never
+-- tracked their leftover position) - it happened to typecheck and every
+-- existing test still passed, because the only tests exercising the
+-- string parser (TestJSON's testDecode/testDecodeNumber) decoded a bare
+-- scalar ("true", "42.5"), never an array or object, so the broken
+-- multi-element machinery was never actually run. Fixed here, with
+-- TestJSON gaining coverage for exactly what was missing: multi-key
+-- objects, multi-element arrays, and nesting.
 mutual
   -- Parse JSON string
   export
   json : String -> Either ParseError JSON
-  json input = parseValue (unpack (trimStr input))
+  json input = case parseValue (unpack (trimStr input)) of
+    Left e        => Left e
+    Right (v,  _) => Right v
 
   trimStr : String -> String
   trimStr = pack . Data.List.dropWhile JSON.isSpace . unpack
 
-  parseValue : List Char -> Either ParseError JSON
+  parseValue : List Char -> Either ParseError (JSON, List Char)
   parseValue [] = Left UnexpectedEnd
   parseValue (c :: cs) =
     if c == '{' then parseObject cs
     else if c == '[' then parseArray cs
     else if c == '"' then
-      parseStringLit cs >>= \(s, _) => pure (JString s)
+      parseStringLit cs >>= \(s, rest) => Right (JString s, rest)
     else if c == 't' then parseTrue (c :: cs)
     else if c == 'f' then parseFalse (c :: cs)
     else if c == 'n' then parseNull (c :: cs)
@@ -188,7 +205,9 @@ mutual
       go : String -> List Char -> Either ParseError (String, List Char)
       go acc [] = Left UnexpectedEnd
       go acc (c :: rest) =
-        if c == '"' then Right (reverse acc, rest)
+        -- acc is already in forward order (each char is snoc'd, i.e.
+        -- appended, not consed) - reversing it here would undo that.
+        if c == '"' then Right (acc, rest)
         else if c == '\\' then
           case rest of
             [] => Left UnexpectedEnd
@@ -203,59 +222,71 @@ mutual
                in go (pack newAcc) rs
         else go (pack (Data.List.snoc (unpack acc) c)) rest
 
-  parseNumber : List Char -> Either ParseError JSON
+  parseNumber : List Char -> Either ParseError (JSON, List Char)
   parseNumber cs =
     let isNumChar : Char -> Bool
         isNumChar c = if isDigit c then True else c `Prelude.elem` ['.', '-', '+', 'e', 'E']
      in let (numChars, rest) = Data.List.break (not . isNumChar) cs
             numStr = pack numChars
          in case Data.ByteString.parseDouble (fromString numStr) of
-              Just n  => Right (JNumber n)
+              Just n  => Right (JNumber n, rest)
               Nothing => Left ExpectedNumber
 
-  parseTrue : List Char -> Either ParseError JSON
-  parseTrue ('t'::'r'::'u'::'e'::rest) = Right (JBool True)
+  parseTrue : List Char -> Either ParseError (JSON, List Char)
+  parseTrue ('t'::'r'::'u'::'e'::rest) = Right (JBool True, rest)
   parseTrue _ = Left InvalidToken
 
-  parseFalse : List Char -> Either ParseError JSON
-  parseFalse ('f'::'a'::'l'::'s'::'e'::rest) = Right (JBool False)
+  parseFalse : List Char -> Either ParseError (JSON, List Char)
+  parseFalse ('f'::'a'::'l'::'s'::'e'::rest) = Right (JBool False, rest)
   parseFalse _ = Left InvalidToken
 
-  parseNull : List Char -> Either ParseError JSON
-  parseNull ('n'::'u'::'l'::'l'::rest) = Right (JNull)
+  parseNull : List Char -> Either ParseError (JSON, List Char)
+  parseNull ('n'::'u'::'l'::'l'::rest) = Right (JNull, rest)
   parseNull _ = Left InvalidToken
 
-  parseArray : List Char -> Either ParseError JSON
-  parseArray = parseItems []
-    where
-      parseItems : List JSON -> List Char -> Either ParseError JSON
-      parseItems acc [] = Left UnexpectedEnd
-      parseItems acc (']' :: rest) = Right (JArray (reverse acc))
-      parseItems acc (',' :: rest) = parseItems acc rest
-      parseItems acc (_ :: rest) = parseValue rest >>= \v => parseItems (v :: acc) rest
-      parseItems acc _ = Left UnexpectedEnd
+  parseArray : List Char -> Either ParseError (JSON, List Char)
+  parseArray cs0 = case Data.List.dropWhile JSON.isSpace cs0 of
+    (']' :: rest) => Right (JArray [], rest)
+    cs            => firstItem [] cs
 
-  parseObject : List Char -> Either ParseError JSON
-  parseObject = parseKVs empty
+  firstItem : List JSON -> List Char -> Either ParseError (JSON, List Char)
+  firstItem acc cs = do
+    (v, rest) <- parseValue cs
+    moreItems (v :: acc) rest
 
-  parseKV : List Char -> Either ParseError (String, JSON)
-  parseKV cs = do
-    (k, afterKey) <- parseStringLit (Data.List.dropWhile JSON.isSpace cs)
-    case afterKey of
-      [] => Left UnexpectedEnd
-      (_ :: rest1) =>
-        let afterColon = Data.List.dropWhile JSON.isSpace rest1
-         in case afterColon of
-              (':' :: rest2) => do
-                v <- parseValue (Data.List.dropWhile JSON.isSpace rest2)
-                pure (k, v)
-              _ => Left ExpectedString
+  moreItems : List JSON -> List Char -> Either ParseError (JSON, List Char)
+  moreItems acc cs = case Data.List.dropWhile JSON.isSpace cs of
+    (']' :: rest) => Right (JArray (reverse acc), rest)
+    (',' :: rest) => firstItem acc (Data.List.dropWhile JSON.isSpace rest)
+    _             => Left InvalidToken
 
-  parseKVs : SortedMap String JSON -> List Char -> Either ParseError JSON
-  parseKVs acc [] = Left UnexpectedEnd
-  parseKVs acc ('}' :: rest) = Right (JObject acc)
-  parseKVs acc (',' :: rest) = parseKVs acc rest
-  parseKVs acc cs = parseKV cs >>= \(k, v) => parseKVs (insert k v acc) cs
+  parseObject : List Char -> Either ParseError (JSON, List Char)
+  parseObject cs0 = case Data.List.dropWhile JSON.isSpace cs0 of
+    ('}' :: rest) => Right (JObject empty, rest)
+    cs            => firstPair empty cs
+
+  firstPair : SortedMap String JSON -> List Char -> Either ParseError (JSON, List Char)
+  firstPair acc cs = do
+    ((k,v), rest) <- parseKV cs
+    morePairs (insert k v acc) rest
+
+  morePairs : SortedMap String JSON -> List Char -> Either ParseError (JSON, List Char)
+  morePairs acc cs = case Data.List.dropWhile JSON.isSpace cs of
+    ('}' :: rest) => Right (JObject acc, rest)
+    (',' :: rest) => firstPair acc (Data.List.dropWhile JSON.isSpace rest)
+    _             => Left InvalidToken
+
+  parseKV : List Char -> Either ParseError ((String, JSON), List Char)
+  parseKV cs =
+    case Data.List.dropWhile JSON.isSpace cs of
+      ('"' :: rest0) => do
+        (k, afterKey) <- parseStringLit rest0
+        case Data.List.dropWhile JSON.isSpace afterKey of
+          (':' :: rest2) => do
+            (v, rest3) <- parseValue (Data.List.dropWhile JSON.isSpace rest2)
+            Right ((k, v), rest3)
+          _ => Left ExpectedString
+      _ => Left ExpectedString
 
   isSpace : Char -> Bool
   isSpace c = c `Prelude.elem` [' ', '\t', '\n', '\r']

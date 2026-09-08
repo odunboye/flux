@@ -87,6 +87,54 @@ testDecodeNumber =
     Just 42.5 => True
     _ => False
 
+-- Regression coverage for a set of pre-existing parser bugs found and
+-- fixed while implementing readBody (see Flux.Data.JSON's docs on
+-- parseValue/parseStringLit): none of the above tests ever decoded an
+-- object, an array, or a string value (only "true"/"42.5" scalars), so
+-- none of them caught that multi-key objects, multi-element arrays, and
+-- string values (reversed on decode!) were all broken.
+
+export partial
+testDecodeStringValue : Bool
+testDecodeStringValue =
+  case json "\"hello\"" of
+    Right (JString "hello") => True
+    _                       => False
+
+export partial
+testDecodeObjectMultiKey : Bool
+testDecodeObjectMultiKey =
+  case json "{\"name\":\"Carol\",\"email\":\"carol@example.com\"}" of
+    Right (JObject kvs) =>
+      Data.SortedMap.lookup "name" kvs  == Just (JString "Carol") &&
+      Data.SortedMap.lookup "email" kvs == Just (JString "carol@example.com")
+    _ => False
+
+export partial
+testDecodeArrayMultiElement : Bool
+testDecodeArrayMultiElement =
+  case json "[1,2,3]" of
+    Right (JArray [JNumber 1.0, JNumber 2.0, JNumber 3.0]) => True
+    _                                                      => False
+
+export partial
+testDecodeNestedObjectAndArray : Bool
+testDecodeNestedObjectAndArray =
+  case json "{\"a\":[1,2],\"b\":{\"c\":3}}" of
+    Right (JObject kvs) =>
+      Data.SortedMap.lookup "a" kvs == Just (JArray [JNumber 1.0, JNumber 2.0]) &&
+      Data.SortedMap.lookup "b" kvs == Just (JObject (fromList [("c", JNumber 3.0)]))
+    _ => False
+
+export partial
+testDecodeWhitespaceTolerant : Bool
+testDecodeWhitespaceTolerant =
+  case json "  {  \"a\" : 1 , \"b\" : 2 }  " of
+    Right (JObject kvs) =>
+      Data.SortedMap.lookup "a" kvs == Just (JNumber 1.0) &&
+      Data.SortedMap.lookup "b" kvs == Just (JNumber 2.0)
+    _ => False
+
 -- Run all JSON tests
 export partial
 runAllTests : List (String, Bool)
@@ -102,5 +150,10 @@ runAllTests = [
   ("encodeNumber", testEncodeNumber),
   ("eqJSON", testEqJSON),
   ("decode", testDecode),
-  ("decodeNumber", testDecodeNumber)
+  ("decodeNumber", testDecodeNumber),
+  ("decodeStringValue", testDecodeStringValue),
+  ("decodeObjectMultiKey", testDecodeObjectMultiKey),
+  ("decodeArrayMultiElement", testDecodeArrayMultiElement),
+  ("decodeNestedObjectAndArray", testDecodeNestedObjectAndArray),
+  ("decodeWhitespaceTolerant", testDecodeWhitespaceTolerant)
   ]
