@@ -76,7 +76,7 @@ jobs:
           curl -sf http://127.0.0.1:8080/ | grep -q "Welcome to Flux"
 
           echo "GET /health"
-          curl -sf http://127.0.0.1:8080/health | grep -q '"status": "healthy"'
+          curl -sf http://127.0.0.1:8080/health | grep -q '"status":"healthy"'
 
           echo "GET /api/users (paginated)"
           curl -sf http://127.0.0.1:8080/api/users | grep -q '"users"'
@@ -84,7 +84,7 @@ jobs:
           echo "POST /api/users (readBody + JSON decode)"
           curl -sf -X POST http://127.0.0.1:8080/api/users \
             -H 'Content-Type: application/json' \
-            -d '{"name":"CI","email":"ci@example.com"}' | grep -q '"name": "CI"'
+            -d '{"name":"CI","email":"ci@example.com"}' | grep -q '"name":"CI"'
 
           echo "GET /api/users/999 -> 404 (genuine not-found)"
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/users/999)" = "404"
