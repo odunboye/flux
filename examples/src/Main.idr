@@ -1,14 +1,20 @@
 ||| A runnable demo server exercising the full feature set: before/after
-||| middleware, path params, query strings, PUT/DELETE, structured errors
-||| rendered as JSON, cookies/sessions, static file serving, and (manually,
-||| via SIGTERM - see the module docs) graceful shutdown draining a slow
-||| in-flight request.
+||| middleware, path params, query strings, PUT/DELETE, a POST handler
+||| reading its own JSON body (readBody), structured errors rendered as
+||| JSON, cookies/sessions, static file serving, and (manually, via
+||| SIGTERM - see the module docs) graceful shutdown draining a slow
+||| in-flight request. Run with `[port, workers]` CLI args for the
+||| defaults-plus-CLI path (runServerArgs), or `--from-env` for the
+||| ServerConfig-driven one (runServerFromConfig, host/port/workers/
+||| maxBodySize/timeout all read from FLUX_-prefixed env vars) - see
+||| runFromEnv below.
 module Main
 
 import Flux.Core.HTTP
 import Flux.Core.Router
 import Flux.Core.Middleware
 import Flux.Data.JSON
+import Flux.Server.Config
 import Flux.Server.Health
 import Flux.Server.Logging
 import Flux.Middleware.RequestId
@@ -193,14 +199,25 @@ buildApp blog = do
     |> useAfter (persistSession sessionStore)
     |> withRoutes appRouter
 
+-- Demonstrates runServerFromConfig: every tuning knob (host/port/
+-- workers/maxBodySize/timeout) comes from a real ServerConfig instead of
+-- CLI args, e.g. FLUX_SERVER_HOST=0.0.0.0 FLUX_SERVER_PORT=9090
+-- ./flux-examples --from-env. Try posting a body over 1MB (the default
+-- maxBodySize, unless FLUX_SERVER_MAXBODYSIZE overrides it) to any POST
+-- route to see the config-driven limit actually enforced.
+runFromEnv : App -> BatchedAccessLog -> IO ()
+runFromEnv application blog = do
+  cfg <- serverConfigFromEnv
+  runProgWith [accessFlushLoop 50.ms blog] (runServerFromConfig (runApp application) cfg)
+
 covering
 main : IO ()
 main = do
   blog        <- newBatchedAccessLog
   application <- buildApp blog
   args <- getArgs
-  let progArgs = case args of
-        _ :: t => t
-        []     => []
-  runProgWith [accessFlushLoop 50.ms blog] (runServerArgs (runApp application) progArgs)
+  case args of
+    _ :: "--from-env" :: _ => runFromEnv application blog
+    _ :: t                 => runProgWith [accessFlushLoop 50.ms blog] (runServerArgs (runApp application) t)
+    []                      => runProgWith [accessFlushLoop 50.ms blog] (runServerArgs (runApp application) [])
   flushAccessLog blog

@@ -3,6 +3,7 @@ module TestHTTP
 import Flux.Core.HTTP
 import Data.SortedMap
 import Data.IORef
+import Data.Vect
 import System
 
 %default covering
@@ -175,6 +176,31 @@ testChunkEncodeEmpty = do
   out <- runStream (chunkEncode (pure ()))
   pure (toString out == "0\r\n\r\n")
 
+export
+testParseIPv4Loopback : Bool
+testParseIPv4Loopback = parseIPv4 "127.0.0.1" == Just [127,0,0,1]
+
+export
+testParseIPv4AllInterfaces : Bool
+testParseIPv4AllInterfaces = parseIPv4 "0.0.0.0" == Just [0,0,0,0]
+
+export
+testParseIPv4MaxOctet : Bool
+testParseIPv4MaxOctet = parseIPv4 "255.255.255.255" == Just [255,255,255,255]
+
+export
+testParseIPv4OutOfRangeOctet : Bool
+testParseIPv4OutOfRangeOctet = parseIPv4 "256.0.0.1" == Nothing
+
+export
+testParseIPv4WrongSegmentCount : Bool
+testParseIPv4WrongSegmentCount =
+  parseIPv4 "127.0.1" == Nothing && parseIPv4 "127.0.0.0.1" == Nothing
+
+export
+testParseIPv4NonNumeric : Bool
+testParseIPv4NonNumeric = parseIPv4 "localhost" == Nothing && parseIPv4 "127.0.0.x" == Nothing
+
 -- Run all HTTP wire-parser tests (mixing pure and IO-backed cases, since
 -- chunk-encoding needs the real async runtime to exercise)
 export
@@ -210,5 +236,11 @@ runAllTests = do
   ("toHexLarge", testToHexLarge),
   ("chunkEncodeSingle", chunkSingle),
   ("chunkEncodeMultiple", chunkMultiple),
-  ("chunkEncodeEmpty", chunkEmpty)
+  ("chunkEncodeEmpty", chunkEmpty),
+  ("parseIPv4Loopback", testParseIPv4Loopback),
+  ("parseIPv4AllInterfaces", testParseIPv4AllInterfaces),
+  ("parseIPv4MaxOctet", testParseIPv4MaxOctet),
+  ("parseIPv4OutOfRangeOctet", testParseIPv4OutOfRangeOctet),
+  ("parseIPv4WrongSegmentCount", testParseIPv4WrongSegmentCount),
+  ("parseIPv4NonNumeric", testParseIPv4NonNumeric)
   ]

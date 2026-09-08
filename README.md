@@ -12,7 +12,7 @@ files, health checks) are all implemented directly in this repo.
 
 The goal is a **usable, honestly-documented** framework: routing,
 middleware, JSON, cookies/sessions, static files, structured error
-handling and streaming responses all work and are tested (115 unit tests,
+handling and streaming responses all work and are tested (130 unit tests,
 `test/`). What sets this README apart from a typical framework's docs is
 that every non-obvious tradeoff, gap, and half-solved problem uncovered
 while building it is written down rather than smoothed over — see
@@ -35,6 +35,8 @@ The example server:
 ```sh
 pack build examples/examples.ipkg
 ./examples/build/exec/flux-examples 8080 128   # port, worker count
+# or, config-driven (see "Config" below):
+FLUX_SERVER_PORT=8080 ./examples/build/exec/flux-examples --from-env
 ```
 
 ## Usage
@@ -118,19 +120,25 @@ Nothing body` to chunk-transfer-encode a body of unknown length —
 static file is streamed off disk (`readBytes`), not buffered in memory
 before it's sent.
 
-**Request bodies are not reachable from this layer.** `Context.request.body`
-is an `HTTPBody` (`AsyncPull Poll ByteString [Errno,HTTPErr] (HTTPStream
-ByteString)`) — a `Pull`-effect computation — but `Handler`/`Middleware`
-live in plain `AppProg` (`Async Poll [Errno,AppError]`), which has no
-combinator for running a `Pull` and getting bytes back. There is no
-helper anywhere in this codebase to read a POST/PUT body from a router
-`Handler`. The only place a request body is actually consumed is the
-low-level `Responder` driver itself (`respondWith` always drains it after
-your `Responder` runs, to keep a persistent connection's byte stream in
-sync for the next request) — see `EchoServer.idr` for the one place in
-this repo that touches a body at all, and note it does so by *not* being
-a router-based `App`. Building JSON/form-body-reading support for real
-handlers is unstarted work, not a small gap.
+**Reading a request body**: `readBody maxBytes ctx` (`Flux.Core.Middleware`)
+collects up to `maxBytes` from `Context.request.body` and returns
+`Either BodyError ByteString` — `Left BodyTooLarge`/`BodyMalformed`/
+`BodyIOError`, or `Right bytes`. A **successful** read keeps the
+connection alive for further pipelined requests exactly like any other
+request; a **failed** one always forces the connection closed after this
+response — once a bounded read aborts partway through, there is no
+continuation that safely resumes parsing the next request from wherever
+the wire position was left (confirmed against the underlying library's
+actual combinators, not assumed). This is why `readBody` reports its
+result as a plain value rather than `throw`ing an `AppError`: `runApp`
+resets to a fresh `Context` on any caught error (see above), which would
+silently lose "the body was read" for exactly the case that matters — a
+`Handler` that reads the body successfully and *then* throws for an
+unrelated reason must still keep the connection alive, not lose that to
+the reset. See `examples/src/Main.idr`'s `createUser` handler for a
+worked example (JSON-decoding a POST body), and `Flux.Core.HTTP`'s
+`BodyOutcome`/`respondWith` for how the driver actually enforces this at
+the wire level.
 
 ## JSON
 
@@ -142,8 +150,20 @@ integer representation, so a JSON integer round-trips through a float
 (exact up to 2^53, same caveat as JavaScript's `JSON.parse`). The parser
 has no depth limit and is not resistant to pathological input (deeply
 nested arrays/objects) — it hasn't been fuzzed or hardened against
-adversarial payloads, just tested against well-formed ones (12 unit
-tests, `test/src/TestJSON.idr`).
+adversarial payloads, just tested against well-formed ones.
+
+The parser used to be badly broken for anything beyond a bare scalar:
+`parseValue` (and `parseArray`/`parseObject`'s inner loops) never
+returned their leftover position after consuming a value, so nothing
+past the first array element or first object key could ever parse
+correctly, and separately every decoded *string* came out reversed
+(`"Carol"` decoded as `"loraC"`) - `parseStringLit` built its result in
+correct order but then reversed it again on completion. Neither bug was
+caught by the original tests, which only ever decoded `"true"`/`"42.5"`.
+Found and fixed while building `readBody` (a JSON-decoding POST handler
+was the first thing to actually decode an object) - both are fixed now,
+with regression coverage for multi-key objects, multi-element arrays,
+nesting, and string content (17 unit tests total, `test/src/TestJSON.idr`).
 
 ## Config
 
@@ -151,19 +171,37 @@ tests, `test/src/TestJSON.idr`).
 a given prefix (`loadFromEnv "FLUX_"`: `FLUX_SERVER_PORT=9090` becomes key
 `"server.port"`) and parse a `ServerConfig`/`AppInfo` out of it.
 
-**`ServerConfig`'s fields are not connected to the server.** `host`,
-`workers`, `timeout`, and `maxBodySize` are all real, gettable/settable
-fields with env-loading support — but nothing in `Flux.Core.HTTP` reads
-any of them. The actual server is configured by `runServerArgs`'s CLI
-`[port, workers]` args (or by calling `runServer`/`app`/`posixPoller`
-directly), not by `ServerConfig`. The real request-size limits are
-hardcoded constants in `Flux.Core.HTTP` — `MaxHeaderSize = 0xffff` (64KB)
-and `MaxContentSize = 0xffff_ffff` (~4GB) — not `ServerConfig.maxBodySize`,
-which currently does nothing regardless of what it's set to. `Config`
-itself is fully functional as a generic env-var-backed key/value store
-(12 unit tests, `test/src/TestConfig.idr`); it's specifically the
-`ServerConfig`/`AppInfo` wiring into the actual running server that's
-missing.
+`Flux.Core.HTTP.runServerFromConfig : Responder -> ServerConfig -> Prog
+[Errno] Void` is a `ServerConfig`-driven alternative to `runServerArgs`,
+wiring every field to something real:
+
+- `host` — parsed via `parseIPv4` (a small dotted-quad-only parser Flux
+  wrote itself; nothing in the dependency tree provides one) into the
+  actual bind address, so e.g. `FLUX_SERVER_HOST=0.0.0.0` really does
+  bind all interfaces, not just loopback. An unparseable host warns to
+  stderr and falls back to `127.0.0.1` rather than crashing.
+- `workers` — the `foreachPar` accept-loop concurrency (labeled "workers"
+  in the startup log line) - a different knob from `IDRIS2_ASYNC_THREADS`
+  (see "Concurrency" below), which this doesn't touch.
+- `maxBodySize` — replaces the hardcoded `MaxContentSize` (~4GB) as the
+  ceiling `assemble` rejects an oversized Content-Length against.
+  `MaxHeaderSize` (64KB) is **not** configurable either way - `ServerConfig`
+  has no field for it, so it stays fixed regardless of which entry point
+  is used.
+- `timeout` (milliseconds) — replaces the hardcoded `idleConnectionTimeout`
+  (60s) - see "Concurrency" below for what this actually bounds.
+
+`runServer`/`runServerArgs` are unchanged (still hardcoded to `127.0.0.1`
+and the constants above via `defaultLimits`) - `runServerFromConfig` is
+additive, not a replacement. `defaultServerConfig`'s `workers`/`timeout`
+were deliberately set to match `runServerArgs`'s own defaults (128
+workers, 60s) once they started doing something, so adopting
+`runServerFromConfig` with no env vars set is behavior-neutral rather
+than a silent regression; `maxBodySize`'s default (1MB) is a deliberate
+exception - a real cap being worth having, now that the field does
+something, even though it's far tighter than `runServer`'s effectively
+unlimited default. `Config` itself is fully functional as a generic
+env-var-backed key/value store independent of any of this (`test/src/TestConfig.idr`).
 
 ## Logging
 
@@ -280,11 +318,11 @@ hasn't moved in `idleConnectionTimeout` (default 60s). Bounded testing
 (back-to-back `wrk` runs against one long-lived process) confirms this
 works: leaked file descriptors and `CLOSE_WAIT` sockets accumulate under
 load but get reaped within roughly one to two timeout windows, dropping
-to zero once load stops, rather than growing without bound. Set
-`idleConnectionTimeout` lower if you need a tighter bound and can accept
-more false positives against genuinely slow (but not stuck) clients; it
-isn't currently exposed as server-level config (see the `ServerConfig`
-gap above).
+to zero once load stops, rather than growing without bound. Set it lower
+if you need a tighter bound and can accept more false positives against
+genuinely slow (but not stuck) clients - via `ServerConfig.timeout`
+through `runServerFromConfig` (see "Config" above), or the hardcoded
+`idleConnectionTimeout` constant for `runServer`/`runServerArgs`.
 
 ### Memory growth under sustained load
 
@@ -342,11 +380,16 @@ pack build test/test.ipkg
 ./test/build/exec/flux-test
 ```
 
-115 tests across 9 suites (router, HTTP wire parsing, JSON, middleware,
-logging, config, cookies, sessions, static files) — all pure/unit-style,
-no real socket or database involved. Nothing here exercises the server
-driver end-to-end over a real connection; that's covered by manual
-`curl`/`wrk` testing against `examples/`, not the automated suite.
+130 tests across 9 suites (router, HTTP wire parsing, JSON, middleware,
+logging, config, cookies, sessions, static files) — mostly pure/unit-style
+with no real socket or database involved, though a handful (the `runApp`
+error-catching tests, and `readBody`'s success/failure/keep-alive tests
+in `TestMiddleware.idr`) do run the real `Async`/`Pull` scheduler end to
+end against a synthetic in-memory body/request, rather than simulating
+it. Nothing here goes over an actual TCP connection; that - and anything
+about *live* keep-alive/close/host-binding behavior specifically - is
+covered by manual `curl -v`/`wrk` testing against `examples/`, not the
+automated suite.
 
 There's no CI workflow configured for this repo yet (`pack build` +
 `flux-test` locally is the only automated check today).
@@ -368,17 +411,17 @@ There's no CI workflow configured for this repo yet (`pack build` +
 - [x] Static file serving with path-traversal protection
 - [x] Health/liveness/readiness/startup routes (checks are placeholders
       by default — see "Health checks")
-- [x] Env-var config loading (`Config`; not yet wired to the server
-      itself — see "Config")
+- [x] Env-var config loading (`Config`), wired into the running server
+      via `runServerFromConfig` (`host`/`workers`/`maxBodySize`/`timeout`)
+      — see "Config"
 - [x] Two logging strategies (immediate vs batched/format-on-flush), with
       measured concurrency tradeoffs for each — see "Logging"
 - [x] Graceful shutdown on SIGINT/SIGTERM (Linux only — see "Graceful shutdown")
 - [x] An idle-connection timeout mitigating a known upstream scheduler
       race (see "The rare connection-leak race and its mitigation")
-- [ ] Request body access from `Handler`/`Middleware` (router/App layer)
-      — not implemented, see "Middleware & Context"
-- [ ] `ServerConfig` wired into the running server (`workers`/`timeout`/
-      `maxBodySize` currently do nothing) — see "Config"
+- [x] Request body access from a router `Handler` (`readBody`), with a
+      real keep-alive-preserving continuation on success — see
+      "Middleware & Context"
 - [ ] TLS/HTTPS — put a reverse proxy in front for TLS termination; this
       project has no TLS support of its own
 - [ ] Multipart/form-data parsing, WebSockets, HTTP/2, rate limiting
@@ -388,16 +431,12 @@ There's no CI workflow configured for this repo yet (`pack build` +
 A consolidated list of every gap documented above, for anyone deciding
 whether this is production-ready for their use case:
 
-- **No way to read a request body from a router `Handler`.** The
-  `App`/`Middleware`/`Context` layer — the actual framework surface most
-  code would use — has no combinator for consuming `Context.request.body`.
-  Only the low-level `Responder` driver can. A JSON API that needs to read
-  a POST body cannot be built with the router today.
-- **`ServerConfig` is disconnected from the server.** `workers`,
-  `timeout`, and `maxBodySize` are real, env-loadable fields that do
-  nothing — the real limits (`MaxHeaderSize`/`MaxContentSize`) are
-  hardcoded constants, and worker count comes from `runServerArgs`'s CLI
-  arg, not `ServerConfig`.
+- **`MaxHeaderSize` (64KB) is still not configurable** through either
+  `ServerConfig` (no field for it) or any other entry point - the one
+  request-size limit `runServerFromConfig` doesn't let you change.
+- **`parseIPv4` only accepts a literal dotted-quad** ("127.0.0.1",
+  "0.0.0.0") - no hostnames, no DNS resolution, no IPv6. `ServerConfig.host`
+  set to anything else falls back to `127.0.0.1` with a stderr warning.
 - **A throughput cliff beyond 2 async worker threads**, caused by an
   unfixed fiber-pinning bug in the underlying `idris2-async` scheduler.
   Stay at the default (2) unless you've benchmarked your own workload

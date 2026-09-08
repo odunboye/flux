@@ -136,13 +136,24 @@ record ServerConfig where
   maxBodySize  : Integer
   debug        : Bool
 
+-- workers/timeout match runServerArgs/idleConnectionTimeout's own
+-- defaults (Flux.Core.HTTP) deliberately: this record's fields were
+-- inert until Flux.Core.HTTP.runServerFromConfig started reading them,
+-- so keeping the numbers in sync means adopting runServerFromConfig with
+-- no env vars set is behavior-neutral rather than a silent regression
+-- (4 workers, a 30s idle timeout) against what runServer/runServerArgs
+-- already do. maxBodySize is the one deliberate exception - see its own
+-- note below.
 export
 defaultServerConfig : ServerConfig
 defaultServerConfig = MkServerConfig
   { host = "127.0.0.1"
   , port = 8080
-  , workers = 4
-  , timeout = 30000
+  , workers = 128
+  , timeout = 60000
+  -- Deliberately far tighter than runServer's effectively-unlimited
+  -- ~4GB (MaxContentSize, Flux.Core.HTTP) - 1MB is a sane cap to actually
+  -- have by default, once this field started doing something.
   , maxBodySize = 1048576  -- 1MB
   , debug = False
   }

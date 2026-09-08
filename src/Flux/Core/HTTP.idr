@@ -6,6 +6,10 @@ import public FS.Socket
 import Data.List1
 import Data.Linear.Ref1
 import Data.Linear.Deferred
+import Data.String
+import Data.Vect
+
+import Flux.Server.Config
 
 import public IO.Async.Loop.Posix
 import IO.Async.Loop.Poller
@@ -307,11 +311,18 @@ parseQuery qs  = foldl insertPair empty (forget (split (== '&') qs))
 ||| after - draining it (the driver's job, exactly once - see `HTTPBody`'s
 ||| docs) is how a persistent connection finds the start of the next
 ||| request instead of losing already-buffered bytes to a fresh read.
+||| `maxBodySize` bounds Content-Length itself (`ServerConfig.maxBodySize`
+||| via `runServerFromConfig`, or `MaxContentSize` via `runServer`) - note
+||| this only rejects a request whose *declared* Content-Length exceeds
+||| the limit; a `Handler` reading the body itself still separately
+||| bounds actual bytes read via `Flux.Core.Middleware.readBody`'s own
+||| `maxBytes`.
 export
 assemble :
-     HTTPPull (List ByteString) (HTTPStream ByteString)
+     (maxBodySize : Nat)
+  -> HTTPPull (List ByteString) (HTTPStream ByteString)
   -> HTTPPull o (Maybe Request)
-assemble p = Prelude.do
+assemble maxBodySize p = Prelude.do
   Right (h,rem) <- C.uncons p | _ => pure Nothing
   (met,tgt,vrs) <- injectEither (startLine h)
   (hs,body)     <- foldPairE headers empty rem
@@ -319,16 +330,16 @@ assemble p = Prelude.do
       ct := contentType hs
       (path,qs) := splitQuery tgt
       qmap := parseQuery qs
-  when (cl > MaxContentSize) (throw ContentSizeExceeded)
+  when (cl > maxBodySize) (throw ContentSizeExceeded)
   pure $ Just (R met path qmap vrs hs cl ct $ C.splitAt cl body)
 
 export
-request : HTTPStream ByteString -> HTTPPull o (Maybe Request)
-request req =
+request : (maxBodySize : Nat) -> HTTPStream ByteString -> HTTPPull o (Maybe Request)
+request maxBodySize req =
      breakAtSubstring pure "\r\n\r\n" req
   |> C.limit HeaderSizeExceeded MaxHeaderSize
   |> lines
-  |> assemble
+  |> assemble maxBodySize
 
 export
 encodeResponse : (status : Nat) -> List (String,String) -> ByteString
@@ -350,9 +361,42 @@ export
 hello : ByteString
 hello = ok [("Content-Length","0")]
 
+||| `IP4Addr` (`FS.Socket`/`idris2-linux`) is fully general - any four
+||| octets, not just loopback. `octets` used to be hardcoded to
+||| `[127,0,0,1]` here; `runServer`/`runServerArgs` still pass that
+||| explicitly (unchanged behavior), while `runServerFromConfig` passes
+||| whatever `parseIPv4` makes of `ServerConfig.host`.
 export
-addr : Bits16 -> IP4Addr
-addr = IP4 [127,0,0,1]
+addr : (octets : Vect 4 Bits8) -> Bits16 -> IP4Addr
+addr octets port = IP4 octets port
+
+showOctets : Vect 4 Bits8 -> String
+showOctets [a,b,c,d] = "\{show a}.\{show b}.\{show c}.\{show d}"
+
+||| Parses a plain dotted-quad IPv4 address string ("127.0.0.1", "0.0.0.0")
+||| into the four octets `addr`/`IP4Addr` need. No such parser exists
+||| anywhere in this project's dependency tree (checked `idris2-linux` and
+||| `idris2-streams`) - this is Flux's own, deliberately minimal one: four
+||| '.'-separated decimal segments, each `0`-`255`, nothing else (no
+||| hostnames, no IPv6, no leading zeros disambiguation beyond what
+||| `isDigit`/`cast` already do).
+export
+parseIPv4 : String -> Maybe (Vect 4 Bits8)
+parseIPv4 s = case forget (Data.String.split (== '.') s) of
+  [a,b,c,d] => do
+    oa <- octet a
+    ob <- octet b
+    oc <- octet c
+    od <- octet d
+    Just [oa,ob,oc,od]
+  _ => Nothing
+  where
+    octet : String -> Maybe Bits8
+    octet x =
+      if x /= "" && all isDigit (unpack x)
+        then let n : Integer := cast x
+              in if n <= 255 then Just (cast n) else Nothing
+        else Nothing
 
 --------------------------------------------------------------------------------
 -- Chunked transfer-encoding
@@ -473,13 +517,13 @@ echoWith f cli p =
 -- open - only a connection that stops progressing entirely is.
 covering
 servePull :
-     Responder -> Socket AF_INET -> Ref World Nat -> HTTPStream ByteString
+     Responder -> Socket AF_INET -> Ref World Nat -> (maxBodySize : Nat) -> HTTPStream ByteString
   -> AsyncPull Poll Void [Errno] ()
-servePull f cli activity byteStream = Prelude.do
-  (continue, rest) <- byteStream |> request |> echoWith f cli
+servePull f cli activity maxBodySize byteStream = Prelude.do
+  (continue, rest) <- byteStream |> request maxBodySize |> echoWith f cli
   when continue $ do
     liftIO (mod activity S)
-    servePull f cli activity rest
+    servePull f cli activity maxBodySize rest
 
 disableNagle : Socket AF_INET -> Async Poll [Errno] ()
 disableNagle cli = setNoDelay cli True
@@ -491,6 +535,23 @@ disableNagle cli = setNoDelay cli True
 export
 idleConnectionTimeout : Clock Duration
 idleConnectionTimeout = 60.s
+
+||| Bundles the per-server tuning knobs that used to be hardcoded
+||| constants (`MaxContentSize`, `idleConnectionTimeout`) so `runServer`
+||| (unchanged, still hardcoded via `defaultLimits`) and
+||| `runServerFromConfig` (driven by a real `ServerConfig`) can share the
+||| same underlying driver code. `MaxHeaderSize` is deliberately not
+||| here - `ServerConfig` has no field for it, so it stays a fixed
+||| constant regardless of which entry point is used.
+public export
+record ServerLimits where
+  constructor MkLimits
+  maxBodySize     : Nat
+  idleConnTimeout : Clock Duration
+
+export
+defaultLimits : ServerLimits
+defaultLimits = MkLimits MaxContentSize idleConnectionTimeout
 
 ||| Runs `str`, but interrupts it if `activity` hasn't changed for
 ||| `dur` - unlike `FS.Concurrent.timeout`, which fires `dur` after
@@ -541,8 +602,8 @@ idleTimeout activity dur str = do
 ||| isn't interrupted until it next yields, but no further requests are
 ||| read off this connection once canceled).
 export covering
-serveWith : Responder -> Socket AF_INET -> Async Poll [] ()
-serveWith f cli =
+serveWith : Responder -> ServerLimits -> Socket AF_INET -> Async Poll [] ()
+serveWith f limits cli =
   flip guarantee (close' cli) $ Prelude.do
     -- Without this, Nagle's algorithm can batch/delay the writes that
     -- make up a response on a connection kept open across multiple
@@ -551,25 +612,35 @@ serveWith f cli =
     handleErrors (\(Here x) => stderrLn "\{x}") (disableNagle cli)
     activity <- newref 0
     mpull $ handleErrors (\(Here x) => stderrLn "\{x}") $
-      idleTimeout activity idleConnectionTimeout $
-        servePull f cli activity (bytes cli 0xfff)
+      idleTimeout activity limits.idleConnTimeout $
+        servePull f cli activity limits.maxBodySize (bytes cli 0xfff)
 
-export covering
-runServer : Responder -> Bits16 -> (n : Nat) -> (0 p : IsSucc n) => Prog [Errno] Void
-runServer f port n = Prelude.do
+-- Shared by runServer (fixed to 127.0.0.1 and defaultLimits, unchanged
+-- behavior) and runServerFromConfig (both driven by a real ServerConfig).
+covering
+runServerAt :
+     Responder -> (octets : Vect 4 Bits8) -> Bits16 -> (n : Nat)
+  -> (0 p : IsSucc n) => ServerLimits -> Prog [Errno] Void
+runServerAt f octets port n limits = Prelude.do
   liftIO $ do
-    putStrLn "Flux server listening on http://127.0.0.1:\{show port} (\{show n} workers)"
+    putStrLn "Flux server listening on http://\{showOctets octets}:\{show port} (\{show n} workers)"
     -- Without this, stdout is fully block-buffered whenever it's not a
     -- TTY (e.g. redirected to a log file), so this message wouldn't
     -- actually appear until the process exits.
     fflush stdout
   shutdownOn [SIGINT, SIGTERM] $
-    foreachPar n (serveWith f) (acceptOn AF_INET SOCK_STREAM (addr port))
+    foreachPar n (serveWith f limits) (acceptOn AF_INET SOCK_STREAM (addr octets port))
+
+export covering
+runServer : Responder -> Bits16 -> (n : Nat) -> (0 p : IsSucc n) => Prog [Errno] Void
+runServer f port n = runServerAt f [127,0,0,1] port n defaultLimits
 
 ||| Parses CLI args of the shape `[port, workers]` (falling back to port
 ||| 8080 with 128 workers for any other shape, including no args at all)
 ||| and runs the server. Pass the tail of `getArgs` (i.e. with the program
-||| name dropped) as `args`.
+||| name dropped) as `args`. Always binds 127.0.0.1 with `defaultLimits` -
+||| see `runServerFromConfig` for a `ServerConfig`-driven equivalent that
+||| also honors `host`/`maxBodySize`/`timeout`.
 export covering
 runServerArgs : Responder -> List String -> Prog [Errno] Void
 runServerArgs f [port, n] =
@@ -577,3 +648,30 @@ runServerArgs f [port, n] =
     S k => runServer f (cast port) (S k)
     0   => runServer f (cast port) 128
 runServerArgs f _ = runServer f 8080 128
+
+||| Converts a millisecond count (as `ServerConfig.timeout` is expressed)
+||| into a `Clock Duration`, for `ServerLimits.idleConnTimeout`.
+msToDuration : Integer -> Clock Duration
+msToDuration ms = makeDuration (ms `div` 1000) ((ms `mod` 1000) * 1_000_000)
+
+||| Like `runServer`, but every tuning knob comes from a real
+||| `ServerConfig` (typically `serverConfigFromEnv`) instead of being
+||| fixed: `host` (parsed via `parseIPv4` - falls back to `127.0.0.1`
+||| with a stderr warning if it doesn't parse, rather than crashing on a
+||| config mistake), `port`, `workers` (falling back to 128 the same way
+||| `runServerArgs` does for a 0 value - `foreachPar` needs at least one),
+||| `maxBodySize`, and `timeout` (converted via `msToDuration`, replacing
+||| the fixed `idleConnectionTimeout`). `MaxHeaderSize` is still not
+||| configurable - see `ServerLimits`'s doc comment.
+export covering
+runServerFromConfig : Responder -> ServerConfig -> Prog [Errno] Void
+runServerFromConfig f cfg = Prelude.do
+  octets <- liftIO $ case parseIPv4 cfg.host of
+    Just os => pure os
+    Nothing => do
+      stderrLn "Flux: could not parse server.host \"\{cfg.host}\" as an IPv4 address, falling back to 127.0.0.1"
+      pure [127,0,0,1]
+  let limits := MkLimits (cast cfg.maxBodySize) (msToDuration cfg.timeout)
+  case cfg.workers of
+    S k => runServerAt f octets cfg.port (S k) limits
+    0   => runServerAt f octets cfg.port 128 limits
