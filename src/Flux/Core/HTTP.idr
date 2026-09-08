@@ -10,6 +10,7 @@ import IO.Async.Loop.Poller
 import IO.Async.Signal
 
 import public System
+import System.File
 
 import Derive.Prelude
 
@@ -360,7 +361,13 @@ serveWith f cli =
 
 export covering
 runServer : Responder -> Bits16 -> (n : Nat) -> (0 p : IsSucc n) => Prog [Errno] Void
-runServer f port n =
+runServer f port n = Prelude.do
+  liftIO $ do
+    putStrLn "Flux server listening on http://127.0.0.1:\{show port} (\{show n} workers)"
+    -- Without this, stdout is fully block-buffered whenever it's not a
+    -- TTY (e.g. redirected to a log file), so this message wouldn't
+    -- actually appear until the process exits.
+    fflush stdout
   shutdownOn [SIGINT, SIGTERM] $
     foreachPar n (serveWith f) (acceptOn AF_INET SOCK_STREAM (addr port))
 
