@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Compile the library and run the unit test suite (router, HTTP wire
+  # parsing, JSON, middleware/readBody, logging, config, cookies,
+  # sessions, static files - see README's "Running the tests"). No real
+  # socket or database involved; flux-test itself exits nonzero on any
+  # failure (test/src/Main.idr), so the step's own exit code is enough.
+  build-and-unit-test:
+    runs-on: ubuntu-latest
+    container: ghcr.io/stefan-hoeck/idris2-pack:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build flux
+        run: pack build flux.ipkg
+
+      - name: Build and run unit tests
+        run: |
+          pack build test/test.ipkg
+          ./test/build/exec/flux-test
+
+  # Just confirms the example server (and its use of every public
+  # middleware/module) still compiles - separate from the smoke test
+  # below so a build failure here is unambiguous, not mixed in with a
+  # live-request failure.
+  build-examples:
+    runs-on: ubuntu-latest
+    container: ghcr.io/stefan-hoeck/idris2-pack:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the example server
+        run: pack build examples/examples.ipkg
+
+  # End-to-end smoke test over a real TCP connection - the one thing the
+  # unit suite explicitly doesn't cover (see README's "Running the
+  # tests"): request parsing, routing, readBody, JSON encode/decode,
+  # pagination, 404 vs 405, and static file serving, all through an
+  # actual running process rather than simulated.
+  live-http-smoke-test:
+    runs-on: ubuntu-latest
+    container: ghcr.io/stefan-hoeck/idris2-pack:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the example server
+        run: pack build examples/examples.ipkg
+
+      - name: Start the server and exercise it over a real connection
+        working-directory: examples
+        # staticHandler's "public" root resolves against the process's
+        # working directory (see README's "Static files") - this must
+        # run from examples/, not the repo root, for the static-file
+        # check below to mean anything.
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends curl
+
+          ./build/exec/flux-examples 8080 4 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null' EXIT
+
+          for i in $(seq 1 20); do
+            curl -sf http://127.0.0.1:8080/ >/dev/null && break
+            sleep 0.5
+          done
+
+          set -e
+
+          echo "GET /"
+          curl -sf http://127.0.0.1:8080/ | grep -q "Welcome to Flux"
+
+          echo "GET /health"
+          curl -sf http://127.0.0.1:8080/health | grep -q '"status": "healthy"'
+
+          echo "GET /api/users (paginated)"
+          curl -sf http://127.0.0.1:8080/api/users | grep -q '"users"'
+
+          echo "POST /api/users (readBody + JSON decode)"
+          curl -sf -X POST http://127.0.0.1:8080/api/users \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"CI","email":"ci@example.com"}' | grep -q '"name": "CI"'
+
+          echo "GET /api/users/999 -> 404 (genuine not-found)"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/users/999)" = "404"
+
+          echo "PATCH /api/users/1 -> 405 (path matches, method doesn't)"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X PATCH http://127.0.0.1:8080/api/users/1)" = "405"
+
+          echo "GET /static/hello.txt"
+          curl -sf http://127.0.0.1:8080/static/hello.txt >/dev/null
+
+          echo "all checks passed"

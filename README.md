@@ -30,13 +30,17 @@ Requires [pack](https://github.com/stefan-hoeck/idris2-pack).
 pack build flux.ipkg
 ```
 
-The example server:
+The example server. Run it from `examples/`, not the repo root -
+`staticHandler`'s `"public"` root (see "Static files" below) is resolved
+relative to the process's working directory, and `examples/public/` only
+exists there:
 
 ```sh
 pack build examples/examples.ipkg
-./examples/build/exec/flux-examples 8080 128   # port, worker count
+cd examples
+./build/exec/flux-examples 8080 128   # port, worker count
 # or, config-driven (see "Config" below):
-FLUX_SERVER_PORT=8080 ./examples/build/exec/flux-examples --from-env
+FLUX_SERVER_PORT=8080 ./build/exec/flux-examples --from-env
 ```
 
 ## Usage
@@ -277,6 +281,12 @@ mid-stream, and streams the body via `readBytes` rather than buffering
 the whole file. `defaultMimeFor` covers common web/text/image types,
 falling back to `application/octet-stream`.
 
+`root` is a relative path resolved against the *process's* working
+directory, not the source file's or executable's location - run the
+example server from anywhere other than `examples/` (e.g. the repo
+root) and `"public"` silently resolves to a directory that doesn't
+exist, so every static request 404s. See "Install / build" above.
+
 ## Concurrency: async worker threads
 
 The server accepts connections via `foreachPar`, one fiber per
@@ -386,13 +396,17 @@ with no real socket or database involved, though a handful (the `runApp`
 error-catching tests, and `readBody`'s success/failure/keep-alive tests
 in `TestMiddleware.idr`) do run the real `Async`/`Pull` scheduler end to
 end against a synthetic in-memory body/request, rather than simulating
-it. Nothing here goes over an actual TCP connection; that - and anything
-about *live* keep-alive/close/host-binding behavior specifically - is
-covered by manual `curl -v`/`wrk` testing against `examples/`, not the
-automated suite.
+it. Nothing here goes over an actual TCP connection.
 
-There's no CI workflow configured for this repo yet (`pack build` +
-`flux-test` locally is the only automated check today).
+`.github/workflows/ci.yml` runs on every push/PR: building `flux.ipkg`
+and running `flux-test`, building `examples/examples.ipkg`, and a live
+smoke test that starts the actual example server and drives it over a
+real HTTP connection (routing, `readBody`, JSON, pagination, 404 vs 405,
+static files) - the one thing the unit suite above doesn't cover. Still
+not covered by either: live keep-alive/close/host-binding behavior
+specifically (the `curl -v`/`wrk` checks used throughout this session)
+and anything requiring sustained load (the benchmarking in "Concurrency"
+above) - both remain manual.
 
 ## Features
 
@@ -422,6 +436,8 @@ There's no CI workflow configured for this repo yet (`pack build` +
 - [x] Request body access from a router `Handler` (`readBody`), with a
       real keep-alive-preserving continuation on success — see
       "Middleware & Context"
+- [x] CI (`.github/workflows/ci.yml`): builds, unit tests, and one live
+      HTTP smoke test on every push/PR — see "Running the tests"
 - [ ] TLS/HTTPS — put a reverse proxy in front for TLS termination; this
       project has no TLS support of its own
 - [ ] Multipart/form-data parsing, WebSockets, HTTP/2, rate limiting
@@ -459,8 +475,10 @@ whether this is production-ready for their use case:
   persistence across restarts.
 - **No TLS.** Terminate TLS in a reverse proxy; this project speaks
   plain HTTP only.
-- **No CI.** `pack build`/`flux-test` are run locally, not automated on
-  push/PR.
+- **CI covers unit tests, both builds, and one live smoke test - not
+  everything.** Live keep-alive/close/host-binding behavior and anything
+  requiring sustained load (benchmarking) are still manual-only - see
+  "Running the tests".
 - **The JSON parser is not hardened.** No depth limit, not fuzz-tested,
   and numbers are `Double` (no distinct integer type, so large integers
   lose precision the same way `JSON.parse` in JavaScript does).
