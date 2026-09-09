@@ -1,9 +1,27 @@
 module TestHealth
 
 import Flux.Server.Health
+import Flux.Core.HTTP
+import Flux.Core.Middleware
+import Data.IORef
 import Data.SortedMap
 
 %default covering
+
+dummyRequest : Request
+dummyRequest = R GET "/" empty V11 empty 0 Nothing (pure (pure ()))
+
+-- Runs an AppProg computation for real, via the async runtime.
+runAppProg : AppProg a -> IO (Maybe a)
+runAppProg prog = do
+  ref <- newIORef Nothing
+  runProg $
+    handleErrors
+      (\case
+        Here e         => liftIO (putStrLn "runAppProg: unexpected Errno: \{e}")
+        There (Here e) => liftIO (putStrLn "runAppProg: unexpected AppError: \{e.message}"))
+      (foreach (\v => liftIO (writeIORef ref (Just v))) (eval prog))
+  readIORef ref
 
 -- overallStatus
 
@@ -83,6 +101,27 @@ testMemoryCheckFlagsOverThreshold = do
     Healthy => False  -- would mean the threshold comparison itself is broken
     _       => True   -- Unhealthy (real check, correctly over threshold) or Degraded (unsupported here)
 
+-- readinessHandler: sendJSON alone never sets a status code (see
+-- Flux.Middleware.JSON), so an unhealthy readiness result must still
+-- carry a real 503, not just "not ready" text in a 200 body - the only
+-- thing a status-code-based readiness checker actually looks at.
+
+export
+testReadinessHandlerHealthyIs200 : IO Bool
+testReadinessHandlerHealthyIs200 = do
+  let registry = emptyRegistry
+  Just ctx <- runAppProg (readinessHandler registry "1.0.0" (emptyContext dummyRequest))
+    | Nothing => pure False
+  pure (ctx.statusCode == 200)
+
+export
+testReadinessHandlerUnhealthyIs503 : IO Bool
+testReadinessHandlerUnhealthyIs503 = do
+  let registry = addCheck (pure (MkCheckResult "dep" Unhealthy Nothing)) emptyRegistry
+  Just ctx <- runAppProg (readinessHandler registry "1.0.0" (emptyContext dummyRequest))
+    | Nothing => pure False
+  pure (ctx.statusCode == 503)
+
 -- Run all health tests
 export
 runAllTests : IO (List (String, Bool))
@@ -91,6 +130,8 @@ runAllTests = do
   timestampReal   <- testTimestampIsReal
   memNeverFalse   <- testMemoryCheckNeverFalselyUnhealthy
   memOverThresh   <- testMemoryCheckFlagsOverThreshold
+  readiness200    <- testReadinessHandlerHealthyIs200
+  readiness503    <- testReadinessHandlerUnhealthyIs503
   pure
     [ ("overallStatusEmptyIsHealthy", testOverallStatusEmptyIsHealthy)
     , ("overallStatusUnhealthyWins", testOverallStatusUnhealthyWins)
@@ -102,4 +143,6 @@ runAllTests = do
     , ("parseVmRSSKbMalformed", testParseVmRSSKbMalformed)
     , ("memoryCheckNeverFalselyUnhealthy", memNeverFalse)
     , ("memoryCheckFlagsOverThreshold", memOverThresh)
+    , ("readinessHandlerHealthyIs200", readiness200)
+    , ("readinessHandlerUnhealthyIs503", readiness503)
     ]

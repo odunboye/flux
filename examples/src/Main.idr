@@ -282,8 +282,16 @@ buildApp blog = do
         |> use timing
         |> use sessionMw
         |> useAfter responseTime
-        |> useAfter (requestAccessLog blog)
         |> useAfter (persistSession sessionStore)
+        -- CORS/security headers and the request ID must survive even a
+        -- request that errors out (`before`'s effects are discarded on
+        -- that path - see App's doc comment); requestAccessLog moves here
+        -- entirely (not also left under useAfter) so a failing request
+        -- still gets one log entry, not zero.
+        |> useAlways corsAllowAll
+        |> useAlways secureHeaders
+        |> useAlways reqId
+        |> useAlways (requestAccessLog blog)
         |> withRoutes appRouter
   pure (application, sessionStore)
 

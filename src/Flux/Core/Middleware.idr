@@ -119,22 +119,44 @@ sendStream len body ctx = { respBody := Streamed len body } ctx
 cookieHeaders : Context -> List (String, String)
 cookieHeaders ctx = map (\c => ("Set-Cookie", renderSetCookie c)) ctx.respCookies
 
--- Assemble the final context into an emitting HTTP wire response: the
--- status line and headers as one emission, followed by the (possibly
--- chunk-encoded) body.
+-- Case-insensitively strips any existing Content-Length/Transfer-Encoding
+-- a caller may have set directly (setHeader is a generic setter) so
+-- render's own authoritative framing pair is never duplicated alongside
+-- one a handler already tried to set itself.
+dropFramingHeaders : List (String, String) -> List (String, String)
+dropFramingHeaders =
+  filter (\(k,_) => let lk := toLower k in lk /= "content-length" && lk /= "transfer-encoding")
+
+-- The one framing header render's choice of ResponseBody implies -
+-- Nothing for a 204/304, which must not carry any (see render's doc),
+-- even if the handler used `sendStream Nothing` on some other status.
+framingHeader : ResponseBody -> Maybe (String, String)
+framingHeader (Buffered body)       = Just ("Content-Length", show (length body))
+framingHeader (Streamed (Just l) _) = Just ("Content-Length", show l)
+framingHeader (Streamed Nothing _)  = Just ("Transfer-Encoding", "chunked")
+
+||| Assemble the final context into an emitting HTTP wire response: the
+||| status line and headers as one emission, followed by the (possibly
+||| chunk-encoded) body - except RFC 9112 §6.3 requires suppressing the
+||| body outright for a response to a HEAD request or with status 204/304:
+||| HEAD still carries the framing header(s) a GET would have (so a client
+||| knows what a GET would look like) but no body bytes; 204/304 carry
+||| neither, since there's definitionally no body to frame.
 export
 render : Context -> HTTPStream ByteString
 render ctx =
-  case ctx.respBody of
-    Buffered body =>
-      let hs := toList ctx.respHeaders ++ cookieHeaders ctx ++ [("Content-Length", show (length body))]
-       in emit (fastConcat [encodeResponse ctx.statusCode hs, body])
-    Streamed (Just len) body =>
-      let hs := toList ctx.respHeaders ++ cookieHeaders ctx ++ [("Content-Length", show len)]
-       in emit (encodeResponse ctx.statusCode hs) >> body
-    Streamed Nothing body =>
-      let hs := toList ctx.respHeaders ++ cookieHeaders ctx ++ [("Transfer-Encoding", "chunked")]
-       in emit (encodeResponse ctx.statusCode hs) >> chunkEncode body
+  let noFraming := ctx.statusCode == 204 || ctx.statusCode == 304
+      noBody    := noFraming || ctx.request.method == HEAD
+      base      := dropFramingHeaders (toList ctx.respHeaders ++ cookieHeaders ctx)
+      framing   := the (Maybe (String, String)) (if noFraming then Nothing else framingHeader ctx.respBody)
+      hs        := base ++ toList framing
+      head      := encodeResponse ctx.statusCode hs
+   in if noBody
+        then emit head
+        else case ctx.respBody of
+               Buffered body       => emit (fastConcat [head, body])
+               Streamed (Just _) b => emit head >> b
+               Streamed Nothing  b => emit head >> chunkEncode b
 
 ||| An application-level failure a handler wants rendered directly, e.g.
 ||| `throw (MkAppError 404 "user not found")`. Caught and rendered by
@@ -277,17 +299,29 @@ defaultErrorRenderer err ctx = setStatus err.status (sendText err.message ctx)
 ||| it can see the final status code/body (e.g. to log or time the request).
 ||| `onError` renders any `AppError` thrown by before/dispatch/after into a
 ||| response (see `runApp`).
+|||
+||| Neither `before` nor `after` run at all for a request that ends up on
+||| the error path: `runApp` catches a throw anywhere in the
+||| before/dispatch/after chain and renders onto a *fresh* `Context`,
+||| discarding whatever `before` had already set - a request that fails
+||| partway through loses `before`-set headers (CORS, security headers,
+||| request ID) and never reaches `after` at all (so e.g. access logging
+||| never runs for it). `always` (see `useAlways`) exists for hooks that
+||| must run regardless - it's applied to whichever `Context` is live once
+||| the outcome (success or error-rendered) is known, right before the
+||| response is rendered to wire bytes.
 public export
 record App where
   constructor MkApp
   router  : Router Handler
   before  : List Middleware
   after   : List Middleware
+  always  : List Middleware
   onError : ErrorRenderer
 
 export
 emptyApp : App
-emptyApp = MkApp empty [] [] defaultErrorRenderer
+emptyApp = MkApp empty [] [] [] defaultErrorRenderer
 
 export
 app : App
@@ -300,6 +334,15 @@ use m a = { before $= (++ [m]) } a
 export
 useAfter : Middleware -> App -> App
 useAfter m a = { after $= (++ [m]) } a
+
+||| Registers a hook that runs on *every* response, success or error alike
+||| - unlike `use`/`useAfter`, which only run on the success path (see
+||| `App`'s doc comment). Use this for anything a response should never be
+||| missing regardless of outcome: CORS/security headers, a request ID,
+||| access logging.
+export
+useAlways : Middleware -> App -> App
+useAlways m a = { always $= (++ [m]) } a
 
 export
 withRoutes : Router Handler -> App -> App
@@ -337,6 +380,13 @@ internalServerError onError = onError (MkAppError 500 "Internal Server Error")
 -- request) since a caught failure discards whatever the before-chain had
 -- already accumulated onto the Context up to that point.
 --
+-- `always` then runs on whichever Context is now live (the successful one,
+-- or the freshly-rendered error one) - see `App`'s doc comment for why
+-- this exists. A failure inside an `always` hook itself is logged and
+-- swallowed rather than allowed to break the response entirely: these
+-- hooks are meant to be response-finalization steps, not another place a
+-- request can fail.
+--
 -- `bref` (a fresh `BodyReadState` cell, one per request) is created here
 -- and handed to every Context in the pipeline via `bodyRef` so `readBody`
 -- can reach it; it's read *after* the handleErrors above resolves, not
@@ -346,7 +396,7 @@ internalServerError onError = onError (MkAppError 500 "Internal Server Error")
 -- above (see `readBody`'s doc comment).
 export covering
 runApp : App -> Responder
-runApp (MkApp router before after onError) req = Prelude.do
+runApp (MkApp router before after always onError) req = Prelude.do
   (ctx, st) <- exec $ Prelude.do
     bref <- newref Untouched
     let start := { bodyRef := Just bref } (emptyContext req)
@@ -358,8 +408,17 @@ runApp (MkApp router before after onError) req = Prelude.do
         ctx0 <- runChain before start
         ctx1 <- dispatch router ctx0
         runChain after ctx1)
+    final <- handleErrors
+      (\case
+        Here _         => do
+          liftIO (stderrLn "runApp: an 'always' hook failed (Errno) - response continues without it")
+          pure result
+        There (Here _) => do
+          liftIO (stderrLn "runApp: an 'always' hook failed (AppError) - response continues without it")
+          pure result)
+      (runChain always result)
     st <- readref bref
-    pure (result, st)
+    pure (final, st)
   render ctx
   case st of
     -- Nothing touched the body - drain it here, exactly as `respondWith`

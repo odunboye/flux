@@ -118,6 +118,17 @@ it renders as a generic 500 through the same `onError`. Two renderers ship:
 `defaultErrorRenderer` (plain text) and `Flux.Middleware.JSON.jsonErrorRenderer`
 (`{"error":"..."}`).
 
+Neither `before` nor `after` run at all on that error path - a request
+that throws never reaches `after` (so e.g. access logging never runs for
+it), and loses whatever `before` had already set (CORS/security headers,
+a request ID). `useAlways` registers a third kind of hook that runs
+regardless - on the successful path (after `after`) and on the
+error-rendered path alike - for anything a response should never be
+missing: `examples/src/Main.idr`'s `buildApp` registers
+`corsAllowAll`/`secureHeaders`/`reqId`/`requestAccessLog` this way. Plain
+`use`/`useAfter` keep their original meaning (success path only) -
+`useAlways` is the opt-in escape hatch, not a change to what they mean.
+
 Responses are either fully buffered (`send`/`sendText`/`sendJSON`) or
 streamed (`sendStream (Just len) body` for a known length, `sendStream
 Nothing body` to chunk-transfer-encode a body of unknown length —
@@ -261,7 +272,11 @@ trail; fine for an access log.
 
 `Flux.Server.Health` provides `/health`, `/healthz`, `/ready`, `/live`,
 `/startup` routes (`healthRoutes`) backed by a `HealthRegistry` of
-`IO CheckResult` checks (`addCheck`/`emptyRegistry`).
+`IO CheckResult` checks (`addCheck`/`emptyRegistry`). `/ready` sets a
+real `503` when unhealthy, not just `"status":"not ready"` in an
+otherwise-200 body - `sendJSON` alone never touches the status code, so
+a status-code-based readiness checker (the normal kind, e.g.
+Kubernetes) needs that explicitly.
 
 There used to be five bundled "standard" checks, all hardcoded
 placeholders that unconditionally reported `Healthy` regardless of
@@ -325,12 +340,25 @@ a DB) for either of those.
 
 `Flux.Middleware.Static.staticHandler root mimeFor`, mounted under a
 splat route (`get "/static/*path" (staticHandler "public" defaultMimeFor)
-router`). Guards against path traversal (rejects `..` segments and a
-leading `/` in the resolved relative path — tested,
-`test/src/TestStatic.idr`), checks the file exists up front (open, then
-immediately close) so a missing file gets a clean 404 instead of failing
-mid-stream, and streams the body via `readBytes` rather than buffering
-the whole file. `defaultMimeFor` covers common web/text/image types,
+router`). Guards against path traversal two ways: lexically (rejects
+`..` segments and a leading `/` in the resolved relative path — tested,
+`test/src/TestStatic.idr`) and against a symlink *inside* `root`
+pointing back outside it (both `root` and the resolved request path are
+canonicalized — following any symlinks found, with proper `..`/`.`
+handling in a relative symlink target — before a containment check;
+rejected with 403). There's exactly one `openFile` call: the same `Fd`
+used to confirm the file exists (so a missing file still gets a clean
+404 instead of failing mid-stream, past the point a status code can
+still be chosen) is reused directly for the actual stream, rather than
+closed and reopened by path — the latter would be a real TOCTOU window
+between the check and the stream. This isn't airtight — the
+containment check and the real `openFile` are still two separate
+syscalls, the same residual gap most `realpath`-based checks have too
+(closing it fully needs kernel support this dependency stack doesn't
+have, e.g. Linux 5.6+'s `openat2`/`RESOLVE_NO_SYMLINKS`) — it defends
+against a symlink placed once by whoever populates the served
+directory, not an attacker who can also race the filesystem underneath
+a live request. `defaultMimeFor` covers common web/text/image types,
 falling back to `application/octet-stream`.
 
 `root` is a relative path resolved against the *process's* working
@@ -372,19 +400,89 @@ supposedly clean restart).
 
 ### The rare connection-leak race and its mitigation
 
-The leak above (present in stock upstream `idris2-async`, independent of
-the thread-count issue) is mitigated, not fixed, at this layer:
-`serveWith` wraps every connection in `idleTimeout` (`Flux.Core.HTTP`), a
-watchdog fiber that cancels a connection if a shared "activity" counter
-hasn't moved in `idleConnectionTimeout` (default 60s). Bounded testing
-(back-to-back `wrk` runs against one long-lived process) confirms this
-works: leaked file descriptors and `CLOSE_WAIT` sockets accumulate under
-load but get reaped within roughly one to two timeout windows, dropping
-to zero once load stops, rather than growing without bound. Set it lower
-if you need a tighter bound and can accept more false positives against
-genuinely slow (but not stuck) clients - via `ServerConfig.timeout`
-through `runServerFromConfig` (see "Config" above), or the hardcoded
-`idleConnectionTimeout` constant for `runServer`/`runServerArgs`.
+**Issue.** A server-side connection occasionally never gets closed after
+the peer sends FIN - the socket is left sitting in `CLOSE_WAIT` and the
+fd is never released. This is a bug in stock upstream `idris2-async`
+itself (reproduces on unmodified `stefan-hoeck/idris2-async`), not
+something Flux or this fork introduced, and it's independent of the
+thread-count/fiber-pinning issue above - it happens even at
+`IDRIS2_ASYNC_THREADS=1`.
+
+**Effect.** Left alone, leaked fds/sockets accumulate under sustained
+load without bound - a real resource-exhaustion risk for a long-lived
+process. It's also why the round-robin scheduling fix mentioned above
+had to be reverted: that fix (plus a self-pipe change it depended on)
+made this pre-existing leak reproduce far more often, blocking the
+throughput-cliff fix from shipping until this is understood.
+
+**Mitigation (shipped).** `serveWith` wraps every connection in
+`idleTimeout` (`Flux.Core.HTTP`), a watchdog fiber that cancels a
+connection if a shared "activity" counter hasn't moved in
+`idleConnectionTimeout` (default 60s). Bounded testing (back-to-back
+`wrk` runs against one long-lived process) confirms this works: leaked
+fds/`CLOSE_WAIT` sockets accumulate under load but get reaped within
+roughly one to two timeout windows, dropping to zero once load stops,
+rather than growing without bound. Set it lower if you need a tighter
+bound and can accept more false positives against genuinely slow (but
+not stuck) clients - via `ServerConfig.timeout` through
+`runServerFromConfig` (see "Config" above), or the hardcoded
+`idleConnectionTimeout` constant for `runServer`/`runServerArgs`. This
+is a mitigation, not a fix - the underlying race is still there.
+
+**Root-cause investigation, so far (not fixed - findings only):**
+
+- **The key repro lever**: the posix backend runs one dedicated poller
+  thread that does nothing but loop `poll()` on a fixed timeout
+  (10ms by default). Shortening that timeout to 1ms takes the leak from
+  reproducing on roughly 1 in 20 runs of a trivial `wrk -t1 -c2 -d1s`
+  load to reproducing on essentially every run. The trigger is `poll()`
+  *responsiveness* (how soon it reacts to fd-state changes), not the
+  round-robin dispatch change itself - a bisection of the reverted fix
+  showed the leak reproduces from a faster poll loop alone, with no
+  round-robin or self-pipe change present at all. Round-robin dispatch
+  was very likely a red herring for this specific bug (it's still the
+  real, separate cause of the throughput cliff above), bundled into the
+  same reverted commit only because it needed the self-pipe change as a
+  co-requisite.
+- **Ruled out by direct instrumentation**: `Poller.idr`'s `insrt`
+  silently calls `cleanup` instead of retrying on a CAS-insert failure -
+  a plausible-looking way to silently drop a registration. Instrumented
+  and tested against the fast (1ms) repro: a leak reproduced, but this
+  branch never fired. Not the mechanism.
+- **Ruled out, mostly**: that connection cleanup (`RFD`'s `Resource`
+  release in `idris2-streams`, a raw `close()`) bypasses the scheduler's
+  own cancellation-to-registration-cleanup wiring. `IO.Async.Loop.idr`'s
+  `observeCancel` does correctly invoke the `pollFile` cancel hook
+  before a canceled fiber unwinds into resource release, for the
+  ordinary case (fiber canceled while suspended in `poll`, not inside a
+  masked/uncancelable region). Two narrower variants of this - whether
+  *normal* (non-cancellation) stream completion retires a registration
+  the same way, and whether cancellation inside a masked region skips it
+  - remain unconfirmed either way.
+- **Confirmed directly** (not inferred): instrumenting
+  `Flux.Core.HTTP.serveWith`'s entry and its `guarantee` cleanup action,
+  tagged by fd number, caught the actual failure live. For one fd,
+  reused three times in a 15s repro run as short connections cycled
+  through it, the log read `ENTER fd=5`, `CLOSE fd=5`, `ENTER fd=5`,
+  `CLOSE fd=5`, `ENTER fd=5` - no matching third `CLOSE`. `lsof` on the
+  live process at that moment confirmed fd 5 was the exact socket
+  sitting in `CLOSE_WAIT`. So the leaked connection's fiber never reaches
+  *any* of `guaranteeCase`'s terminal branches (success/error/cancel) at
+  all - it's parked forever, not mis-cleaned-up. `guarantee`'s cleanup
+  wiring itself is not the bug.
+- **Leading hypothesis, not yet confirmed**: `Poller.idr`'s
+  `pollWaitImpl` snapshots `(fd, event)` pairs for the `poll()` syscall
+  itself, but when results come back, `handleEvs` re-looks-up the
+  handler for that fd from the *live* registration map, not the
+  snapshot. Fd numbers get reused fast under load (confirmed - the fd=5
+  above cycled through three unrelated connections within 15 seconds).
+  There's a plausible window where a `poll()` result meant for an old,
+  already-closed connection gets delivered against whatever new
+  connection now holds that same fd number by the time results are
+  processed - or a stale cleanup evicts a new connection's live
+  registration. This is grounded in the code's structure, not yet caught
+  in the act; the concrete next step is instrumenting `handleEvs`/
+  `getHandle` itself against the same fast repro used above.
 
 ### Memory growth under sustained load
 
@@ -450,6 +548,23 @@ line, oversized headers, oversized content-length) are handled entirely
 inside the driver (`Flux.Core.HTTP`) below the `App`/`Handler` layer —
 app code never sees them; a malformed request just gets a bare 400.
 
+That includes request-framing rejections RFC 9112 §6.3 requires, closing
+off a request-smuggling shape behind a proxy that disagrees with this
+parser about where a request ends: a repeated `Content-Length` header (a
+plain map-insert would silently keep the last one instead of rejecting
+the conflict), any `Transfer-Encoding` at all (chunked request bodies
+aren't decoded here - treating one as an ordinary, length-less request
+would parse it as empty and misinterpret the chunked-framed bytes that
+follow as the next pipelined request), and a `Content-Length` value
+that isn't a plain run of digits (previously cast silently to `0`
+instead of failing). Response framing is enforced the same way
+regardless of what a `Handler` does: a response to a HEAD request or
+with status 204/304 never carries a body (204/304 carry no framing
+header at all; HEAD still carries the one a GET would have, just no
+body bytes), and `render` always owns `Content-Length`/`Transfer-Encoding`
+itself - a `Handler` that sets one directly via `setHeader` doesn't
+produce a duplicate on the wire.
+
 ## Running the tests
 
 ```sh
@@ -503,7 +618,13 @@ above) - both remain manual.
 ## Features
 
 - [x] HTTP/1.1 with persistent connections (keep-alive), pipelining-safe
-      request framing
+      request framing - duplicate `Content-Length`, `Transfer-Encoding`,
+      and a malformed `Content-Length` value are all rejected rather
+      than silently resolved (a request-smuggling shape behind a proxy
+      that disagrees about where a request ends); response framing
+      (HEAD/204/304 body suppression, no duplicate framing headers) is
+      enforced by `render` regardless of what a `Handler` does — see
+      "Errors"
 - [x] GET/POST/HEAD/PUT/DELETE/PATCH/OPTIONS, path params (`:id`) and
       splat params (`*path`), query strings
 - [x] Router with proper 404 vs 405 (`Allow` header) distinction
@@ -516,7 +637,9 @@ above) - both remain manual.
 - [x] Cookies, in-memory sessions — sharded, real random IDs
       (`/dev/urandom`), expiry + background GC; still single-process,
       not durable across restarts — see "Cookies & sessions"
-- [x] Static file serving with path-traversal protection
+- [x] Static file serving with path-traversal protection, including
+      against a symlink inside the served directory pointing outside it
+      — see "Static files"
 - [x] Health/liveness/readiness/startup routes; a real `memoryCheck`
       (Linux) — no more fake always-`Healthy` placeholders — see
       "Health checks"
@@ -558,10 +681,12 @@ whether this is production-ready for their use case:
 - **A rare, not-root-caused connection-leak race** in the same upstream
   scheduler. Mitigated (bounded to roughly one idle-timeout window, not
   eliminated) via `idleTimeout`, not fixed.
-- **Unexplained memory growth under sustained load**, independent of the
-  above leak (reproduced with zero leaked connections). Leading
-  hypothesis is Chez's GC not returning committed pages to the OS, not
-  confirmed as bounded over long (hours-scale) runs.
+- **Memory growth under sustained load**, independent of the above leak
+  (reproduced with zero leaked connections) - real (both RSS and Chez's
+  own live-heap size grow, not just an allocator artifact), but
+  decelerating and plateauing within the ~10-15 minute windows tested;
+  not confirmed over hours-scale continuous operation - see "Memory
+  growth under sustained load".
 - **No disk-space health check.** `diskCheck` was removed rather than
   shipped broken - see "Health checks" for the upstream `statvfs`
   linking bug behind that. `memoryCheck` is real, but Linux-only.
@@ -583,3 +708,13 @@ whether this is production-ready for their use case:
   deliberate tradeoff, not an oversight.
 - **No multipart/form-data, WebSockets, HTTP/2, or rate limiting.**
   None of these exist in any form yet.
+- **The router doesn't fall a HEAD request back to a route registered
+  with `get`.** Method matching is exact (`Flux.Core.Router.matchRoute`),
+  so a HEAD request to a GET-only route gets `WrongMethod`/405, not the
+  GET handler with its body suppressed - discovered incidentally while
+  fixing `render`'s HEAD body suppression (which is correct and does
+  work, once a request actually reaches a handler). No `head` route
+  combinator exists yet either. Not fixed here.
+- **Static-file symlink defense has a narrow residual TOCTOU window** -
+  the containment check and the real `openFile` are still two separate
+  syscalls; see "Static files" for what that does and doesn't cover.

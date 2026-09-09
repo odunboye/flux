@@ -61,7 +61,8 @@ main = do
   cookiesOk       <- runTests "Cookies" TestCookies.runAllTests
   sessionTests    <- TestSession.runAllTests
   sessionOk       <- runTests "Session" sessionTests
-  staticOk        <- runTests "Static" TestStatic.runAllTests
+  staticTests     <- TestStatic.runAllTests
+  staticOk        <- runTests "Static" staticTests
   healthTests     <- TestHealth.runAllTests
   healthOk        <- runTests "Health" healthTests
 

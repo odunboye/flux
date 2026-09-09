@@ -88,15 +88,43 @@ testHeadersEmpty =
     Right hs => null (SortedMap.toList hs)
     Left _   => False
 
+export
+testHeadersRejectsDuplicateContentLength : Bool
+testHeadersRejectsDuplicateContentLength =
+  case headers empty [fromString "Content-Length: 5", fromString "Content-Length: 10"] of
+    Left InvalidRequest => True
+    _                   => False
+
+export
+testHeadersRejectsTransferEncoding : Bool
+testHeadersRejectsTransferEncoding =
+  case headers empty [fromString "Transfer-Encoding: chunked"] of
+    Left InvalidRequest => True
+    _                   => False
+
 -- contentLength / contentType
 
 export
 testContentLength : Bool
-testContentLength = contentLength (fromList [("content-length", "42")]) == 42
+testContentLength = contentLength (fromList [("content-length", "42")]) == Right 42
 
 export
 testContentLengthMissing : Bool
-testContentLengthMissing = contentLength empty == 0
+testContentLengthMissing = contentLength empty == Right 0
+
+export
+testContentLengthMalformed : Bool
+testContentLengthMalformed =
+  case contentLength (fromList [("content-length", "12abc")]) of
+    Left InvalidRequest => True
+    _                   => False
+
+export
+testContentLengthEmpty : Bool
+testContentLengthEmpty =
+  case contentLength (fromList [("content-length", "")]) of
+    Left InvalidRequest => True
+    _                   => False
 
 export
 testContentType : Bool
@@ -176,6 +204,16 @@ testChunkEncodeEmpty = do
   out <- runStream (chunkEncode (pure ()))
   pure (toString out == "0\r\n\r\n")
 
+-- A mid-stream empty ByteString emission must not be framed - chunkFrame
+-- on an empty ByteString is byte-identical to chunkTerminator, so
+-- framing one would signal end-of-body early and leave anything after
+-- it as unframed trailing bytes.
+export
+testChunkEncodeSkipsEmptyEmission : IO Bool
+testChunkEncodeSkipsEmptyEmission = do
+  out <- runStream (chunkEncode (emit (fromString "hello") >> emit (fromString "") >> emit (fromString "world")))
+  pure (toString out == "5\r\nhello\r\n5\r\nworld\r\n0\r\n\r\n")
+
 export
 testParseIPv4Loopback : Bool
 testParseIPv4Loopback = parseIPv4 "127.0.0.1" == Just [127,0,0,1]
@@ -206,9 +244,10 @@ testParseIPv4NonNumeric = parseIPv4 "localhost" == Nothing && parseIPv4 "127.0.0
 export
 runAllTests : IO (List (String, Bool))
 runAllTests = do
-  chunkSingle   <- testChunkEncodeSingle
-  chunkMultiple <- testChunkEncodeMultiple
-  chunkEmpty    <- testChunkEncodeEmpty
+  chunkSingle     <- testChunkEncodeSingle
+  chunkMultiple   <- testChunkEncodeMultiple
+  chunkEmpty      <- testChunkEncodeEmpty
+  chunkSkipsEmpty <- testChunkEncodeSkipsEmptyEmission
   pure $
    [ ("methodGet", testMethodGet),
   ("methodAllVariants", testMethodAllVariants),
@@ -222,8 +261,12 @@ runAllTests = do
   ("headersLowercasesNames", testHeadersLowercasesNames),
   ("headersMalformed", testHeadersMalformed),
   ("headersEmpty", testHeadersEmpty),
+  ("headersRejectsDuplicateContentLength", testHeadersRejectsDuplicateContentLength),
+  ("headersRejectsTransferEncoding", testHeadersRejectsTransferEncoding),
   ("contentLength", testContentLength),
   ("contentLengthMissing", testContentLengthMissing),
+  ("contentLengthMalformed", testContentLengthMalformed),
+  ("contentLengthEmpty", testContentLengthEmpty),
   ("contentType", testContentType),
   ("splitQueryPresent", testSplitQueryPresent),
   ("splitQueryAbsent", testSplitQueryAbsent),
@@ -237,6 +280,7 @@ runAllTests = do
   ("chunkEncodeSingle", chunkSingle),
   ("chunkEncodeMultiple", chunkMultiple),
   ("chunkEncodeEmpty", chunkEmpty),
+  ("chunkEncodeSkipsEmptyEmission", chunkSkipsEmpty),
   ("parseIPv4Loopback", testParseIPv4Loopback),
   ("parseIPv4AllInterfaces", testParseIPv4AllInterfaces),
   ("parseIPv4MaxOctet", testParseIPv4MaxOctet),

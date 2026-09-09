@@ -292,6 +292,16 @@ startLine bs =
     [m,t,v] => [| (\x,y,z => (x,y,z)) (method m) (pure t) (version v) |]
     _       => Left InvalidRequest
 
+||| Parses one request's headers, folding them into a `Headers` map -
+||| except for two cases rejected outright rather than silently resolved,
+||| both real request-smuggling shapes behind a proxy that disagrees with
+||| this parser about where a request ends (RFC 9112 §6.3): a repeated
+||| `Content-Length` (a plain `SortedMap.insert` would just keep the last
+||| one, silently accepting conflicting framing) and any `Transfer-Encoding`
+||| at all (chunked request bodies aren't decoded by this parser - treating
+||| one as an ordinary, Content-Length-less request would parse it as an
+||| empty body and misinterpret the chunked-framed bytes that follow as the
+||| start of the next pipelined request).
 export
 headers : Headers -> List ByteString -> Either HTTPErr Headers
 headers hs []     = Right hs
@@ -300,12 +310,24 @@ headers hs (h::t) =
     (xs,BS (S k) bv) =>
      let name := toLower (toString xs)
          val  := toString (trim $ tail bv)
-      in headers (insert name val hs) t
+      in case (name, lookup name hs) of
+           ("transfer-encoding", _)   => Left InvalidRequest
+           ("content-length", Just _) => Left InvalidRequest
+           _                          => headers (insert name val hs) t
     _                => Left InvalidRequest
 
+||| The declared body length, `Right 0` if there's no `Content-Length`
+||| header at all. A present-but-malformed value (anything but a non-empty
+||| run of ASCII digits) is rejected rather than silently treated as `0` -
+||| an unvalidated cast previously let a garbage value pass as an empty
+||| body instead of the parse failing.
 export
-contentLength : Headers -> Nat
-contentLength = maybe 0 cast . lookup "content-length"
+contentLength : Headers -> Either HTTPErr Nat
+contentLength hs = case lookup "content-length" hs of
+  Nothing  => Right 0
+  Just val => if val /= "" && all isDigit (unpack val)
+                then Right (cast val)
+                else Left InvalidRequest
 
 export
 contentType : Headers -> Maybe String
@@ -352,8 +374,8 @@ assemble maxBodySize p = Prelude.do
   Right (h,rem) <- C.uncons p | _ => pure Nothing
   (met,tgt,vrs) <- injectEither (startLine h)
   (hs,body)     <- foldPairE headers empty rem
-  let cl := contentLength hs
-      ct := contentType hs
+  cl            <- injectEither (contentLength hs)
+  let ct := contentType hs
       (path,qs) := splitQuery tgt
       qmap := parseQuery qs
   when (cl > maxBodySize) (throw ContentSizeExceeded)
@@ -467,8 +489,15 @@ chunkTerminator : ByteString
 chunkTerminator = fromString "0\r\n\r\n"
 
 export
+||| An empty emission is dropped rather than framed: `chunkFrame` on an
+||| empty `ByteString` produces exactly `"0\r\n\r\n"` - byte-identical to
+||| `chunkTerminator` - so framing one would signal end-of-body to the
+||| client mid-stream, with anything emitted afterward becoming
+||| unframed trailing bytes.
 chunkEncode : HTTPStream ByteString -> HTTPStream ByteString
-chunkEncode = scanFull () (\_,bs => (Just (chunkFrame bs), ())) (const (Just chunkTerminator))
+chunkEncode =
+  scanFull () (\_,bs => (if length bs == 0 then Nothing else Just (chunkFrame bs), ()))
+    (const (Just chunkTerminator))
 
 --------------------------------------------------------------------------------
 -- Server driver

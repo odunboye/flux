@@ -133,16 +133,21 @@ export
 livenessHandler : Handler
 livenessHandler ctx = pure $ sendJSON (JObject [("status", JString "alive")]) ctx
 
--- Readiness probe: reflects the actual check results
+-- Readiness probe: reflects the actual check results. `sendJSON` alone
+-- only sets the body/Content-Type, never the status code (see
+-- `Flux.Middleware.JSON`) - a status-code-based readiness checker (the
+-- normal kind, e.g. Kubernetes) needs `setStatus 503` here too, or it
+-- sees permanent success regardless of what the JSON body says.
 export
 readinessHandler : HealthRegistry -> String -> Handler
 readinessHandler registry version ctx = do
   status <- liftIO (mkHealthStatus registry version)
   let ready = status.status /= Unhealthy
+  let ctx' = if ready then ctx else setStatus 503 ctx
   pure $ sendJSON (JObject
     [ ("status", JString (if ready then "ready" else "not ready"))
     , ("version", toJSON version)
-    ]) ctx
+    ]) ctx'
 
 -- Startup probe: the process has finished booting
 export

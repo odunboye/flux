@@ -53,14 +53,23 @@ newIdGenerator = do
 ||| existing `X-Request-ID` header from the client if present, otherwise
 ||| generates a fresh one. Either way, the ID ends up on the response header
 ||| and in context state (see `getRequestId`).
+|||
+||| Idempotent by design: if `ctx.state` already carries an ID (this
+||| middleware already ran on this exact `Context`), it's reused rather
+||| than regenerated - safe to register both via `use` (so it's available
+||| to handlers/middleware during normal processing) and `useAlways` (so a
+||| response still carries one even on the error path, where `use`'s
+||| effects never ran at all - see `App`'s doc comment).
 export
 requestIdWith : IO String -> Middleware
 requestIdWith gen ctx =
-  case lookup requestIdHeader ctx.request.headers of
-    Just id => pure (setHeader responseIdHeader id (setState requestIdKey id ctx))
-    Nothing => do
-      id <- liftIO gen
-      pure (setHeader responseIdHeader id (setState requestIdKey id ctx))
+  case getState requestIdKey ctx of
+    Just id => pure (setHeader responseIdHeader id ctx)
+    Nothing => case lookup requestIdHeader ctx.request.headers of
+      Just id => pure (setHeader responseIdHeader id (setState requestIdKey id ctx))
+      Nothing => do
+        id <- liftIO gen
+        pure (setHeader responseIdHeader id (setState requestIdKey id ctx))
 
 ||| Convenience constructor: builds a request-ID middleware backed by a
 ||| fresh counter. Call once at startup, e.g. `reqId <- requestId`.

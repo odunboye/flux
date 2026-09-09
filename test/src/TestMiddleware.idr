@@ -13,7 +13,7 @@ export
 testEmptyApp : Bool
 testEmptyApp =
   case emptyApp of
-    MkApp r _ _ _ =>
+    MkApp r _ _ _ _ =>
       case matchRoute GET "/any" r of
         NoMatch => True
         _ => False
@@ -26,7 +26,7 @@ testUse =
       mw = pure
       app1 = use mw emptyApp
    in case app1 of
-        MkApp _ before _ _ => length before == 1
+        MkApp _ before _ _ _ => length before == 1
 
 -- `useAfter` adds to the after-chain, independently of `use`
 export
@@ -36,7 +36,17 @@ testUseAfter =
       mw = pure
       app1 = useAfter mw emptyApp
    in case app1 of
-        MkApp _ before after _ => length before == 0 && length after == 1
+        MkApp _ before after _ _ => length before == 0 && length after == 1
+
+-- `useAlways` adds to the always-chain, independently of `use`/`useAfter`
+export
+testUseAlways : Bool
+testUseAlways =
+  let mw : Middleware
+      mw = pure
+      app1 = useAlways mw emptyApp
+   in case app1 of
+        MkApp _ before after always _ => length before == 0 && length after == 0 && length always == 1
 
 export
 testWithRoutes : Bool
@@ -46,7 +56,7 @@ testWithRoutes =
       router = get "/test" handler empty
       app1 = withRoutes router emptyApp
    in case app1 of
-        MkApp r _ _ _ =>
+        MkApp r _ _ _ _ =>
           case matchRoute GET "/test" r of
             Matched _ _ => True
             _           => False
@@ -108,6 +118,89 @@ testWithErrorRenderer = do
   resp <- runOnce (runApp myApp dummyRequest)
   let respStr = toString resp
   pure $ isInfixOf "418" respStr && isInfixOf "custom: teapot" respStr
+
+--------------------------------------------------------------------------------
+-- always: registered hooks run on both the success and error-render paths
+--------------------------------------------------------------------------------
+
+markAlways : Middleware
+markAlways = pure . setHeader "X-Always" "yes"
+
+export
+testAlwaysRunsOnSuccess : IO Bool
+testAlwaysRunsOnSuccess = do
+  let okHandler : Handler
+      okHandler = pure . sendText "ok"
+      myApp = useAlways markAlways $ withRoutes (get "/" okHandler empty) emptyApp
+  resp <- runOnce (runApp myApp dummyRequest)
+  pure (isInfixOf "X-Always: yes" (toString resp))
+
+-- The bug this exists to fix: before this, an always-hook (or an
+-- ordinary before/after hook) never ran at all for a request that threw
+-- - see App's doc comment.
+export
+testAlwaysRunsOnError : IO Bool
+testAlwaysRunsOnError = do
+  let failingHandler : Handler
+      failingHandler _ = throw (MkAppError 404 "not found")
+      myApp = useAlways markAlways $ withRoutes (get "/" failingHandler empty) emptyApp
+  resp <- runOnce (runApp myApp dummyRequest)
+  pure (isInfixOf "X-Always: yes" (toString resp))
+
+-- Contrast case: an ordinary `after` hook still doesn't run on the error
+-- path (unchanged behavior) - `always` is the escape hatch, not a
+-- silent change to what `after` itself means.
+export
+testAfterStillSkippedOnError : IO Bool
+testAfterStillSkippedOnError = do
+  let failingHandler : Handler
+      failingHandler _ = throw (MkAppError 404 "not found")
+      myApp = useAfter markAlways $ withRoutes (get "/" failingHandler empty) emptyApp
+  resp <- runOnce (runApp myApp dummyRequest)
+  pure (not (isInfixOf "X-Always: yes" (toString resp)))
+
+--------------------------------------------------------------------------------
+-- render: HEAD/204/304 body suppression, no duplicate framing headers
+--------------------------------------------------------------------------------
+
+dummyHeadRequest : Request
+dummyHeadRequest = R HEAD "/" empty V11 empty 0 Nothing (pure (pure ()))
+
+-- Exercises render directly rather than through the router: Flux's
+-- router does exact method matching with no HEAD-falls-back-to-GET
+-- special case (a separate, pre-existing gap, out of scope here), so a
+-- route registered with `get` won't even be reached by a HEAD request.
+export
+testRenderSuppressesBodyForHead : IO Bool
+testRenderSuppressesBodyForHead = do
+  let ctx = sendText "hello" (emptyContext dummyHeadRequest)
+  resp <- runOnce (render ctx)
+  let respStr = toString resp
+  -- Headers (including a real Content-Length) still describe what a GET
+  -- would have sent - just no body bytes after them.
+  pure $ isInfixOf "Content-Length: 5" respStr && not (isInfixOf "hello" respStr)
+
+export
+testRenderSuppressesBodyFor204 : IO Bool
+testRenderSuppressesBodyFor204 = do
+  let handler : Handler
+      handler ctx = pure (setStatus 204 (sendText "hello" ctx))
+      myApp = withRoutes (get "/" handler empty) emptyApp
+  resp <- runOnce (runApp myApp dummyRequest)
+  let respStr = toString resp
+  pure $ not (isInfixOf "hello" respStr) && not (isInfixOf "Content-Length" respStr)
+
+export
+testRenderDoesNotDuplicateContentLength : IO Bool
+testRenderDoesNotDuplicateContentLength = do
+  let handler : Handler
+      handler ctx = pure (setHeader "Content-Length" "999" (sendText "hi" ctx))
+      myApp = withRoutes (get "/" handler empty) emptyApp
+  resp <- runOnce (runApp myApp dummyRequest)
+  let respStr = toString resp
+  -- Exactly one Content-Length, and it's render's own correct value -
+  -- never the caller-supplied one.
+  pure $ isInfixOf "Content-Length: 2" respStr && not (isInfixOf "Content-Length: 999" respStr)
 
 --------------------------------------------------------------------------------
 -- readBody: a Handler reading Context.request.body via the router layer
@@ -214,6 +307,12 @@ runAllTests = do
   appErrorResult    <- testRunAppCatchesAppError
   errnoResult       <- testRunAppCatchesErrno
   errorRendererResult <- testWithErrorRenderer
+  alwaysOnSuccessResult <- testAlwaysRunsOnSuccess
+  alwaysOnErrorResult   <- testAlwaysRunsOnError
+  afterSkippedOnErrorResult <- testAfterStillSkippedOnError
+  renderHeadResult      <- testRenderSuppressesBodyForHead
+  render204Result       <- testRenderSuppressesBodyFor204
+  renderNoDupCLResult   <- testRenderDoesNotDuplicateContentLength
   readBodySuccessResult      <- testReadBodySuccess
   readBodyTooLargeResult     <- testReadBodyTooLargeClosesConnection
   readBodySurvivesThrowResult <- testReadBodySurvivesLaterThrow
@@ -222,10 +321,17 @@ runAllTests = do
     [ ("emptyApp", testEmptyApp)
     , ("use", testUse)
     , ("useAfter", testUseAfter)
+    , ("useAlways", testUseAlways)
     , ("withRoutes", testWithRoutes)
     , ("runAppCatchesAppError", appErrorResult)
     , ("runAppCatchesErrno", errnoResult)
     , ("withErrorRenderer", errorRendererResult)
+    , ("alwaysRunsOnSuccess", alwaysOnSuccessResult)
+    , ("alwaysRunsOnError", alwaysOnErrorResult)
+    , ("afterStillSkippedOnError", afterSkippedOnErrorResult)
+    , ("renderSuppressesBodyForHead", renderHeadResult)
+    , ("renderSuppressesBodyFor204", render204Result)
+    , ("renderDoesNotDuplicateContentLength", renderNoDupCLResult)
     , ("readBodySuccess", readBodySuccessResult)
     , ("readBodyTooLargeClosesConnection", readBodyTooLargeResult)
     , ("readBodySurvivesLaterThrow", readBodySurvivesThrowResult)
