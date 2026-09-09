@@ -343,6 +343,51 @@ splitQuery tgt =
       Just (_, rest) => (path, rest)
       Nothing        => (path, "")
 
+hexVal : Char -> Maybe Int
+hexVal '0' = Just 0
+hexVal '1' = Just 1
+hexVal '2' = Just 2
+hexVal '3' = Just 3
+hexVal '4' = Just 4
+hexVal '5' = Just 5
+hexVal '6' = Just 6
+hexVal '7' = Just 7
+hexVal '8' = Just 8
+hexVal '9' = Just 9
+hexVal 'a' = Just 10
+hexVal 'b' = Just 11
+hexVal 'c' = Just 12
+hexVal 'd' = Just 13
+hexVal 'e' = Just 14
+hexVal 'f' = Just 15
+hexVal 'A' = Just 10
+hexVal 'B' = Just 11
+hexVal 'C' = Just 12
+hexVal 'D' = Just 13
+hexVal 'E' = Just 14
+hexVal 'F' = Just 15
+hexVal _   = Nothing
+
+||| Decodes `%XX` escapes (a URI path segment or query key/value) into
+||| the byte they represent. A malformed escape (not two hex digits, or
+||| a trailing `%` with fewer than two characters left) is left exactly
+||| as-is rather than rejecting the whole request - permissive, matching
+||| how most HTTP routers treat a not-quite-valid escape as harmless
+||| rather than fatal. Decodes byte-at-a-time (correct for the ASCII
+||| range this is overwhelmingly used for, e.g. `%20` for a space) -
+||| a multi-byte `%XX%XX` UTF-8 sequence isn't reassembled into a single
+||| codepoint.
+export
+percentDecode : String -> String
+percentDecode s = pack (go (unpack s))
+  where
+    go : List Char -> List Char
+    go ('%' :: a :: b :: rest) = case (hexVal a, hexVal b) of
+      (Just hi, Just lo) => chr (hi * 16 + lo) :: go rest
+      _                  => '%' :: go (a :: b :: rest)
+    go (c :: rest) = c :: go rest
+    go []          = []
+
 export
 parseQuery : String -> SortedMap String String
 parseQuery ""  = empty
@@ -351,8 +396,8 @@ parseQuery qs  = foldl insertPair empty (forget (split (== '&') qs))
     insertPair : SortedMap String String -> String -> SortedMap String String
     insertPair acc kv = case break (== '=') kv of
       (k, v) => case strUncons v of
-        Just (_, val) => insert k val acc
-        Nothing       => insert k "" acc
+        Just (_, val) => insert (percentDecode k) (percentDecode val) acc
+        Nothing       => insert (percentDecode k) "" acc
 
 ||| Parses one request from the front of `p`. `body` (see `HTTPBody`)
 ||| emits up to Content-Length bytes and then results in whatever comes

@@ -61,6 +61,44 @@ testMatchPathSplat =
             _ => False
         Nothing => False
 
+-- A path param is percent-decoded before being bound - a raw "%20" in
+-- the request path becomes a real space in getParam's result, not the
+-- literal three-character escape.
+export
+testMatchPathParamPercentDecoded : Bool
+testMatchPathParamPercentDecoded =
+  let pattern = parsePattern "/users/:name"
+   in case matchPath pattern "/users/John%20Doe" of
+        Just params =>
+          case getParam "name" params of
+            Just "John Doe" => True
+            _ => False
+        Nothing => False
+
+-- A Literal pattern segment matches an encoded request segment that
+-- decodes to the same text - decoding happens before either kind of
+-- segment is compared, not just for :params.
+export
+testMatchPathLiteralPercentDecoded : Bool
+testMatchPathLiteralPercentDecoded =
+  let pattern = parsePattern "/api/users"
+   in case matchPath pattern "/api/user%73" of
+        Just _  => True
+        Nothing => False
+
+-- A malformed escape (not two hex digits after "%") is left as-is
+-- rather than rejected.
+export
+testMatchPathMalformedEscapeIsLiteral : Bool
+testMatchPathMalformedEscapeIsLiteral =
+  let pattern = parsePattern "/users/:name"
+   in case matchPath pattern "/users/100%" of
+        Just params =>
+          case getParam "name" params of
+            Just "100%" => True
+            _ => False
+        Nothing => False
+
 -- A splat also matches when there's nothing left to consume
 export
 testMatchPathSplatEmpty : Bool
@@ -195,6 +233,9 @@ runAllTests = [
   ("matchPathMismatch", testMatchPathMismatch),
   ("matchPathSplat", testMatchPathSplat),
   ("matchPathSplatEmpty", testMatchPathSplatEmpty),
+  ("matchPathParamPercentDecoded", testMatchPathParamPercentDecoded),
+  ("matchPathLiteralPercentDecoded", testMatchPathLiteralPercentDecoded),
+  ("matchPathMalformedEscapeIsLiteral", testMatchPathMalformedEscapeIsLiteral),
   ("emptyRouter", testEmptyRouter),
   ("addRoute", testAddRoute),
   ("getHelper", testGetHelper),

@@ -70,6 +70,15 @@ testWithRoutes =
 dummyRequest : Request
 dummyRequest = R GET "/" empty V11 empty 0 Nothing (pure (pure ()))
 
+-- A "\r\n" embedded in a header value would otherwise inject an entire
+-- extra header line into the response - stripped rather than rejected,
+-- so setHeader stays a plain, non-fallible function.
+export
+testSetHeaderStripsCRLF : Bool
+testSetHeaderStripsCRLF =
+  let ctx = setHeader "X-Custom" "value\r\nX-Injected: evil" (emptyContext dummyRequest)
+   in lookup "X-Custom" ctx.respHeaders == Just "valueX-Injected: evil"
+
 -- Runs an HTTPPull for real, via the async runtime, concatenating
 -- everything it emits and discarding its result (a BodyOutcome, for
 -- runApp's output specifically - not needed to check what got emitted) -
@@ -318,7 +327,8 @@ runAllTests = do
   readBodySurvivesThrowResult <- testReadBodySurvivesLaterThrow
   untouchedBodyResult        <- testUntouchedBodyKeepsConnectionAlive
   pure
-    [ ("emptyApp", testEmptyApp)
+    [ ("setHeaderStripsCRLF", testSetHeaderStripsCRLF)
+    , ("emptyApp", testEmptyApp)
     , ("use", testUse)
     , ("useAfter", testUseAfter)
     , ("useAlways", testUseAlways)

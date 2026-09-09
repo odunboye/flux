@@ -32,6 +32,22 @@ testRenderSetCookieNotHttpOnly =
   let c = { httpOnly := False } (cookie "a" "b")
    in renderSetCookie c == "a=b; Path=/"
 
+-- A ";" in a cookie value would otherwise inject a bogus attribute
+-- ("Secure=false" here) into the rendered Set-Cookie line.
+export
+testRenderSetCookieStripsSemicolonInValue : Bool
+testRenderSetCookieStripsSemicolonInValue =
+  let c = { httpOnly := False } (cookie "a" "b; Secure=false")
+   in renderSetCookie c == "a=b Secure=false; Path=/"
+
+-- CR/LF in a cookie value would otherwise inject an entire extra
+-- header line into the response.
+export
+testRenderSetCookieStripsCRLFInValue : Bool
+testRenderSetCookieStripsCRLFInValue =
+  let c = { httpOnly := False } (cookie "a" "b\r\nX-Injected: evil")
+   in renderSetCookie c == "a=bX-Injected: evil; Path=/"
+
 -- parseCookies (against a dummy Request)
 
 dummyRequestWithCookies : String -> Request
@@ -84,6 +100,8 @@ runAllTests = [
   ("renderSetCookieBasic", testRenderSetCookieBasic),
   ("renderSetCookieWithMaxAgeAndSecure", testRenderSetCookieWithMaxAgeAndSecure),
   ("renderSetCookieNotHttpOnly", testRenderSetCookieNotHttpOnly),
+  ("renderSetCookieStripsSemicolonInValue", testRenderSetCookieStripsSemicolonInValue),
+  ("renderSetCookieStripsCRLFInValue", testRenderSetCookieStripsCRLFInValue),
   ("parseCookiesSingle", testParseCookiesSingle),
   ("parseCookiesMultiple", testParseCookiesMultiple),
   ("parseCookiesAbsent", testParseCookiesAbsent),

@@ -40,10 +40,28 @@ export
 cookie : String -> String -> SetCookie
 cookie name value = MkSetCookie name value "/" Nothing True False
 
+-- Strips characters that would break Set-Cookie's own "name=value;
+-- attr=val; ..." grammar if they appeared in a cookie's name, value, or
+-- path - ";" ends the current attribute early (letting a value like
+-- "x; Secure=false" inject a bogus attribute), "\r"/"\n" would inject an
+-- entire extra header line. A raw incoming request header can never
+-- carry an embedded ";"-abusing or CR/LF-carrying value that reaches
+-- here undetected (nothing here decodes wire bytes into this record),
+-- but `cookie`/`SetCookie`'s fields are ordinary `String`s an app can
+-- populate from anywhere (an echoed value, a upstream API response,
+-- ...) - sanitized here, at the single point every `SetCookie` actually
+-- gets rendered to wire bytes, rather than only at construction (a
+-- record update after `cookie` would otherwise bypass that).
+sanitizeCookiePart : String -> String
+sanitizeCookiePart = pack . filter (\c => c /= ';' && c /= '\r' && c /= '\n') . unpack
+
 export
 renderSetCookie : SetCookie -> String
 renderSetCookie c =
-  let base      := "\{c.name}=\{c.value}; Path=\{c.path}"
+  let name      := sanitizeCookiePart c.name
+      value     := sanitizeCookiePart c.value
+      path      := sanitizeCookiePart c.path
+      base      := "\{name}=\{value}; Path=\{path}"
       withAge   := maybe base (\ms => base ++ "; Max-Age=\{show ms}") c.maxAge
       withHttp  := if c.httpOnly then withAge ++ "; HttpOnly" else withAge
       withSecure := if c.secure then withHttp ++ "; Secure" else withHttp
@@ -91,9 +109,19 @@ export
 setStatus : Nat -> Context -> Context
 setStatus code ctx = { statusCode := code } ctx
 
+-- Strips CR/LF from a header value before it's stored - a raw incoming
+-- request header can never carry one through to here (the wire parser
+-- splits headers on "\r\n" before values are ever extracted), but
+-- `setHeader`'s caller controls the value directly, and that value can
+-- come from anywhere (echoed user input, an upstream API response, ...)
+-- - left in, it would let a handler unintentionally inject an entire
+-- extra header line into its own response.
+stripCRLF : String -> String
+stripCRLF = pack . filter (\c => c /= '\r' && c /= '\n') . unpack
+
 export
 setHeader : String -> String -> Context -> Context
-setHeader k v ctx = { respHeaders $= insert k v } ctx
+setHeader k v ctx = { respHeaders $= insert k (stripCRLF v) } ctx
 
 export
 setHeaders : List (String, String) -> Context -> Context

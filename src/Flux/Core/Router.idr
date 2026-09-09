@@ -68,11 +68,16 @@ parsePattern pat = map parseSeg (splitOn '/' pat)
         ('*' :: cs) => Splat (pack cs)
         _ => Literal str
 
--- Match a path against a pattern
+-- Match a path against a pattern. Segments are percent-decoded once,
+-- upfront - both `Literal` and `Param` matching then see the same
+-- decoded text (so a pattern segment like "users" matches an incoming
+-- "user%73" the same way it matches a literal "users"), and a `Splat`'s
+-- joined value is already decoded rather than carrying raw "%XX" escapes
+-- through to the handler.
 export
 matchPath : PathPattern -> String -> Maybe PathParams
 matchPath pattern path =
-  let segments := splitOn '/' path
+  let segments := map percentDecode (splitOn '/' path)
    in matchSegments pattern segments empty
   where
     matchSegments : List PathSegment -> List String -> SortedMap String String -> Maybe PathParams

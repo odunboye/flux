@@ -162,6 +162,36 @@ export
 testParseQueryEmptyString : Bool
 testParseQueryEmptyString = null (SortedMap.toList (parseQuery ""))
 
+export
+testParseQueryPercentDecoded : Bool
+testParseQueryPercentDecoded = lookup "q" (parseQuery "q=hello%20world") == Just "hello world"
+
+export
+testParseQueryKeyPercentDecoded : Bool
+testParseQueryKeyPercentDecoded = lookup "a b" (parseQuery "a%20b=1") == Just "1"
+
+-- percentDecode
+
+export
+testPercentDecodeBasic : Bool
+testPercentDecodeBasic = percentDecode "hello%20world" == "hello world"
+
+export
+testPercentDecodeNoEscapes : Bool
+testPercentDecodeNoEscapes = percentDecode "plain" == "plain"
+
+export
+testPercentDecodeMalformedTrailing : Bool
+testPercentDecodeMalformedTrailing = percentDecode "100%" == "100%"
+
+export
+testPercentDecodeMalformedNonHex : Bool
+testPercentDecodeMalformedNonHex = percentDecode "100%zz" == "100%zz"
+
+export
+testPercentDecodeLowercaseHex : Bool
+testPercentDecodeLowercaseHex = percentDecode "%2f" == "/"
+
 -- toHex
 
 export
@@ -275,6 +305,13 @@ runAllTests = do
   ("parseQueryMultiple", testParseQueryMultiple),
   ("parseQueryNoValue", testParseQueryNoValue),
   ("parseQueryEmptyString", testParseQueryEmptyString),
+  ("parseQueryPercentDecoded", testParseQueryPercentDecoded),
+  ("parseQueryKeyPercentDecoded", testParseQueryKeyPercentDecoded),
+  ("percentDecodeBasic", testPercentDecodeBasic),
+  ("percentDecodeNoEscapes", testPercentDecodeNoEscapes),
+  ("percentDecodeMalformedTrailing", testPercentDecodeMalformedTrailing),
+  ("percentDecodeMalformedNonHex", testPercentDecodeMalformedNonHex),
+  ("percentDecodeLowercaseHex", testPercentDecodeLowercaseHex),
   ("toHexSmall", testToHexSmall),
   ("toHexLarge", testToHexLarge),
   ("chunkEncodeSingle", chunkSingle),

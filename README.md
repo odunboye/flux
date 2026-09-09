@@ -89,11 +89,15 @@ matched first-match-wins in registration order via `get`/`post`/`put`/
 `delete`/`patch`/`options_`/`head_`. Path patterns support `:name`
 (a single segment, bound into `PathParams`) and a trailing `*name`
 splat that consumes every remaining segment (joined with `/`) — used for
-static file serving. `matchRoute` returns a 3-way `MatchResult`
-(`Matched`/`WrongMethod`/`NoMatch`) so a genuine 405 (with a correct
-`Allow` header, listing every method some route in the table would have
-accepted for that path) is distinguishable from a 404 — most minimal
-routers collapse those into one case.
+static file serving. Every path segment is percent-decoded once, upfront
+(`matchPath`), before either `Literal` or `:name` matching sees it — a
+request for `/users/John%20Doe` binds `id` to `"John Doe"`, not the raw
+`"John%20Doe"` (previously not decoded at all — every path-param/splat-
+consuming handler was affected). `matchRoute` returns a 3-way
+`MatchResult` (`Matched`/`WrongMethod`/`NoMatch`) so a genuine 405 (with
+a correct `Allow` header, listing every method some route in the table
+would have accepted for that path) is distinguishable from a 404 — most
+minimal routers collapse those into one case.
 
 Matching is a linear scan of the route list on every request — fine for
 the size of route table a typical app has, but there's no trie/radix
@@ -314,6 +318,16 @@ session-lifetime, not `Secure` — set `{ secure := True }` explicitly for
 TLS). `Flux.Middleware.Session` builds an in-memory, cookie-backed session
 store on top of it, sharded 16 ways the same way request IDs are (see
 "Concurrency" below).
+
+`renderSetCookie` strips `;`/`\r`/`\n` from a cookie's name, value, and
+path before rendering, and `Flux.Core.Middleware.setHeader` strips
+`\r`/`\n` from any header value — a raw incoming request header can
+never carry one of these through in the first place (the wire parser
+splits on `\r\n` before values are extracted), but a handler building a
+cookie/header value from other data (an echoed value, an upstream API
+response) previously could inject a stray `;`-attribute or an entire
+extra header line into its own response. Silently stripped rather than
+rejected, so `setHeader`/`cookie` stay plain, non-fallible functions.
 
 Session IDs are 128 bits of real OS entropy, hex-encoded — not a
 guessable counter. `Flux.Middleware.Internal.Random` reads directly from
@@ -722,11 +736,13 @@ whether this is production-ready for their use case:
   None of these exist in any form yet.
 - **The router doesn't fall a HEAD request back to a route registered
   with `get`.** Method matching is exact (`Flux.Core.Router.matchRoute`),
-  so a HEAD request to a GET-only route gets `WrongMethod`/405, not the
-  GET handler with its body suppressed - discovered incidentally while
-  fixing `render`'s HEAD body suppression (which is correct and does
-  work, once a request actually reaches a handler). No `head` route
-  combinator exists yet either. Not fixed here.
+  so a HEAD request to a route registered only via `get` gets
+  `WrongMethod`/405, not the GET handler with its body suppressed -
+  discovered incidentally while fixing `render`'s HEAD body suppression
+  (which is correct and does work, once a request actually reaches a
+  handler). `head_` exists and works (see "Routing") for registering a
+  HEAD route explicitly; there's just no automatic GET-implies-HEAD
+  fallback. Not fixed here.
 - **Static-file symlink defense has a narrow residual TOCTOU window** -
   the containment check and the real `openFile` are still two separate
   syscalls; see "Static files" for what that does and doesn't cover.
