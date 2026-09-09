@@ -388,22 +388,35 @@ through `runServerFromConfig` (see "Config" above), or the hardcoded
 
 ### Memory growth under sustained load
 
-Separately from the connection leak, resident memory grows steadily under
-sustained load and does not fully return to baseline once idle — observed
-even with **zero** connection leak present (reproduced identically at
-`IDRIS2_ASYNC_THREADS=1`, where `CLOSE_WAIT`/FD counts stayed flat the
-entire time: RSS still climbed from ~122MB to ~778MB over ten 15s `wrk`
-rounds, and 90s fully idle afterward left it unchanged). This rules out
-both an application-level buffer bug (`BatchedAccessLog`'s flush loop
-correctly drains its buffer every tick) and the connection leak as the
-cause. The leading explanation, not fully confirmed, is Chez Scheme's
-generational GC retaining committed heap pages as a high-water mark
-rather than returning them to the OS — consistent with this project's
-other findings about Chez's allocator behaving unusually under
-concurrent load (see "Logging" above). Not confirmed: whether this
-plateaus at a working-set size under much longer sustained load (hours,
-not minutes) or grows slowly without bound — that needs a longer soak
-test or real heap-inspection tooling, neither done here.
+Separately from the connection leak, resident memory grows under sustained
+load and doesn't fully return to baseline once idle — observed even with
+**zero** connection leak present (`IDRIS2_ASYNC_THREADS=1`, `CLOSE_WAIT`/FD
+counts flat the whole time). This rules out both an application-level
+buffer bug (`BatchedAccessLog`'s flush loop correctly drains its buffer
+every tick) and the connection leak as the cause.
+
+Two soak tests (16-24 rounds of 20s `wrk` bursts against `/api/users`,
+followed by 4-5 minutes idle, sampling both process RSS and - via a
+temporary `bytes-allocated` probe - Chez's own live-heap size) narrowed
+down what's actually happening:
+
+- **It is not purely "GC not returning committed pages to the OS."** The
+  live heap itself (not just RSS) measurably grows under load - e.g. one
+  run's live heap averaged ~29MB across its first 8 rounds and ~37MB
+  across its last 8, tracking RSS's growth (though at roughly half the
+  proportional rate). A real, if modest, working set is growing under
+  load, not just an allocator artifact.
+- **It plateaus, at least within the windows tested.** Growth clearly
+  decelerates over each run, and in the longer of the two runs (24
+  rounds), RSS went fully flat - 12 consecutive samples with zero
+  movement - after about 3 minutes idle. The shorter run's 4-minute idle
+  window wasn't quite long enough to reach the same clean flatline (RSS
+  was still creeping slightly at the end), consistent with "takes a
+  couple of minutes to settle," not "never settles."
+- **Not confirmed**: behavior over much longer (hours-scale) continuous
+  operation. Both soak tests here are ~10-15 minutes; a working set that
+  plateaus within 15 minutes could still drift slowly over hours. That
+  needs a real long-running soak test, not done here.
 
 ## Graceful shutdown
 

@@ -244,11 +244,11 @@ visits ctx = do
       ctx'     = setSession "count" (show next) ctx
   pure (sendJSON (JObject [("visits", toJSON next)]) ctx')
 
--- Demonstrates graceful shutdown: start this server, curl /slow, and
--- send SIGTERM (on Linux - see Flux.Core.HTTP.shutdownOn's platform
--- note) while it's in flight. The response should still complete before
--- the process exits, and a second curl started after the signal should
--- fail to connect (no new connections accepted).
+-- Demonstrates graceful shutdown (works on both Linux and macOS - see
+-- Flux.Core.HTTP.shutdownOn): start this server, curl /slow, and send
+-- SIGTERM while it's in flight. The response should still complete
+-- before the process exits, and a second curl started after the signal
+-- should fail to connect (no new connections accepted).
 slow : Handler
 slow ctx = do
   liftIO (System.sleep 3)
