@@ -584,9 +584,28 @@ down what's actually happening:
 
 `shutdownOn [SIGINT, SIGTERM]` (wired into `runServer`/`runProgWith`)
 stops accepting new connections on either signal while letting in-flight
-connections finish (`foreachPar`'s internal semaphore-drain blocks until
-they do) — there's no shutdown timeout, so a stuck handler blocks exit
-indefinitely.
+connections finish - `Flux.Core.HTTP.serveConnections` (in place of
+`FS.Concurrent.foreachPar`, which it's otherwise identical to) waits for
+each one to release its concurrency slot, up to `drainTimeout` (30s) -
+past that, it gives up on whatever's left and lets the process exit
+anyway, rather than waiting forever.
+
+That bound exists because unbounded waiting is a real, previously
+undocumented production risk, confirmed by direct reproduction (not
+assumed): a connection that never terminates - the pre-existing,
+not-fully-root-caused `idris2-async` race described below, where a
+socket's readiness notification can be lost entirely - blocked shutdown
+completely under sustained multi-threaded load, leaving a server that
+never responded to `SIGTERM` at all and needed `SIGKILL` to recover
+(confirmed via repeated `wrk` runs against a running example server,
+directly observing the server process outlive its own graceful-shutdown
+signal). `foreachPar`'s own drain has no way to be given a bound from
+outside once it starts (a `bracket`'s release action runs in a scope
+that further external cancellation can't reach, by design - the same
+guarantee that makes it trustworthy to run at all) - `serveConnections`
+instead races the equivalent wait against a plain `sleep` *inside* its
+own cleanup action, which isn't crossing that boundary and so isn't
+subject to it.
 
 Works on both Linux and macOS. It used to rely on `async-posix`'s
 `awaitSignals`, which calls the POSIX.1b `sigwaitinfo()` syscall — a
@@ -758,8 +777,9 @@ above) - both remain manual.
       — see "Config"
 - [x] Two logging strategies (immediate vs batched/format-on-flush), with
       measured concurrency tradeoffs for each — see "Logging"
-- [x] Graceful shutdown on SIGINT/SIGTERM, on both Linux and macOS — see
-      "Graceful shutdown"
+- [x] Graceful shutdown on SIGINT/SIGTERM, on both Linux and macOS, with
+      a bounded drain (30s) so a connection stuck forever can't block
+      exit indefinitely — see "Graceful shutdown"
 - [x] An idle-connection timeout mitigating a known upstream scheduler
       race (see "The rare connection-leak race and its mitigation")
 - [x] Request body access from a router `Handler` (`readBody`), with a

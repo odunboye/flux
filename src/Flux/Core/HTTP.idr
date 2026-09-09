@@ -13,6 +13,7 @@ import Flux.Server.Config
 
 import public IO.Async.Loop.Posix
 import IO.Async.Loop.Poller
+import IO.Async.Semaphore
 import IO.Async.Signal
 import System.Posix.Signal
 
@@ -69,9 +70,11 @@ fluxAwaitSignals sigs = do
 |||
 ||| `runServer` wraps its accept loop in `shutdownOn [SIGINT, SIGTERM]`: no
 ||| new connections are accepted once a signal arrives, but connections
-||| already in flight are allowed to finish (`foreachPar`'s internal
+||| already in flight are allowed to finish (`serveConnections`'s internal
 ||| semaphore-drain guarantees this - see the `async`/`streams` library's
-||| `finally`/`guaranteeCase` semantics) before the process exits.
+||| `finally`/`guaranteeCase` semantics, and `serveConnections`'s own doc
+||| comment for why *that* drain is itself time-bounded, unlike
+||| `FS.Concurrent.foreachPar`'s).
 |||
 ||| Built on `fluxAwaitSignals` (see its doc) rather than `async-posix`'s
 ||| own `awaitSignals`, specifically so this works on macOS as well as
@@ -79,6 +82,60 @@ fluxAwaitSignals sigs = do
 export covering
 shutdownOn : List Signal -> Prog [Errno] o -> Prog [Errno] o
 shutdownOn sigs = haltOn (eval (fluxAwaitSignals sigs))
+
+||| How long `serveConnections`'s shutdown drain (see its own doc
+||| comment) waits for already-in-flight connections to finish on their
+||| own before giving up on the stragglers and letting the process exit
+||| anyway. Not a tuning knob for typical use, just a backstop.
+export
+drainTimeout : Clock Duration
+drainTimeout = 30.s
+
+||| Like `FS.Concurrent.foreachPar`, but bounds how long its own
+||| shutdown drain (waiting for in-flight `sink` calls to finish once
+||| `outer` itself has stopped, e.g. because the accept loop was
+||| canceled by `shutdownOn`) is allowed to take, instead of waiting for
+||| it forever.
+|||
+||| `foreachPar`'s own drain has no such bound, and - confirmed by
+||| direct testing, not assumed - cannot be given one from outside by
+||| wrapping it in additional cancellation: a `bracket`'s release action
+||| (which is what that drain actually is) runs in a scope that plain
+||| external cancellation does not reach once the release itself has
+||| started, by design - the same reason a `finally`/`guarantee` cleanup
+||| action is trustworthy in the first place. Racing the *equivalent*
+||| wait against a plain `sleep` from *inside* this function's own
+||| cleanup action, instead of relying on outside interruption, sidesteps
+||| that entirely: `race_` here is racing two ordinary `Async` values
+||| against each other, not crossing any release-action scope boundary,
+||| so canceling the losing side (whichever it is) works normally.
+|||
+||| Without this bound, a single connection that never terminates - the
+||| pre-existing, not-fully-root-caused `idris2-async` race
+||| `idleTimeout`'s own doc comment describes, where a socket's readiness
+||| notification can be lost entirely - blocks the whole drain forever:
+||| confirmed by direct reproduction under sustained multi-threaded load
+||| to leave a running server requiring `SIGKILL`, never responding to
+||| `SIGTERM` at all, even though the signal itself was received and
+||| handled correctly right up to this drain.
+export
+serveConnections :
+     {auto th : TimerH e}
+  -> (maxOpen : Nat) -> {auto 0 prf : IsSucc maxOpen}
+  -> (sink : o -> Async e [] ())
+  -> AsyncPull e o es r
+  -> AsyncPull e q es r
+serveConnections maxOpen sink outer = do
+  available <- semaphore maxOpen
+  finally
+    (race_ [acquireN available maxOpen, sleep drainTimeout])
+    (foreach (run available) outer)
+
+  where
+    run : Semaphore -> o -> Async e es ()
+    run available v = do
+      acquire available
+      ignore $ start (guarantee (sink v) (release available))
 
 ||| Reads `IDRIS2_ASYNC_THREADS` the same way `async-posix`'s own
 ||| `asyncThreads` does, but defaults to 2 threads when it isn't set -
@@ -787,7 +844,7 @@ runServerAt f octets port n limits = Prelude.do
     -- actually appear until the process exits.
     fflush stdout
   shutdownOn [SIGINT, SIGTERM] $
-    foreachPar n (serveWith f limits) (acceptOn AF_INET SOCK_STREAM (addr octets port))
+    serveConnections n (serveWith f limits) (acceptOn AF_INET SOCK_STREAM (addr octets port))
 
 export covering
 runServer : Responder -> Bits16 -> (n : Nat) -> (0 p : IsSucc n) => Prog [Errno] Void
@@ -817,7 +874,7 @@ msToDuration ms = makeDuration (ms `div` 1000) ((ms `mod` 1000) * 1_000_000)
 ||| fixed: `host` (parsed via `parseIPv4` - falls back to `127.0.0.1`
 ||| with a stderr warning if it doesn't parse, rather than crashing on a
 ||| config mistake), `port`, `workers` (falling back to 128 the same way
-||| `runServerArgs` does for a 0 value - `foreachPar` needs at least one),
+||| `runServerArgs` does for a 0 value - `serveConnections` needs at least one),
 ||| `maxBodySize`, and `timeout` (converted via `msToDuration`, replacing
 ||| the fixed `idleConnectionTimeout`). `MaxHeaderSize` is still not
 ||| configurable - see `ServerLimits`'s doc comment.
