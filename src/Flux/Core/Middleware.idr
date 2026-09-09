@@ -147,13 +147,13 @@ sendStream len body ctx = { respBody := Streamed len body } ctx
 cookieHeaders : Context -> List (String, String)
 cookieHeaders ctx = map (\c => ("Set-Cookie", renderSetCookie c)) ctx.respCookies
 
--- Case-insensitively strips any existing Content-Length/Transfer-Encoding
--- a caller may have set directly (setHeader is a generic setter) so
--- render's own authoritative framing pair is never duplicated alongside
--- one a handler already tried to set itself.
+-- Case-insensitively strips any existing Content-Length/Transfer-Encoding/
+-- Connection a caller may have set directly (setHeader is a generic
+-- setter) so render's own authoritative framing headers are never
+-- duplicated alongside ones a handler already tried to set itself.
 dropFramingHeaders : List (String, String) -> List (String, String)
 dropFramingHeaders =
-  filter (\(k,_) => let lk := toLower k in lk /= "content-length" && lk /= "transfer-encoding")
+  filter (\(k,_) => let lk := toLower k in lk /= "content-length" && lk /= "transfer-encoding" && lk /= "connection")
 
 -- The one framing header render's choice of ResponseBody implies -
 -- Nothing for a 204/304, which must not carry any (see render's doc),
@@ -180,14 +180,24 @@ framingHeader (Streamed Nothing _)  = Just ("Transfer-Encoding", "chunked")
 ||| completion, so leaving it completely unevaluated on a HEAD/204/304
 ||| response would leak whatever it holds. `Buffered` never needs this -
 ||| it's a plain in-memory `ByteString`, nothing to release.
+|||
+||| `willClose` adds a `Connection: close` header when true - the real
+||| decision the caller already made about whether this connection will
+||| actually close after this response, not something `render` derives
+||| on its own: it depends on more than just the request (a `readBody`
+||| failure elsewhere in the pipeline can *also* force a close, via
+||| `BodyOutcome`/`CloseAfterResponse`, invisible to `render` from the
+||| `Context` alone), and getting it wrong would mean telling the client
+||| a connection is persistent while the server silently drops it.
 export
-render : Context -> HTTPStream ByteString
-render ctx =
+render : (willClose : Bool) -> Context -> HTTPStream ByteString
+render willClose ctx =
   let noFraming := ctx.statusCode == 204 || ctx.statusCode == 304
       noBody    := noFraming || ctx.request.method == HEAD
       base      := dropFramingHeaders (toList ctx.respHeaders ++ cookieHeaders ctx)
       framing   := the (Maybe (String, String)) (if noFraming then Nothing else framingHeader ctx.respBody)
-      hs        := base ++ toList framing
+      connHdr   := the (List (String, String)) (if willClose then [("Connection", "close")] else [])
+      hs        := base ++ toList framing ++ connHdr
       head      := encodeResponse ctx.statusCode hs
    in if noBody
         then case ctx.respBody of
@@ -504,7 +514,14 @@ runApp (MkApp router before after always onError) req = Prelude.do
       (runChain always result)
     st <- readref bref
     pure (final, st)
-  render ctx
+  -- The connection closes if the request itself asked not to be kept
+  -- alive (shouldKeepAlive) OR a readBody failure elsewhere forced it
+  -- (st == Unsafe) - render needs the real, complete answer, not just
+  -- the request-only half of it (see render's own doc comment).
+  let isUnsafe := case st of
+        Unsafe => True
+        _      => False
+  render (not (shouldKeepAlive req) || isUnsafe) ctx
   case st of
     -- Nothing touched the body - drain it here, exactly as `respondWith`
     -- unconditionally used to, to find the real leftover continuation.

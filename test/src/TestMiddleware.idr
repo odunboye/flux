@@ -175,15 +175,16 @@ testAfterStillSkippedOnError = do
 dummyHeadRequest : Request
 dummyHeadRequest = R HEAD "/" empty V11 empty 0 Nothing (pure (pure ()))
 
--- Exercises render directly rather than through the router: Flux's
--- router does exact method matching with no HEAD-falls-back-to-GET
--- special case (a separate, pre-existing gap, out of scope here), so a
--- route registered with `get` won't even be reached by a HEAD request.
+-- Exercises render directly rather than through the router, to isolate
+-- render's own body-suppression logic from routing (the router now
+-- falls a HEAD request back to a matching `get` route - see
+-- TestRouter.idr - but that's a separate concern from what render does
+-- with the resulting HEAD-method context).
 export
 testRenderSuppressesBodyForHead : IO Bool
 testRenderSuppressesBodyForHead = do
   let ctx = sendText "hello" (emptyContext dummyHeadRequest)
-  resp <- runOnce (render ctx)
+  resp <- runOnce (render False ctx)
   let respStr = toString resp
   -- Headers (including a real Content-Length) still describe what a GET
   -- would have sent - just no body bytes after them.
@@ -308,6 +309,81 @@ testUntouchedBodyKeepsConnectionAlive = do
   (_, outcome) <- runAppOnce (runApp myApp req)
   pure (isContinue outcome)
 
+---------------------------------------------------------------------------------
+-- Connection header / keep-alive: the response's own Connection header
+-- must reflect the *real* close decision - both the client's own
+-- Connection header (shouldKeepAlive) and an unrelated forced close from
+-- a readBody failure (BodyReadState == Unsafe) elsewhere in the same
+-- request, per HTTP.shouldKeepAlive's doc comment and runApp's willClose
+-- computation. This is the property most likely to silently regress,
+-- since it depends on two independent inputs agreeing - see the plan
+-- this was implemented from.
+---------------------------------------------------------------------------------
+
+okHandler : Handler
+okHandler = pure . sendText "ok"
+
+-- HTTP/1.1 defaults to persistent: no Connection header in, none out.
+export
+testResponseOmitsConnectionCloseByDefaultOnV11 : IO Bool
+testResponseOmitsConnectionCloseByDefaultOnV11 = do
+  let req = R GET "/" empty V11 empty 0 Nothing (pure (pure ()))
+      myApp = withRoutes (get "/" okHandler empty) emptyApp
+  (resp, _) <- runAppOnce (runApp myApp req)
+  pure (not (isInfixOf "Connection: close" (toString resp)))
+
+-- A client-sent "Connection: close" on HTTP/1.1 must be echoed back so
+-- the client knows not to expect another response on this connection.
+export
+testResponseCarriesConnectionCloseWhenClientAsksOnV11 : IO Bool
+testResponseCarriesConnectionCloseWhenClientAsksOnV11 = do
+  let req = R GET "/" empty V11 (fromList [("connection", "close")]) 0 Nothing (pure (pure ()))
+      myApp = withRoutes (get "/" okHandler empty) emptyApp
+  (resp, _) <- runAppOnce (runApp myApp req)
+  pure (isInfixOf "Connection: close" (toString resp))
+
+-- HTTP/1.0 defaults to closing (no Connection header at all): the
+-- response should say so explicitly.
+export
+testResponseCarriesConnectionCloseByDefaultOnV10 : IO Bool
+testResponseCarriesConnectionCloseByDefaultOnV10 = do
+  let req = R GET "/" empty V10 empty 0 Nothing (pure (pure ()))
+      myApp = withRoutes (get "/" okHandler empty) emptyApp
+  (resp, _) <- runAppOnce (runApp myApp req)
+  pure (isInfixOf "Connection: close" (toString resp))
+
+-- HTTP/1.0 with an explicit "Connection: keep-alive" stays open.
+export
+testResponseOmitsConnectionCloseWhenV10AsksKeepAlive : IO Bool
+testResponseOmitsConnectionCloseWhenV10AsksKeepAlive = do
+  let req = R GET "/" empty V10 (fromList [("connection", "keep-alive")]) 0 Nothing (pure (pure ()))
+      myApp = withRoutes (get "/" okHandler empty) emptyApp
+  (resp, _) <- runAppOnce (runApp myApp req)
+  pure (not (isInfixOf "Connection: close" (toString resp)))
+
+-- The critical, regression-prone case: a readBody failure forces the
+-- connection closed even though the client explicitly asked to keep it
+-- alive on HTTP/1.1 - render has no visibility into the body-read
+-- outcome on its own, so this only holds if runApp actually threads
+-- `isUnsafe` into `willClose` alongside `shouldKeepAlive req` (see
+-- runApp's own doc comment on this).
+export
+testReadBodyFailureForcesConnectionCloseDespiteKeepAliveRequest : IO Bool
+testReadBodyFailureForcesConnectionCloseDespiteKeepAliveRequest = do
+  let chunks = [fromString (pack (replicate 100 'x'))]
+      req = R POST "/" empty V11 (fromList [("connection", "keep-alive")])
+              (sum (map length chunks)) Nothing (mkBody chunks)
+      handler : Handler
+      handler ctx = do
+        result <- readBody 10 ctx
+        case result of
+          Left BodyTooLarge => pure (setStatus 413 (sendText "too large" ctx))
+          Left _            => pure (setStatus 400 (sendText "bad" ctx))
+          Right _           => pure (setStatus 200 (sendText "should not happen" ctx))
+      myApp = withRoutes (post "/" handler empty) emptyApp
+  (resp, outcome) <- runAppOnce (runApp myApp req)
+  pure $ isInfixOf "Connection: close" (toString resp) && not (isContinue outcome)
+
 -- Run all middleware tests (mixing pure and IO-backed cases, since the
 -- end-to-end runApp tests are inherently effectful)
 export
@@ -326,6 +402,11 @@ runAllTests = do
   readBodyTooLargeResult     <- testReadBodyTooLargeClosesConnection
   readBodySurvivesThrowResult <- testReadBodySurvivesLaterThrow
   untouchedBodyResult        <- testUntouchedBodyKeepsConnectionAlive
+  connOmitsDefaultV11Result  <- testResponseOmitsConnectionCloseByDefaultOnV11
+  connClosesOnClientAskV11Result <- testResponseCarriesConnectionCloseWhenClientAsksOnV11
+  connClosesDefaultV10Result <- testResponseCarriesConnectionCloseByDefaultOnV10
+  connOmitsV10KeepAliveResult <- testResponseOmitsConnectionCloseWhenV10AsksKeepAlive
+  connForcedByReadBodyFailureResult <- testReadBodyFailureForcesConnectionCloseDespiteKeepAliveRequest
   pure
     [ ("setHeaderStripsCRLF", testSetHeaderStripsCRLF)
     , ("emptyApp", testEmptyApp)
@@ -346,4 +427,9 @@ runAllTests = do
     , ("readBodyTooLargeClosesConnection", readBodyTooLargeResult)
     , ("readBodySurvivesLaterThrow", readBodySurvivesThrowResult)
     , ("untouchedBodyKeepsConnectionAlive", untouchedBodyResult)
+    , ("responseOmitsConnectionCloseByDefaultOnV11", connOmitsDefaultV11Result)
+    , ("responseCarriesConnectionCloseWhenClientAsksOnV11", connClosesOnClientAskV11Result)
+    , ("responseCarriesConnectionCloseByDefaultOnV10", connClosesDefaultV10Result)
+    , ("responseOmitsConnectionCloseWhenV10AsksKeepAlive", connOmitsV10KeepAliveResult)
+    , ("readBodyFailureForcesConnectionCloseDespiteKeepAliveRequest", connForcedByReadBodyFailureResult)
     ]

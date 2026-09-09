@@ -103,6 +103,17 @@ Matching is a linear scan of the route list on every request — fine for
 the size of route table a typical app has, but there's no trie/radix
 optimization, so a very large route table pays O(routes) per request.
 
+A `HEAD` request falls back to a matching `get` route if no route was
+registered specifically for `HEAD` (RFC 9110 §9.3.2 — a `HEAD` response
+is defined identically to what `GET` would produce, just without a body,
+and `Flux.Core.Middleware.render` already suppresses the body correctly
+for any `HEAD` request regardless of which route actually matched).
+Register a route via `head_` explicitly to override this with
+custom `HEAD`-specific behavior — an exact `HEAD` match always wins over
+the `GET` fallback. `Allow` (on a 405) lists `HEAD` wherever `GET` is
+allowed for the same reason, even for a wrong-method request that wasn't
+itself `HEAD`.
+
 ## Middleware & Context
 
 `Handler`/`Middleware` are both `Context -> AppProg Context`, where
@@ -625,6 +636,21 @@ fewer than n and ran out" (both just return an already-finished
 continuation), so this parser can't rely on it alone; a small wrapper
 (`splitAtChecked`) checked lazily, in the same place, throws instead.
 
+An `HTTP/1.1` request with no `Host` header is rejected (RFC 9112 §3.2
+makes it mandatory there; `HTTP/1.0` predates `Host`, so it's optional
+on a `1.0` request). A repeated `Host` header is rejected outright too,
+the same shape as the repeated-`Content-Length` case above - a real
+cache-poisoning/routing-confusion vector if silently accepted, since
+whichever `Host` a downstream proxy trusts may disagree with whichever
+one this parser would otherwise have kept.
+
+Any of these rejections closes the connection outright (a bare 400, then
+EOF) rather than attempting to resume parsing a pipelined request that
+might follow the malformed one on the same connection - the safest
+possible answer once the parser and the client have disagreed about
+where a request ends, and how `Flux.Core.HTTP.echoWith` has always
+behaved.
+
 Response framing is enforced the same way regardless of what a
 `Handler` does: a response to a HEAD request or with status 204/304
 never carries a body (204/304 carry no framing header at all; HEAD
@@ -644,15 +670,16 @@ pack build test/test.ipkg
 ./test/build/exec/flux-test
 ```
 
-146 tests across 11 suites (router, HTTP wire parsing, HTTP wire parsing
+206 tests across 11 suites (router, HTTP wire parsing, HTTP wire parsing
 *properties*, JSON, middleware, logging, config, cookies, sessions,
 static files, health) — mostly pure/unit-style with no real socket or
 database involved, though a handful (the `runApp` error-catching tests,
 `readBody`'s success/failure/keep-alive tests in `TestMiddleware.idr`,
-and `TestHTTPProperties.idr`'s `request` round-trip) do run the real
-`Async`/`Pull` scheduler end to end against a synthetic in-memory body/
-request, rather than simulating it. Nothing here goes over an actual TCP
-connection.
+the `Connection`-header/`willClose` tests in the same file, and
+`TestHTTPProperties.idr`'s `request` round-trip and pipelining-desync
+tests) do run the real `Async`/`Pull` scheduler end to end against a
+synthetic in-memory body/request, rather than simulating it. Nothing
+here goes over an actual TCP connection.
 
 `test/src/TestHTTPProperties.idr` is [`idris2-hedgehog`](https://github.com/stefan-hoeck/idris2-hedgehog)
 (property-based testing, QuickCheck-style, with integrated shrinking)
@@ -697,8 +724,19 @@ above) - both remain manual.
       (HEAD/204/304 body suppression, no duplicate framing headers) is
       enforced by `render` regardless of what a `Handler` does — see
       "Errors"
+- [x] Real `Connection`-header semantics (RFC 9112 §9.3): `HTTP/1.1`
+      defaults persistent unless the client sends `Connection: close`;
+      `HTTP/1.0` defaults closing unless it sends `Connection:
+      keep-alive` — honored both in what the server actually does and in
+      what the response's own `Connection` header reports back, which
+      also correctly reflects an unrelated forced close (a `readBody`
+      failure) the client's own header said nothing about — see "Errors"
+- [x] `Host` header required on `HTTP/1.1` (RFC 9112 §3.2), a repeated
+      one rejected — see "Errors"
 - [x] GET/POST/HEAD/PUT/DELETE/PATCH/OPTIONS, path params (`:id`) and
-      splat params (`*path`), query strings
+      splat params (`*path`), query strings; `HEAD` falls back to a
+      matching `get` route (RFC 9110 §9.3.2) unless a `head_` route
+      overrides it — see "Routing"
 - [x] Router with proper 404 vs 405 (`Allow` header) distinction
 - [x] Middleware pipeline (`before`/`after`), typed `AppError` handling
       caught and rendered without dropping the connection
@@ -780,15 +818,6 @@ whether this is production-ready for their use case:
   deliberate tradeoff, not an oversight.
 - **No multipart/form-data, WebSockets, HTTP/2, or rate limiting.**
   None of these exist in any form yet.
-- **The router doesn't fall a HEAD request back to a route registered
-  with `get`.** Method matching is exact (`Flux.Core.Router.matchRoute`),
-  so a HEAD request to a route registered only via `get` gets
-  `WrongMethod`/405, not the GET handler with its body suppressed -
-  discovered incidentally while fixing `render`'s HEAD body suppression
-  (which is correct and does work, once a request actually reaches a
-  handler). `head_` exists and works (see "Routing") for registering a
-  HEAD route explicitly; there's just no automatic GET-implies-HEAD
-  fallback. Not fixed here.
 - **Static-file symlink defense has a narrow residual TOCTOU window** -
   the containment check and the real `openFile` are still two separate
   syscalls; see "Static files" for what that does and doesn't cover.

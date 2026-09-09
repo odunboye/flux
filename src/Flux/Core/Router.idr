@@ -150,12 +150,12 @@ options_ = addRoute OPTIONS
 public export
 data MatchResult h = Matched PathParams h | WrongMethod (List Method) | NoMatch
 
--- Find the first matching route, in declaration order. A route whose path
--- matches but whose method doesn't is remembered (not discarded) so callers
--- can tell a 405 (wrong method) apart from a genuine 404 (no such path).
-export
-matchRoute : Method -> String -> Router h -> MatchResult h
-matchRoute method path (MkRouter routes) = go routes []
+-- Find the first matching route, in declaration order, for exactly the
+-- given method. A route whose path matches but whose method doesn't is
+-- remembered (not discarded) so callers can tell a 405 (wrong method)
+-- apart from a genuine 404 (no such path).
+matchExact : Method -> String -> Router h -> MatchResult h
+matchExact method path (MkRouter routes) = go routes []
   where
     go : List (Route h) -> List Method -> MatchResult h
     go []                        []      = NoMatch
@@ -164,3 +164,32 @@ matchRoute method path (MkRouter routes) = go routes []
       case matchPath pat path of
         Nothing     => go rs allowed
         Just params => if m == method then Matched params h else go rs (allowed ++ [m])
+
+-- `Allow`/`WrongMethod` should list HEAD wherever GET is allowed, since
+-- HEAD now implicitly works wherever GET does (see `matchRoute`) - for
+-- *any* method's wrong-method result, not just a HEAD request's own.
+addImplicitHead : List Method -> List Method
+addImplicitHead ms = if elem GET ms && not (elem HEAD ms) then ms ++ [HEAD] else ms
+
+||| Matches a request against a `Router`. A HEAD request falls back to a
+||| matching GET route if no route was registered specifically for HEAD
+||| (RFC 9110 §9.3.2: a HEAD response is defined identically to what GET
+||| would produce, just without a body - `Flux.Core.Middleware.render`
+||| already suppresses the body correctly for any HEAD request,
+||| regardless of which route matched, since it reads the *request's*
+||| own method, not anything the router decided). Register a route via
+||| `head_` explicitly to override this with custom HEAD-specific
+||| behavior - an exact HEAD match always wins over the GET fallback.
+export
+matchRoute : Method -> String -> Router h -> MatchResult h
+matchRoute method path router = normalize $ case method of
+  HEAD => case matchExact HEAD path router of
+    Matched params h => Matched params h
+    headResult        => case matchExact GET path router of
+      Matched params h => Matched params h
+      _                 => headResult
+  _ => matchExact method path router
+  where
+    normalize : MatchResult h -> MatchResult h
+    normalize (WrongMethod ms) = WrongMethod (addImplicitHead ms)
+    normalize r                = r

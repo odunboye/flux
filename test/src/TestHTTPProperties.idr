@@ -239,7 +239,11 @@ runRequestParse maxBodySize rawBytes = do
 -- `randomOversizedCaseOk` below, to send a deliberately-wrong one) -
 -- appending a second, correct one regardless would just silently
 -- override the caller's, since headers's later-entry-wins semantics
--- means whichever one is LAST in the raw text always decides.
+-- means whichever one is LAST in the raw text always decides. Also
+-- always adds a Host header unless the caller supplied one - HTTP/1.1
+-- requires it (see `assemble`'s Host check) and `genHeaderPair` draws
+-- random names so a caller-supplied "host" is astronomically unlikely
+-- but not impossible, hence the same guard shape as Content-Length.
 buildRawRequest :
      Method -> String -> List (String,String) -> Version -> List (String,String) -> String
   -> ByteString
@@ -248,7 +252,10 @@ buildRawRequest m path qPairs v hdrPairs body =
       target   := if qs == "" then path else path ++ "?" ++ qs
       startL   := show m ++ " " ++ target ++ " " ++ showVersion v
       callerCL := any (\(k,_) => toLower k == "content-length") hdrPairs
-      allHdrs  := if callerCL then hdrPairs else hdrPairs ++ [("content-length", show (length body))]
+      callerHost := any (\(k,_) => toLower k == "host") hdrPairs
+      withCL   := the (List (String,String))
+                    (if callerCL then hdrPairs else hdrPairs ++ [("content-length", show (length body))])
+      allHdrs  := if callerHost then withCL else withCL ++ [("host", "example.com")]
       hdrLines := map headerText allHdrs
       full     := startL ++ "\r\n" ++ joinBy "\r\n" hdrLines ++ "\r\n\r\n" ++ body
    in fromString full
@@ -336,6 +343,70 @@ testRequestRejectsTruncatedBody : IO Bool
 testRequestRejectsTruncatedBody = all id <$> traverse (const randomTruncatedCaseOk) [the Nat 1 .. 20]
 
 --------------------------------------------------------------------------------
+-- A rejected request must not desync onto whatever bytes happen to
+-- follow it in the same buffer (the shape a pipelined next request's
+-- bytes would take). `echoWith`/`servePull` (Flux.Core.HTTP) already
+-- close the connection outright on any rejection rather than attempting
+-- to resume - the safest possible answer, and unchanged by this plan -
+-- so these tests exercise the parser (`request`) directly: a well-formed
+-- request's raw bytes appended right after a malformed one must NOT
+-- cause `request` to somehow recover a spurious successful parse out of
+-- the concatenation (which would mean request 1's malformed bytes and
+-- request 2's real bytes got spliced together into something that
+-- looks valid - exactly the shape of a request-smuggling bug) - it must
+-- still reject, exactly as it does with no trailing bytes at all.
+--------------------------------------------------------------------------------
+
+-- Builds one malformed request's raw bytes (an extra, deliberately bad
+-- header line appended to an otherwise-normal request) directly with
+-- "\r\n", rather than via `buildRawRequest` (which has no way to inject
+-- a second, duplicate, or malformed header line) followed immediately
+-- by a second, genuinely well-formed request's raw bytes.
+malformedThenWellFormed : (badExtraHeaderLine : String) -> ByteString
+malformedThenWellFormed badExtraHeaderLine =
+  let malformed := fromString $
+        "GET /a HTTP/1.1\r\nHost: a.example\r\n" ++ badExtraHeaderLine ++ "\r\n\r\n"
+      wellFormed := buildRawRequest GET "/b" [] V11 [("host", "b.example")] ""
+   in fastConcat [malformed, wellFormed]
+
+randomDesyncCaseOk : (badExtraHeaderLine : String) -> IO Bool
+randomDesyncCaseOk badExtraHeaderLine = do
+  mresult <- runRequestParse 1_000_000 (malformedThenWellFormed badExtraHeaderLine)
+  pure $ case mresult of
+    Nothing => True
+    Just _  => False
+
+export covering
+testDuplicateContentLengthDoesNotDesyncOntoNextRequest : IO Bool
+testDuplicateContentLengthDoesNotDesyncOntoNextRequest =
+  randomDesyncCaseOk "Content-Length: 5\r\nContent-Length: 10"
+
+export covering
+testTransferEncodingDoesNotDesyncOntoNextRequest : IO Bool
+testTransferEncodingDoesNotDesyncOntoNextRequest =
+  randomDesyncCaseOk "Transfer-Encoding: chunked"
+
+export covering
+testSpaceBeforeColonDoesNotDesyncOntoNextRequest : IO Bool
+testSpaceBeforeColonDoesNotDesyncOntoNextRequest =
+  randomDesyncCaseOk "X-Bad : value"
+
+-- Same property for a truncated body: a request declaring a
+-- Content-Length larger than what's actually sent (even counting the
+-- well-formed request's bytes that follow it in the buffer) must still
+-- be rejected as truncated, not accidentally treated as having "found"
+-- enough bytes by reading into the next pipelined request's data.
+export covering
+testTruncatedBodyDoesNotDesyncOntoNextRequest : IO Bool
+testTruncatedBodyDoesNotDesyncOntoNextRequest = do
+  let malformed  := fromString "GET /a HTTP/1.1\r\nHost: a.example\r\nContent-Length: 999\r\n\r\nshort"
+      wellFormed := buildRawRequest GET "/b" [] V11 [("host", "b.example")] ""
+  mresult <- runRequestParse 1_000_000 (fastConcat [malformed, wellFormed])
+  pure $ case mresult of
+    Nothing => True
+    Just _  => False
+
+--------------------------------------------------------------------------------
 -- Run all property tests
 --------------------------------------------------------------------------------
 
@@ -352,6 +423,10 @@ runAllTests = do
   requestOk       <- testRequestRoundTrip
   oversizedOk     <- testRequestRejectsOversizedContentLength
   truncatedOk     <- testRequestRejectsTruncatedBody
+  dupCLDesyncOk   <- testDuplicateContentLengthDoesNotDesyncOntoNextRequest
+  teDesyncOk      <- testTransferEncodingDoesNotDesyncOntoNextRequest
+  spaceColonDesyncOk <- testSpaceBeforeColonDoesNotDesyncOntoNextRequest
+  truncatedDesyncOk  <- testTruncatedBodyDoesNotDesyncOntoNextRequest
   pure
     [ ("methodRoundTrip", methodOk)
     , ("versionRoundTrip", versionOk)
@@ -363,4 +438,8 @@ runAllTests = do
     , ("requestRoundTrip", requestOk)
     , ("requestRejectsOversizedContentLength", oversizedOk)
     , ("requestRejectsTruncatedBody", truncatedOk)
+    , ("duplicateContentLengthDoesNotDesyncOntoNextRequest", dupCLDesyncOk)
+    , ("transferEncodingDoesNotDesyncOntoNextRequest", teDesyncOk)
+    , ("spaceBeforeColonDoesNotDesyncOntoNextRequest", spaceColonDesyncOk)
+    , ("truncatedBodyDoesNotDesyncOntoNextRequest", truncatedDesyncOk)
     ]

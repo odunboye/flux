@@ -28,6 +28,12 @@ export
 testMethodUnknown : Bool
 testMethodUnknown = method "TRACE" == Left InvalidRequest
 
+-- Method names are case-sensitive per RFC 9110, unlike header names -
+-- "get" is a different (unknown) token from "GET".
+export
+testMethodLowercaseRejected : Bool
+testMethodLowercaseRejected = method "get" == Left InvalidRequest
+
 -- version
 
 export
@@ -127,6 +133,29 @@ export
 testHeadersRejectsSpaceBeforeColonTransferEncoding : Bool
 testHeadersRejectsSpaceBeforeColonTransferEncoding =
   case headers empty [fromString "Transfer-Encoding : chunked"] of
+    Left InvalidRequest => True
+    _                   => False
+
+-- A duplicate Host header is rejected outright, same shape as the
+-- existing duplicate-Content-Length check - a real cache-poisoning/
+-- routing-confusion vector if silently accepted (whichever Host a
+-- downstream proxy trusts may disagree with whichever one Flux uses).
+export
+testHeadersRejectsDuplicateHost : Bool
+testHeadersRejectsDuplicateHost =
+  case headers empty [fromString "Host: a.example", fromString "Host: b.example"] of
+    Left InvalidRequest => True
+    _                   => False
+
+-- Obsolete line-folding: a continuation line (starting with whitespace,
+-- no colon of its own) is not a valid standalone header line - it must
+-- hit the same InvalidRequest catch-all as any other colon-less line,
+-- not be silently merged into the previous header's value (which this
+-- parser was traced as never having implemented support for at all).
+export
+testHeadersRejectsObsoleteLineFolding : Bool
+testHeadersRejectsObsoleteLineFolding =
+  case headers empty [fromString "X-Custom: first", fromString "  continued"] of
     Left InvalidRequest => True
     _                   => False
 
@@ -297,6 +326,101 @@ export
 testParseIPv4NonNumeric : Bool
 testParseIPv4NonNumeric = parseIPv4 "localhost" == Nothing && parseIPv4 "127.0.0.x" == Nothing
 
+--------------------------------------------------------------------------------
+-- request: full wire-level parsing (Host requirement, CR/LF/NUL safety)
+--------------------------------------------------------------------------------
+
+-- Runs `request` for real over a single in-memory ByteString, draining
+-- the parsed request's body (mirroring TestHTTPProperties's
+-- runRequestParse) so nothing is left unconsumed. `Nothing` covers both
+-- "no request at all" and "rejected while parsing" - same convention as
+-- TestHTTPProperties's oversized/truncated-body tests, which is all
+-- these tests need: whether parsing succeeded or was rejected, not why.
+runRequest : (maxBodySize : Nat) -> String -> IO (Maybe Request)
+runRequest maxBodySize raw = do
+  resultRef <- newIORef Nothing
+  runProg $
+    handleErrors
+      (\case
+        Here e         => liftIO (putStrLn "runRequest: unexpected Errno: \{e}")
+        There (Here e) => pure ())
+      (Prelude.do
+        mreq <- request maxBodySize (emit (fromString raw))
+        case mreq of
+          Nothing  => pure ()
+          Just req => do
+            _ <- foldPair (:<) [<] req.body
+            liftIO $ writeIORef resultRef (Just req))
+  readIORef resultRef
+
+-- RFC 9112 §3.2: an HTTP/1.1 request with no Host header is rejected.
+export
+testRequestRejectsMissingHostOnV11 : IO Bool
+testRequestRejectsMissingHostOnV11 = do
+  mreq <- runRequest 1000 "GET / HTTP/1.1\r\n\r\n"
+  pure $ case mreq of
+    Nothing => True
+    Just _  => False
+
+-- HTTP/1.0 predates Host - a request with none still parses.
+export
+testRequestAllowsMissingHostOnV10 : IO Bool
+testRequestAllowsMissingHostOnV10 = do
+  mreq <- runRequest 1000 "GET / HTTP/1.0\r\n\r\n"
+  pure $ case mreq of
+    Just req => req.version == V10
+    Nothing  => False
+
+-- A duplicate Host header is rejected at the full request-parse level
+-- too, not just via the header table unit test above.
+export
+testRequestRejectsDuplicateHost : IO Bool
+testRequestRejectsDuplicateHost = do
+  mreq <- runRequest 1000 "GET / HTTP/1.1\r\nHost: a.example\r\nHost: b.example\r\n\r\n"
+  pure $ case mreq of
+    Nothing => True
+    Just _  => False
+
+-- Method names are case-sensitive (RFC 9110): a lowercase "get" is not
+-- the same token as "GET" and must be rejected, unlike header names.
+export
+testRequestRejectsLowercaseMethod : IO Bool
+testRequestRejectsLowercaseMethod = do
+  mreq <- runRequest 1000 "get / HTTP/1.1\r\nHost: a.example\r\n\r\n"
+  pure $ case mreq of
+    Nothing => True
+    Just _  => False
+
+-- A non-origin-form request-target (absolute-form, here) is accepted by
+-- startLine as a literal path string rather than causing anything worse
+-- than a request that simply won't match any route later on - `request`
+-- itself has no route-matching, so this only confirms parsing succeeds
+-- with the target preserved verbatim, not turned into something unsafe.
+export
+testRequestAcceptsAbsoluteFormTargetAsLiteralPath : IO Bool
+testRequestAcceptsAbsoluteFormTargetAsLiteralPath = do
+  mreq <- runRequest 1000 "GET http://a.example/x HTTP/1.1\r\nHost: a.example\r\n\r\n"
+  pure $ case mreq of
+    Just req => req.uri == "http://a.example/x"
+    Nothing  => False
+
+-- CR/LF bytes can't end up embedded *inside* a single parsed header
+-- value: the wire format itself already uses "\r\n" as the line
+-- delimiter (see `lines`, which splits on it before any header value is
+-- extracted), so what might look like an attempt to smuggle a second
+-- header line through one value just parses as two genuinely separate,
+-- correctly-split headers instead - confirmed here by checking both
+-- values came through intact and independent, rather than one value
+-- containing the other's text.
+export
+testRequestCRLFCannotSmuggleAHeaderValue : IO Bool
+testRequestCRLFCannotSmuggleAHeaderValue = do
+  mreq <- runRequest 1000 "GET / HTTP/1.1\r\nHost: a.example\r\nX-Evil: a\r\nInjected: line\r\n\r\n"
+  pure $ case mreq of
+    Just req => lookup "x-evil" req.headers == Just "a" &&
+                lookup "injected" req.headers == Just "line"
+    Nothing  => False
+
 -- Run all HTTP wire-parser tests (mixing pure and IO-backed cases, since
 -- chunk-encoding needs the real async runtime to exercise)
 export
@@ -306,10 +430,17 @@ runAllTests = do
   chunkMultiple   <- testChunkEncodeMultiple
   chunkEmpty      <- testChunkEncodeEmpty
   chunkSkipsEmpty <- testChunkEncodeSkipsEmptyEmission
+  reqRejectsMissingHostV11 <- testRequestRejectsMissingHostOnV11
+  reqAllowsMissingHostV10  <- testRequestAllowsMissingHostOnV10
+  reqRejectsDuplicateHost  <- testRequestRejectsDuplicateHost
+  reqRejectsLowercaseMethod <- testRequestRejectsLowercaseMethod
+  reqAcceptsAbsoluteForm   <- testRequestAcceptsAbsoluteFormTargetAsLiteralPath
+  reqCRLFCannotSmuggle     <- testRequestCRLFCannotSmuggleAHeaderValue
   pure $
    [ ("methodGet", testMethodGet),
   ("methodAllVariants", testMethodAllVariants),
   ("methodUnknown", testMethodUnknown),
+  ("methodLowercaseRejected", testMethodLowercaseRejected),
   ("version11", testVersion11),
   ("versionUnknown", testVersionUnknown),
   ("startLineValid", testStartLineValid),
@@ -324,6 +455,8 @@ runAllTests = do
   ("headersRejectsSpaceBeforeColon", testHeadersRejectsSpaceBeforeColon),
   ("headersRejectsTabBeforeColon", testHeadersRejectsTabBeforeColon),
   ("headersRejectsSpaceBeforeColonTransferEncoding", testHeadersRejectsSpaceBeforeColonTransferEncoding),
+  ("headersRejectsDuplicateHost", testHeadersRejectsDuplicateHost),
+  ("headersRejectsObsoleteLineFolding", testHeadersRejectsObsoleteLineFolding),
   ("contentLength", testContentLength),
   ("contentLengthMissing", testContentLengthMissing),
   ("contentLengthMalformed", testContentLengthMalformed),
@@ -354,5 +487,11 @@ runAllTests = do
   ("parseIPv4MaxOctet", testParseIPv4MaxOctet),
   ("parseIPv4OutOfRangeOctet", testParseIPv4OutOfRangeOctet),
   ("parseIPv4WrongSegmentCount", testParseIPv4WrongSegmentCount),
-  ("parseIPv4NonNumeric", testParseIPv4NonNumeric)
+  ("parseIPv4NonNumeric", testParseIPv4NonNumeric),
+  ("requestRejectsMissingHostOnV11", reqRejectsMissingHostV11),
+  ("requestAllowsMissingHostOnV10", reqAllowsMissingHostV10),
+  ("requestRejectsDuplicateHost", reqRejectsDuplicateHost),
+  ("requestRejectsLowercaseMethod", reqRejectsLowercaseMethod),
+  ("requestAcceptsAbsoluteFormTargetAsLiteralPath", reqAcceptsAbsoluteForm),
+  ("requestCRLFCannotSmuggleAHeaderValue", reqCRLFCannotSmuggle)
   ]

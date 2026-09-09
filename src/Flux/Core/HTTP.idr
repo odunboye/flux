@@ -295,22 +295,25 @@ startLine bs =
     _       => Left InvalidRequest
 
 ||| Parses one request's headers, folding them into a `Headers` map -
-||| except for three cases rejected outright rather than silently
-||| resolved, all real request-smuggling shapes behind a proxy that
-||| disagrees with this parser about where a request ends (RFC 9112
-||| §5.1/§6.3): whitespace between the header name and its colon (a
-||| lenient parser would let `Content-Length : 5` and `Content-Length: 5`
-||| disagree with each other about whether they're "the same" header -
-||| this parser's own map-key lookups would previously treat them as
-||| different keys entirely, silently losing the *real* Content-Length
-||| to a mangled key `contentLength`/the duplicate check below never
-||| finds), a repeated `Content-Length` (a plain `SortedMap.insert` would
-||| just keep the last one, silently accepting conflicting framing), and
-||| any `Transfer-Encoding` at all (chunked request bodies aren't decoded
-||| by this parser - treating one as an ordinary, Content-Length-less
+||| except for four cases rejected outright rather than silently
+||| resolved, all real request-smuggling/confusion shapes behind a proxy
+||| that disagrees with this parser (RFC 9112 §5.1/§6.3, §3.2):
+||| whitespace between the header name and its colon (a lenient parser
+||| would let `Content-Length : 5` and `Content-Length: 5` disagree with
+||| each other about whether they're "the same" header - this parser's
+||| own map-key lookups would previously treat them as different keys
+||| entirely, silently losing the *real* Content-Length to a mangled key
+||| `contentLength`/the duplicate check below never finds), a repeated
+||| `Content-Length` (a plain `SortedMap.insert` would just keep the
+||| last one, silently accepting conflicting framing), any
+||| `Transfer-Encoding` at all (chunked request bodies aren't decoded by
+||| this parser - treating one as an ordinary, Content-Length-less
 ||| request would parse it as an empty body and misinterpret the
 ||| chunked-framed bytes that follow as the start of the next pipelined
-||| request).
+||| request), and a repeated `Host` (the same conflicting-framing shape
+||| as duplicate Content-Length, and a real cache-poisoning/virtual-host-
+||| confusion vector in practice - a *missing* Host on HTTP/1.1 is
+||| rejected separately, in `assemble`, once the version is known).
 export
 headers : Headers -> List ByteString -> Either HTTPErr Headers
 headers hs []     = Right hs
@@ -325,6 +328,7 @@ headers hs (h::t) =
           in case (name, lookup name hs) of
                ("transfer-encoding", _)   => Left InvalidRequest
                ("content-length", Just _) => Left InvalidRequest
+               ("host", Just _)           => Left InvalidRequest
                _                          => headers (insert name val hs) t
     _                => Left InvalidRequest
 
@@ -460,6 +464,9 @@ assemble maxBodySize p = Prelude.do
   let ct := contentType hs
       (path,qs) := splitQuery tgt
       qmap := parseQuery qs
+  -- RFC 9112 §3.2: a server MUST reject an HTTP/1.1 request with no
+  -- Host header. HTTP/1.0 predates Host - optional there.
+  when (vrs == V11 && lookup "host" hs == Nothing) (throw InvalidRequest)
   when (cl > maxBodySize) (throw ContentSizeExceeded)
   pure $ Just (R met path qmap vrs hs cl ct $ splitAtChecked TruncatedBody cl body)
 
@@ -605,6 +612,19 @@ public export
 0 Responder : Type
 Responder = Request -> HTTPPull ByteString BodyOutcome
 
+||| Whether the connection should stay open for another pipelined
+||| request after this one, per RFC 9112 §9.3: HTTP/1.1 defaults to
+||| persistent unless the client sends `Connection: close`; HTTP/1.0
+||| (and anything else, defensively) defaults to closing unless the
+||| client explicitly asks to keep it alive.
+export
+shouldKeepAlive : Request -> Bool
+shouldKeepAlive req =
+  let conn := map toLower (lookup "connection" req.headers)
+   in case req.version of
+        V11 => conn /= Just "close"
+        _   => conn == Just "keep-alive"
+
 -- Responds to one request via `f`, which reports what to do with the
 -- connection afterward (see `BodyOutcome`) - ordinarily `ContinueWith
 -- r.body`, the connection's byte stream continuing right after the
@@ -615,16 +635,17 @@ Responder = Request -> HTTPPull ByteString BodyOutcome
 -- here (rather than a fresh read, which would only ever see whatever
 -- arrives *after* that point) preserves the rest of what was already
 -- read. Returns whether there was a request at all: False means either
--- the byte source hit EOF (the client closed the connection) or `f`
--- reported `CloseAfterResponse`, either way signalling the caller to stop
--- reading more requests off this connection.
+-- the byte source hit EOF (the client closed the connection), `f`
+-- reported `CloseAfterResponse`, or the request itself asked not to be
+-- kept alive (`shouldKeepAlive`) - any of these signal the caller to
+-- stop reading more requests off this connection.
 export
 respondWith : Responder -> Maybe Request -> HTTPPull ByteString (Bool, HTTPStream ByteString)
 respondWith f Nothing  = pure (False, pure ())
 respondWith f (Just r) = Prelude.do
   outcome <- f r
   case outcome of
-    ContinueWith rest   => pure (True, rest)
+    ContinueWith rest   => pure (shouldKeepAlive r, rest)
     CloseAfterResponse  => pure (False, pure ())
 
 export covering

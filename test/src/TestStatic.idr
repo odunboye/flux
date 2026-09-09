@@ -135,7 +135,7 @@ renderAndDrain ctx =
       (\case
         Here e         => liftIO (putStrLn "renderAndDrain: unexpected Errno: \{e}")
         There (Here e) => liftIO (putStrLn "renderAndDrain: unexpected HTTPErr: \{e}"))
-      (ignore (foreach (\_ => pure ()) (render ctx)))
+      (ignore (foreach (\_ => pure ()) (render False ctx)))
 
 -- Open file descriptor count for this process, via /proc/self/fd
 -- (Linux - matches CI; not available on Darwin, where this returns

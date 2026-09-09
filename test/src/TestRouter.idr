@@ -177,12 +177,16 @@ testOptionsHelper =
 
 -- Test a genuine 405: path matches, method doesn't - the wrong-method
 -- route's method should come back so a 405 can carry an Allow header.
+-- `Allow` should list HEAD alongside GET here too, even though this is
+-- a POST request rather than a HEAD one - HEAD works wherever GET does
+-- (see `addImplicitHead`), so an accurate `Allow` must say so regardless
+-- of which method the caller actually tried.
 export
 testMethodMismatchIs405 : Bool
 testMethodMismatchIs405 =
   let router = get "/api" dummy empty
    in case matchRoute POST "/api" router of
-        WrongMethod [GET] => True
+        WrongMethod [GET, HEAD] => True
         _ => False
 
 -- Test multiple routes
@@ -223,6 +227,63 @@ testRouteNotFound =
     NoMatch => True
     _ => False
 
+--------------------------------------------------------------------------------
+-- HEAD falls back to a matching GET route (RFC 9110 §9.3.2)
+--------------------------------------------------------------------------------
+
+-- A route registered only via `get` still answers a HEAD request, via the
+-- GET fallback in `matchRoute`.
+export
+testHeadFallsBackToGet : Bool
+testHeadFallsBackToGet =
+  let router = get "/api" dummy empty
+   in case matchRoute HEAD "/api" router of
+        Matched _ _ => True
+        _ => False
+
+-- An explicit `head_` route always wins over the GET fallback, even when
+-- both are registered for the same path - confirmed by checking which
+-- handler value comes back, not just that *a* match happened.
+export
+testExplicitHeadOverridesGetFallback : Bool
+testExplicitHeadOverridesGetFallback =
+  let router = head_ "/api" 99 (get "/api" dummy empty)
+   in case matchRoute HEAD "/api" router of
+        Matched _ 99 => True
+        _ => False
+
+-- A path with only a POST route still 405s a HEAD request - the fallback
+-- is specifically to GET, not to "any other method".
+export
+testHeadFallbackDoesNotApplyToPost : Bool
+testHeadFallbackDoesNotApplyToPost =
+  let router = post "/api" dummy empty
+   in case matchRoute HEAD "/api" router of
+        WrongMethod [POST] => True
+        _ => False
+
+-- `Allow` includes HEAD wherever GET is allowed, for a HEAD request's own
+-- 405 too (path exists, but only for an unrelated method, so the GET
+-- fallback doesn't apply - `addImplicitHead` should still not fire here,
+-- since GET itself was never actually allowed on this path).
+export
+testHeadWrongMethodDoesNotGainHeadWithoutGet : Bool
+testHeadWrongMethodDoesNotGainHeadWithoutGet =
+  let router = post "/api" dummy empty
+   in case matchRoute PUT "/api" router of
+        WrongMethod [POST] => True
+        _ => False
+
+-- `Allow` includes HEAD wherever GET is allowed, for a non-HEAD
+-- wrong-method request too (not just when the request itself was HEAD).
+export
+testAllowIncludesHeadForNonHeadRequest : Bool
+testAllowIncludesHeadForNonHeadRequest =
+  let router = get "/api" dummy empty
+   in case matchRoute DELETE "/api" router of
+        WrongMethod [GET, HEAD] => True
+        _ => False
+
 -- Run all router tests
 export
 runAllTests : List (String, Bool)
@@ -248,5 +309,10 @@ runAllTests = [
   ("multipleRoutes", testMultipleRoutes),
   ("routeWithParams", testRouteWithParams),
   ("declarationOrder", testDeclarationOrder),
-  ("routeNotFound", testRouteNotFound)
+  ("routeNotFound", testRouteNotFound),
+  ("headFallsBackToGet", testHeadFallsBackToGet),
+  ("explicitHeadOverridesGetFallback", testExplicitHeadOverridesGetFallback),
+  ("headFallbackDoesNotApplyToPost", testHeadFallbackDoesNotApplyToPost),
+  ("headWrongMethodDoesNotGainHeadWithoutGet", testHeadWrongMethodDoesNotGainHeadWithoutGet),
+  ("allowIncludesHeadForNonHeadRequest", testAllowIncludesHeadForNonHeadRequest)
   ]
