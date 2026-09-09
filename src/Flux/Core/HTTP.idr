@@ -14,6 +14,7 @@ import Flux.Server.Config
 import public IO.Async.Loop.Posix
 import IO.Async.Loop.Poller
 import IO.Async.Signal
+import System.Posix.Signal
 
 import public System
 import System.File
@@ -27,6 +28,40 @@ public export
 0 Prog : List Type -> Type -> Type
 Prog = AsyncStream Poll
 
+||| How often `fluxAwaitSignals` re-checks `sigpending` while idle. Small
+||| enough that a shutdown signal is noticed promptly, large enough that
+||| the check is a rounding error against any real request's latency.
+pendingSignalPollInterval : Clock Duration
+pendingSignalPollInterval = 200.ms
+
+||| Polls for one of the given (already process-blocked, see `runProg`)
+||| signals becoming pending, without ever blocking a scheduler worker
+||| thread on a syscall.
+|||
+||| This exists instead of `async-posix`'s own `awaitSignals` because
+||| that calls the POSIX.1b `sigwaitinfo()` syscall, which does not exist
+||| on macOS/Darwin - the `posix` package's own C support explicitly
+||| excludes it there (`#ifndef __APPLE__` around `li_sigwaitinfo` in
+||| `idris2-linux/posix/support/posix.c`). `sigpending()`, by contrast, is
+||| plain POSIX.1 and available unconditionally on both platforms (used
+||| here via `System.Posix.Signal.sigpending`, which is not behind that
+||| guard). `shutdownOn`'s only requirement of this action is that it
+||| eventually produces *something* once a watched signal fires
+||| (`haltOn`/`FS.Concurrent.haltOn` discards the value) - it doesn't need
+||| `awaitSignals`'s `Siginfo` detail (sender pid/uid etc.), so trading
+||| that away for portability costs nothing here. It also never consumes
+||| the signal from the pending set, unlike `sigwaitinfo`/`sigwait` - it
+||| is left blocked-and-pending (per `runProg`'s process-level
+||| `sigprocmask`) until the process exits shortly after, which is fine
+||| since nothing here ever needs it delivered.
+export covering
+fluxAwaitSignals : List Signal -> Async Poll [Errno] ()
+fluxAwaitSignals sigs = do
+  pending <- liftIO sigpending
+  if any (`elem` pending) sigs
+    then pure ()
+    else sleep pendingSignalPollInterval >> fluxAwaitSignals sigs
+
 ||| Runs the second stream (typically an accept loop) until any of the
 ||| given signals arrives, then lets it terminate normally rather than
 ||| erroring. `Flux.Core.HTTP.runProg` blocks these signals at the process
@@ -38,21 +73,12 @@ Prog = AsyncStream Poll
 ||| semaphore-drain guarantees this - see the `async`/`streams` library's
 ||| `finally`/`guaranteeCase` semantics) before the process exits.
 |||
-||| PLATFORM NOTE: this relies on `async-posix`'s `awaitSignals`, which
-||| calls the POSIX.1b `sigwaitinfo()` syscall. That syscall does not
-||| exist on macOS/Darwin - the `posix` package's own C support explicitly
-||| excludes it there (`#ifndef __APPLE__` around `li_sigwaitinfo` in
-||| `idris2-linux/posix/support/posix.c`) - so on macOS, sending SIGINT or
-||| SIGTERM to a running Flux server crashes it
-||| (`Exception in foreign-procedure: no entry for "li_sigwaitinfo"`)
-||| instead of shutting it down cleanly. This is a pre-existing limitation
-||| of the dependency stack, not specific to `shutdownOn` - the same crash
-||| already happened with plain SIGINT before this function existed, via
-||| `simpleApp`'s built-in handling. Signal-based shutdown only works on
-||| Linux; verify it there, not on macOS.
-export
+||| Built on `fluxAwaitSignals` (see its doc) rather than `async-posix`'s
+||| own `awaitSignals`, specifically so this works on macOS as well as
+||| Linux - verified manually on both.
+export covering
 shutdownOn : List Signal -> Prog [Errno] o -> Prog [Errno] o
-shutdownOn sigs = haltOn (eval (awaitSignals sigs))
+shutdownOn sigs = haltOn (eval (fluxAwaitSignals sigs))
 
 ||| Reads `IDRIS2_ASYNC_THREADS` the same way `async-posix`'s own
 ||| `asyncThreads` does, but defaults to 2 threads when it isn't set -

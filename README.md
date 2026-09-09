@@ -413,17 +413,19 @@ connections finish (`foreachPar`'s internal semaphore-drain blocks until
 they do) — there's no shutdown timeout, so a stuck handler blocks exit
 indefinitely.
 
-**This does not work on macOS.** It relies on `async-posix`'s
+Works on both Linux and macOS. It used to rely on `async-posix`'s
 `awaitSignals`, which calls the POSIX.1b `sigwaitinfo()` syscall — a
-syscall the `posix` package's C support explicitly excludes on Darwin.
-Sending SIGINT or SIGTERM to a running Flux server on macOS crashes it
-(`Exception in foreign-procedure: no entry for "li_sigwaitinfo"`) instead
-of shutting down cleanly, a pre-existing limitation of the dependency
-stack (the same crash already happened with plain SIGINT before
-`shutdownOn` existed). Verify graceful shutdown on Linux; there's no
-unit test for it (not realistic for OS-signal behavior) — see
-`examples/src/Main.idr`'s `/slow` handler for the manual verification
-steps.
+syscall the `posix` package's C support explicitly excludes on Darwin,
+crashing the server (`Exception in foreign-procedure: no entry for
+"li_sigwaitinfo"`) on SIGINT/SIGTERM instead of shutting down cleanly.
+`Flux.Core.HTTP.fluxAwaitSignals` replaces it with a small polling loop
+over `sigpending()` (plain POSIX.1, available on both platforms, already
+exposed portably by the `posix` package) — it only needs to notice that
+one of the watched signals has arrived, not decode which one or recover
+`Siginfo` detail, so it never touches the Darwin-excluded call at all.
+Verified manually on both platforms; there's no unit test for it (not
+realistic for OS-signal behavior) — see `examples/src/Main.idr`'s
+`/slow` handler for the manual verification steps.
 
 ## Errors
 
@@ -510,7 +512,8 @@ above) - both remain manual.
       — see "Config"
 - [x] Two logging strategies (immediate vs batched/format-on-flush), with
       measured concurrency tradeoffs for each — see "Logging"
-- [x] Graceful shutdown on SIGINT/SIGTERM (Linux only — see "Graceful shutdown")
+- [x] Graceful shutdown on SIGINT/SIGTERM, on both Linux and macOS — see
+      "Graceful shutdown"
 - [x] An idle-connection timeout mitigating a known upstream scheduler
       race (see "The rare connection-leak race and its mitigation")
 - [x] Request body access from a router `Handler` (`readBody`), with a
@@ -546,9 +549,6 @@ whether this is production-ready for their use case:
   above leak (reproduced with zero leaked connections). Leading
   hypothesis is Chez's GC not returning committed pages to the OS, not
   confirmed as bounded over long (hours-scale) runs.
-- **Graceful shutdown doesn't work on macOS** — crashes on SIGINT/SIGTERM
-  due to a missing syscall in the dependency stack's Darwin support.
-  Linux-only in practice.
 - **No disk-space health check.** `diskCheck` was removed rather than
   shipped broken - see "Health checks" for the upstream `statvfs`
   linking bug behind that. `memoryCheck` is real, but Linux-only.
