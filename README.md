@@ -120,7 +120,11 @@ failure (`Errno`, from a lower-level IO error inside a handler) is also
 caught, not left to silently drop the connection with zero bytes sent —
 it renders as a generic 500 through the same `onError`. Two renderers ship:
 `defaultErrorRenderer` (plain text) and `Flux.Middleware.JSON.jsonErrorRenderer`
-(`{"error":"..."}`).
+(`{"error":"..."}`). If the discarded `Context` was holding a resource
+(a `Streamed` body wrapping an open file descriptor, say - see "Static
+files") in that window between a handler succeeding and `after` running,
+`runApp` drains it first, rather than letting the reset silently orphan
+it unpulled.
 
 Neither `before` nor `after` run at all on that error path - a request
 that throws never reaches `after` (so e.g. access logging never runs for
@@ -389,13 +393,26 @@ falling back to `application/octet-stream`.
 
 That reused `Fd` is only released when the `Streamed` response it's
 wrapped in actually runs to completion - `resource`/`bracket`'s cleanup
-fires as part of pulling the stream, not on construction. A response
-whose body gets suppressed (a HEAD request, or status 204/304 - see
-"Errors") used to never touch that stream at all, so the fd leaked on
-every one; `render` now drains a suppressed `Streamed` body (discarding
-its bytes, never sending them) specifically so this cleanup still runs.
-Confirmed via `lsof` against a real running server: 15 HEAD requests to
-the same file leaked 15 fds before this fix, 0 after.
+fires as part of pulling the stream, not on construction. Two distinct
+paths used to let a `Context` holding one go unpulled, both fixed:
+
+- A response whose body gets suppressed (a HEAD request, or status
+  204/304 - see "Errors") used to never touch that stream at all, so
+  the fd leaked on every one; `render` now drains a suppressed
+  `Streamed` body (discarding its bytes, never sending them)
+  specifically so this cleanup still runs. Confirmed via `lsof` against
+  a real running server: 15 HEAD requests to the same file leaked 15
+  fds before this fix, 0 after.
+- `staticHandler` succeeding (fd opened, `Context` built) doesn't mean
+  that `Context` reaches `render` at all - something *later* in the
+  same request (an `after` hook, say) can still throw, and `runApp`
+  resets to a fresh `Context` on any error (see "Middleware & Context"),
+  discarding the resource-holding one entirely without ever pulling it.
+  `runApp` now drains that specific case too (the `Context` right after
+  dispatch, before `after` runs) before letting the error reset
+  proceed. Confirmed the same way: a standalone reproduction (a route
+  wrapping `staticHandler`, with an `after` hook that always throws)
+  leaked one fd per request before this fix, zero after.
 
 `root` is a relative path resolved against the *process's* working
 directory, not the source file's or executable's location - run the

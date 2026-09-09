@@ -217,6 +217,48 @@ testHeadRequestDoesNotLeakFd = do
       Just after <- fdCount | Nothing => pure True
       pure (after <= before)
 
+-- Regression test for a second, distinct fd leak: staticHandler can
+-- succeed - opening a real fd, returning a Context wrapping it in a
+-- Streamed body - before something *later* in the same request (an
+-- after hook, here) throws. runApp used to just discard that Context
+-- wholesale when resetting to a fresh one for the error response,
+-- never pulling (so never cleaning up) the resource-holding stream it
+-- was about to replace - independent of render's own HEAD/204/304
+-- draining, which only ever sees a Context that reaches it normally.
+throwingAfterHook : Middleware
+throwingAfterHook _ = throw (MkAppError 500 "deliberate failure after dispatch")
+
+staticReq : Request
+staticReq = R GET "/inside.txt" empty V11 empty 0 Nothing (pure (pure ()))
+
+runAppAndDrain : App -> IO ()
+runAppAndDrain application =
+  runProg $
+    handleErrors
+      (\case
+        Here e         => liftIO (putStrLn "runAppAndDrain: unexpected Errno: \{e}")
+        There (Here e) => liftIO (putStrLn "runAppAndDrain: unexpected HTTPErr: \{e}"))
+      (ignore (foreach (\_ => pure ()) (runApp application staticReq)))
+
+export
+testAfterHookFailureDoesNotLeakFd : IO Bool
+testAfterHookFailureDoesNotLeakFd = do
+  setupFixture
+  Nothing <- fdCount | Just _ => runCheck
+  pure True
+  where
+    application : App
+    application =
+      useAfter throwingAfterHook $
+        withRoutes (get "/*path" (staticHandler fixtureRoot defaultMimeFor) empty) emptyApp
+    runCheck : IO Bool
+    runCheck = do
+      for_ [the Nat 1 .. 5] (const (runAppAndDrain application))
+      Just before <- fdCount | Nothing => pure True
+      for_ [the Nat 1 .. 20] (const (runAppAndDrain application))
+      Just after <- fdCount | Nothing => pure True
+      pure (after <= before)
+
 -- Run all static-serving tests
 export
 runAllTests : IO (List (String, Bool))
@@ -226,6 +268,7 @@ runAllTests = do
   indirectEscapeRejected <- testRejectsIndirectSymlinkEscape
   symlinkedDirServed     <- testServesThroughSymlinkedDirInsideRoot
   headFdOk               <- testHeadRequestDoesNotLeakFd
+  afterErrorFdOk          <- testAfterHookFailureDoesNotLeakFd
   pure [
     ("extensionOfSimple", testExtensionOfSimple),
     ("extensionOfNested", testExtensionOfNested),
@@ -242,5 +285,6 @@ runAllTests = do
     ("servesGenuinelyNestedFile", nestedServed),
     ("rejectsIndirectSymlinkEscape", indirectEscapeRejected),
     ("servesThroughSymlinkedDirInsideRoot", symlinkedDirServed),
-    ("headRequestDoesNotLeakFd", headFdOk)
+    ("headRequestDoesNotLeakFd", headFdOk),
+    ("afterHookFailureDoesNotLeakFd", afterErrorFdOk)
     ]

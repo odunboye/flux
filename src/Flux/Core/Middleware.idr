@@ -410,6 +410,25 @@ dispatch router ctx =
 internalServerError : ErrorRenderer -> Context -> Context
 internalServerError onError = onError (MkAppError 500 "Internal Server Error")
 
+-- Drains (discarding whatever it emits, sending nothing) a Streamed
+-- response body - releasing any resource it holds (e.g.
+-- `Flux.Middleware.Static.staticHandler`'s open `Fd`) via the same
+-- `resource`/`bracket` cleanup `render` itself relies on, since that
+-- cleanup only ever runs as part of actually pulling the stream to
+-- completion. Used when a `Context` is about to be discarded entirely
+-- (see `runApp`'s error path) rather than rendered normally - `render`
+-- can only drain a body it actually gets to see, and a `Context` reset
+-- to a fresh one on error never reaches it at all. A `Buffered` body
+-- holds no resource, so this is a no-op for it. Whatever the drain
+-- itself does (succeeds, errors, gets canceled) doesn't matter here -
+-- the connection is getting a fresh error response regardless; this is
+-- purely a best-effort release, not a correctness-relevant result.
+covering
+drainResponseBody : ResponseBody -> AppProg ()
+drainResponseBody (Buffered _)      = pure ()
+drainResponseBody (Streamed _ body) =
+  ignore (the (AppProg (Outcome [Errno,HTTPErr] ())) (weakenErrors (pull (drain body))))
+
 -- Run the full application for one request: before-middleware, route
 -- dispatch (or 404/405), after-middleware, then render to wire bytes.
 -- Any AppError thrown along the way is caught here and rendered via
@@ -420,12 +439,34 @@ internalServerError onError = onError (MkAppError 500 "Internal Server Error")
 -- request) since a caught failure discards whatever the before-chain had
 -- already accumulated onto the Context up to that point.
 --
+-- That discarding is exactly why `after`'s chain is wrapped in its own
+-- inner `handleErrors` below: a `Handler` (e.g. `staticHandler`) can
+-- succeed and return a `ctx1` holding an already-open resource (wrapped
+-- in a `Streamed` body) before something *later* in the same request -
+-- an `after` hook, say - throws. Without draining it first, that
+-- resource-holding `ctx1` would just be silently replaced by the fresh
+-- error `Context` and garbage-collected, never pulled, so its
+-- `resource`/`bracket` cleanup would never run - a real fd leak on any
+-- request that fails *after* a resource-holding handler succeeds,
+-- independent of `render`'s own HEAD/204/304 draining (which only helps
+-- for a `Context` that actually reaches `render` normally). The inner
+-- catch has `ctx1` directly in scope (ordinary closure capture, no
+-- mutable cell needed) - it drains `ctx1`'s body, then re-throws the
+-- same error so the outer `handleErrors` still does the actual
+-- fresh-context rendering, unchanged. This doesn't help a `Handler`
+-- that opens a resource and then throws *before* returning any
+-- `Context` at all (nothing here ever sees such a resource to track it)
+-- - that remains the handler's own responsibility, same as any other
+-- resource-safety concern inside one.
+--
 -- `always` then runs on whichever Context is now live (the successful one,
 -- or the freshly-rendered error one) - see `App`'s doc comment for why
 -- this exists. A failure inside an `always` hook itself is logged and
 -- swallowed rather than allowed to break the response entirely: these
 -- hooks are meant to be response-finalization steps, not another place a
--- request can fail.
+-- request can fail - and unlike the before/dispatch/after failure above,
+-- this path never discards `result`, so there's no equivalent leak risk
+-- here to guard against.
 --
 -- `bref` (a fresh `BodyReadState` cell, one per request) is created here
 -- and handed to every Context in the pipeline via `bodyRef` so `readBody`
@@ -447,7 +488,11 @@ runApp (MkApp router before after always onError) req = Prelude.do
       (Prelude.do
         ctx0 <- runChain before start
         ctx1 <- dispatch router ctx0
-        runChain after ctx1)
+        handleErrors
+          (\case
+            Here x         => drainResponseBody ctx1.respBody >> throw x
+            There (Here e) => drainResponseBody ctx1.respBody >> throw e)
+          (runChain after ctx1))
     final <- handleErrors
       (\case
         Here _         => do
