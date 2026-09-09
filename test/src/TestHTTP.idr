@@ -102,6 +102,34 @@ testHeadersRejectsTransferEncoding =
     Left InvalidRequest => True
     _                   => False
 
+-- RFC 9112 §5.1: whitespace between a header name and its colon must be
+-- rejected, not silently accepted - a lenient parser storing "content-
+-- length " (trailing space) under a different map key than "content-
+-- length" would let the real Content-Length header go unrecognized
+-- entirely (missed by both this exact duplicate check and
+-- contentLength's own lookup), exactly the kind of parser disagreement
+-- that enables request smuggling behind a stricter proxy.
+export
+testHeadersRejectsSpaceBeforeColon : Bool
+testHeadersRejectsSpaceBeforeColon =
+  case headers empty [fromString "Content-Length : 5"] of
+    Left InvalidRequest => True
+    _                   => False
+
+export
+testHeadersRejectsTabBeforeColon : Bool
+testHeadersRejectsTabBeforeColon =
+  case headers empty [fromString "Content-Length\t: 5"] of
+    Left InvalidRequest => True
+    _                   => False
+
+export
+testHeadersRejectsSpaceBeforeColonTransferEncoding : Bool
+testHeadersRejectsSpaceBeforeColonTransferEncoding =
+  case headers empty [fromString "Transfer-Encoding : chunked"] of
+    Left InvalidRequest => True
+    _                   => False
+
 -- contentLength / contentType
 
 export
@@ -293,6 +321,9 @@ runAllTests = do
   ("headersEmpty", testHeadersEmpty),
   ("headersRejectsDuplicateContentLength", testHeadersRejectsDuplicateContentLength),
   ("headersRejectsTransferEncoding", testHeadersRejectsTransferEncoding),
+  ("headersRejectsSpaceBeforeColon", testHeadersRejectsSpaceBeforeColon),
+  ("headersRejectsTabBeforeColon", testHeadersRejectsTabBeforeColon),
+  ("headersRejectsSpaceBeforeColonTransferEncoding", testHeadersRejectsSpaceBeforeColonTransferEncoding),
   ("contentLength", testContentLength),
   ("contentLengthMissing", testContentLengthMissing),
   ("contentLengthMalformed", testContentLengthMalformed),

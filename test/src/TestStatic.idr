@@ -7,6 +7,7 @@ import Flux.Core.Router
 import Data.IORef
 import Data.SortedMap
 import System
+import System.Directory
 
 %default covering
 
@@ -117,6 +118,34 @@ runHandler h ctx = do
       (foreach (\v => liftIO (writeIORef ref (Just v))) (eval (h ctx)))
   readIORef ref
 
+withHeadPath : String -> Context
+withHeadPath p =
+  { pathParams := MkParams (fromList [("path", p)]) }
+  (emptyContext ({ method := HEAD } dummyRequest))
+
+-- Fully renders a Context to wire bytes, discarding the output - drives
+-- render's own body-suppression/draining logic for real, the same way
+-- the real driver (respondWith) would, rather than just calling
+-- staticHandler and stopping at the resulting Context (which never
+-- actually runs - and so never actually cleans up - a Streamed body).
+renderAndDrain : Context -> IO ()
+renderAndDrain ctx =
+  runProg $
+    handleErrors
+      (\case
+        Here e         => liftIO (putStrLn "renderAndDrain: unexpected Errno: \{e}")
+        There (Here e) => liftIO (putStrLn "renderAndDrain: unexpected HTTPErr: \{e}"))
+      (ignore (foreach (\_ => pure ()) (render ctx)))
+
+-- Open file descriptor count for this process, via /proc/self/fd
+-- (Linux - matches CI; not available on Darwin, where this returns
+-- Nothing and the one test using it passes trivially, the same
+-- graceful-degradation precedent as Flux.Server.Health.memoryCheck).
+fdCount : IO (Maybe Nat)
+fdCount = do
+  Right entries <- listDir "/proc/self/fd" | Left _ => pure Nothing
+  pure (Just (length entries))
+
 export
 testRejectsSymlinkEscape : IO Bool
 testRejectsSymlinkEscape = do
@@ -160,6 +189,34 @@ testServesThroughSymlinkedDirInsideRoot = do
     | Nothing => pure False
   pure (ctx.statusCode /= 403 && ctx.statusCode /= 404)
 
+-- Regression test for a real fd leak: staticHandler opens a file
+-- descriptor and wraps it in a Streamed body whose cleanup only runs
+-- when that stream is actually pulled to completion (see render's own
+-- doc comment). A HEAD request's response never used to touch
+-- ctx.respBody at all - render's HEAD/204/304 suppression just emitted
+-- the header block and stopped - so the fd never got closed. Only
+-- checked where /proc/self/fd is available (see fdCount) - passes
+-- trivially elsewhere rather than claiming a result it can't verify.
+export
+testHeadRequestDoesNotLeakFd : IO Bool
+testHeadRequestDoesNotLeakFd = do
+  setupFixture
+  Nothing <- fdCount | Just _ => runCheck
+  pure True
+  where
+    oneRequest : IO ()
+    oneRequest = do
+      Just ctx <- runHandler (staticHandler fixtureRoot defaultMimeFor) (withHeadPath "inside.txt")
+        | Nothing => pure ()
+      renderAndDrain ctx
+    runCheck : IO Bool
+    runCheck = do
+      for_ [the Nat 1 .. 5] (const oneRequest)
+      Just before <- fdCount | Nothing => pure True
+      for_ [the Nat 1 .. 20] (const oneRequest)
+      Just after <- fdCount | Nothing => pure True
+      pure (after <= before)
+
 -- Run all static-serving tests
 export
 runAllTests : IO (List (String, Bool))
@@ -168,6 +225,7 @@ runAllTests = do
   nestedServed           <- testServesGenuinelyNestedFile
   indirectEscapeRejected <- testRejectsIndirectSymlinkEscape
   symlinkedDirServed     <- testServesThroughSymlinkedDirInsideRoot
+  headFdOk               <- testHeadRequestDoesNotLeakFd
   pure [
     ("extensionOfSimple", testExtensionOfSimple),
     ("extensionOfNested", testExtensionOfNested),
@@ -183,5 +241,6 @@ runAllTests = do
     ("rejectsSymlinkEscape", escapeRejected),
     ("servesGenuinelyNestedFile", nestedServed),
     ("rejectsIndirectSymlinkEscape", indirectEscapeRejected),
-    ("servesThroughSymlinkedDirInsideRoot", symlinkedDirServed)
+    ("servesThroughSymlinkedDirInsideRoot", symlinkedDirServed),
+    ("headRequestDoesNotLeakFd", headFdOk)
     ]

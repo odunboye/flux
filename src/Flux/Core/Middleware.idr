@@ -170,6 +170,16 @@ framingHeader (Streamed Nothing _)  = Just ("Transfer-Encoding", "chunked")
 ||| HEAD still carries the framing header(s) a GET would have (so a client
 ||| knows what a GET would look like) but no body bytes; 204/304 carry
 ||| neither, since there's definitionally no body to frame.
+|||
+||| A suppressed `Streamed` body is still `drain`ed (its bytes discarded,
+||| never emitted) rather than simply never touched: a `Streamed` body
+||| can carry a resource that needs releasing (e.g.
+||| `Flux.Middleware.Static.staticHandler`'s open file descriptor,
+||| registered via `resource`/`bracket` *inside* the stream itself) -
+||| that cleanup only runs when the stream is actually pulled to
+||| completion, so leaving it completely unevaluated on a HEAD/204/304
+||| response would leak whatever it holds. `Buffered` never needs this -
+||| it's a plain in-memory `ByteString`, nothing to release.
 export
 render : Context -> HTTPStream ByteString
 render ctx =
@@ -180,7 +190,9 @@ render ctx =
       hs        := base ++ toList framing
       head      := encodeResponse ctx.statusCode hs
    in if noBody
-        then emit head
+        then case ctx.respBody of
+               Buffered _      => emit head
+               Streamed _ body => emit head >> drain body
         else case ctx.respBody of
                Buffered body       => emit (fastConcat [head, body])
                Streamed (Just _) b => emit head >> b

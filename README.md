@@ -387,6 +387,16 @@ directory, not an attacker who can also race the filesystem underneath
 a live request. `defaultMimeFor` covers common web/text/image types,
 falling back to `application/octet-stream`.
 
+That reused `Fd` is only released when the `Streamed` response it's
+wrapped in actually runs to completion - `resource`/`bracket`'s cleanup
+fires as part of pulling the stream, not on construction. A response
+whose body gets suppressed (a HEAD request, or status 204/304 - see
+"Errors") used to never touch that stream at all, so the fd leaked on
+every one; `render` now drains a suppressed `Streamed` body (discarding
+its bytes, never sending them) specifically so this cleanup still runs.
+Confirmed via `lsof` against a real running server: 15 HEAD requests to
+the same file leaked 15 fds before this fix, 0 after.
+
 `root` is a relative path resolved against the *process's* working
 directory, not the source file's or executable's location - run the
 example server from anywhere other than `examples/` (e.g. the repo
@@ -574,22 +584,41 @@ line, oversized headers, oversized content-length) are handled entirely
 inside the driver (`Flux.Core.HTTP`) below the `App`/`Handler` layer —
 app code never sees them; a malformed request just gets a bare 400.
 
-That includes request-framing rejections RFC 9112 §6.3 requires, closing
-off a request-smuggling shape behind a proxy that disagrees with this
-parser about where a request ends: a repeated `Content-Length` header (a
-plain map-insert would silently keep the last one instead of rejecting
-the conflict), any `Transfer-Encoding` at all (chunked request bodies
-aren't decoded here - treating one as an ordinary, length-less request
-would parse it as empty and misinterpret the chunked-framed bytes that
-follow as the next pipelined request), and a `Content-Length` value
-that isn't a plain run of digits (previously cast silently to `0`
-instead of failing). Response framing is enforced the same way
-regardless of what a `Handler` does: a response to a HEAD request or
-with status 204/304 never carries a body (204/304 carry no framing
-header at all; HEAD still carries the one a GET would have, just no
-body bytes), and `render` always owns `Content-Length`/`Transfer-Encoding`
-itself - a `Handler` that sets one directly via `setHeader` doesn't
-produce a duplicate on the wire.
+That includes request-framing rejections RFC 9112 §5.1/§6.3 requires,
+closing off request-smuggling shapes behind a proxy that disagrees with
+this parser about where a request ends: whitespace between a header
+name and its colon (`Content-Length : 5`, `Content-Length\t: 5`) - a
+parser that doesn't reject this can end up storing the header under a
+different key than the canonical one (`"content-length "` with a
+trailing space, say), so the *real* Content-Length silently goes
+unrecognized by both this exact check and `contentLength`'s own lookup;
+a repeated `Content-Length` header (a plain map-insert would silently
+keep the last one instead of rejecting the conflict); any
+`Transfer-Encoding` at all (chunked request bodies aren't decoded here -
+treating one as an ordinary, length-less request would parse it as
+empty and misinterpret the chunked-framed bytes that follow as the next
+pipelined request); and a `Content-Length` value that isn't a plain run
+of digits (previously cast silently to `0` instead of failing).
+
+A declared `Content-Length` larger than what the client actually sends
+is also rejected (`TruncatedBody`), not silently accepted as a complete
+body once the connection runs dry - the underlying stream library's own
+`splitAt` can't tell "got exactly n bytes" apart from "the source had
+fewer than n and ran out" (both just return an already-finished
+continuation), so this parser can't rely on it alone; a small wrapper
+(`splitAtChecked`) checked lazily, in the same place, throws instead.
+
+Response framing is enforced the same way regardless of what a
+`Handler` does: a response to a HEAD request or with status 204/304
+never carries a body (204/304 carry no framing header at all; HEAD
+still carries the one a GET would have, just no body bytes), and
+`render` always owns `Content-Length`/`Transfer-Encoding` itself - a
+`Handler` that sets one directly via `setHeader` doesn't produce a
+duplicate on the wire. A suppressed `Streamed` body (HEAD/204/304) is
+still drained, not just left untouched - `Flux.Middleware.Static`'s
+open file descriptor is only released when its stream actually runs to
+completion (see "Static files"), so never running it at all on a
+suppressed response would leak it.
 
 ## Running the tests
 

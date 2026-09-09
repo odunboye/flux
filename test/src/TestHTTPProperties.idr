@@ -313,6 +313,28 @@ export covering
 testRequestRejectsOversizedContentLength : IO Bool
 testRequestRejectsOversizedContentLength = all id <$> traverse (const randomOversizedCaseOk) [the Nat 1 .. 20]
 
+-- A request declaring a larger Content-Length than the bytes actually
+-- sent must be rejected, not silently accepted as a complete body with
+-- whatever bytes happened to arrive - the same request-smuggling shape
+-- as the oversized case above, just the opposite direction: without
+-- this, a client could send fewer bytes than declared and have the
+-- shortfall go undetected, desyncing this parser from anything else
+-- (a proxy, say) that actually enforces the declared length.
+randomTruncatedCaseOk : IO Bool
+randomTruncatedCaseOk = do
+  m    <- sample genMethod
+  path <- sample genPath
+  v    <- sample genVersion
+  let raw = buildRawRequest m path [] v [("content-length", "999")] "short"
+  mresult <- runRequestParse 1_000_000 raw
+  pure $ case mresult of
+    Nothing => True
+    Just _  => False
+
+export covering
+testRequestRejectsTruncatedBody : IO Bool
+testRequestRejectsTruncatedBody = all id <$> traverse (const randomTruncatedCaseOk) [the Nat 1 .. 20]
+
 --------------------------------------------------------------------------------
 -- Run all property tests
 --------------------------------------------------------------------------------
@@ -329,6 +351,7 @@ runAllTests = do
   parseQueryOk    <- check propParseQueryRoundTrip
   requestOk       <- testRequestRoundTrip
   oversizedOk     <- testRequestRejectsOversizedContentLength
+  truncatedOk     <- testRequestRejectsTruncatedBody
   pure
     [ ("methodRoundTrip", methodOk)
     , ("versionRoundTrip", versionOk)
@@ -339,4 +362,5 @@ runAllTests = do
     , ("parseQueryRoundTrip", parseQueryOk)
     , ("requestRoundTrip", requestOk)
     , ("requestRejectsOversizedContentLength", oversizedOk)
+    , ("requestRejectsTruncatedBody", truncatedOk)
     ]

@@ -153,6 +153,7 @@ data HTTPErr : Type where
   HeaderSizeExceeded  : HTTPErr
   ContentSizeExceeded : HTTPErr
   InvalidRequest      : HTTPErr
+  TruncatedBody       : HTTPErr
 
 %runElab derive "HTTPErr" [Show,Eq,Ord]
 
@@ -161,6 +162,7 @@ Interpolation HTTPErr where
   interpolate HeaderSizeExceeded  = "header size exceeded"
   interpolate ContentSizeExceeded = "content size exceeded"
   interpolate InvalidRequest      = "invalid HTTP request"
+  interpolate TruncatedBody       = "truncated request body"
 
 public export
 0 HTTPPull : Type -> Type -> Type
@@ -293,27 +295,37 @@ startLine bs =
     _       => Left InvalidRequest
 
 ||| Parses one request's headers, folding them into a `Headers` map -
-||| except for two cases rejected outright rather than silently resolved,
-||| both real request-smuggling shapes behind a proxy that disagrees with
-||| this parser about where a request ends (RFC 9112 §6.3): a repeated
-||| `Content-Length` (a plain `SortedMap.insert` would just keep the last
-||| one, silently accepting conflicting framing) and any `Transfer-Encoding`
-||| at all (chunked request bodies aren't decoded by this parser - treating
-||| one as an ordinary, Content-Length-less request would parse it as an
-||| empty body and misinterpret the chunked-framed bytes that follow as the
-||| start of the next pipelined request).
+||| except for three cases rejected outright rather than silently
+||| resolved, all real request-smuggling shapes behind a proxy that
+||| disagrees with this parser about where a request ends (RFC 9112
+||| §5.1/§6.3): whitespace between the header name and its colon (a
+||| lenient parser would let `Content-Length : 5` and `Content-Length: 5`
+||| disagree with each other about whether they're "the same" header -
+||| this parser's own map-key lookups would previously treat them as
+||| different keys entirely, silently losing the *real* Content-Length
+||| to a mangled key `contentLength`/the duplicate check below never
+||| finds), a repeated `Content-Length` (a plain `SortedMap.insert` would
+||| just keep the last one, silently accepting conflicting framing), and
+||| any `Transfer-Encoding` at all (chunked request bodies aren't decoded
+||| by this parser - treating one as an ordinary, Content-Length-less
+||| request would parse it as an empty body and misinterpret the
+||| chunked-framed bytes that follow as the start of the next pipelined
+||| request).
 export
 headers : Headers -> List ByteString -> Either HTTPErr Headers
 headers hs []     = Right hs
 headers hs (h::t) =
   case break (COLON ==) h of
     (xs,BS (S k) bv) =>
-     let name := toLower (toString xs)
-         val  := toString (trim $ tail bv)
-      in case (name, lookup name hs) of
-           ("transfer-encoding", _)   => Left InvalidRequest
-           ("content-length", Just _) => Left InvalidRequest
-           _                          => headers (insert name val hs) t
+     if any isSpace (unpack (toString xs))
+       then Left InvalidRequest
+       else
+         let name := toLower (toString xs)
+             val  := toString (trim $ tail bv)
+          in case (name, lookup name hs) of
+               ("transfer-encoding", _)   => Left InvalidRequest
+               ("content-length", Just _) => Left InvalidRequest
+               _                          => headers (insert name val hs) t
     _                => Left InvalidRequest
 
 ||| The declared body length, `Right 0` if there's no `Content-Length`
@@ -399,6 +411,31 @@ parseQuery qs  = foldl insertPair empty (forget (split (== '&') qs))
         Just (_, val) => insert (percentDecode k) (percentDecode val) acc
         Nothing       => insert (percentDecode k) "" acc
 
+||| Like `C.splitAt`, but treats the underlying pull ending with fewer
+||| than `n` elements as a failure (`err`) rather than silently returning
+||| whatever was available as if it were the whole thing. `C.splitAt`
+||| itself can't distinguish "got exactly n" from "the source had fewer
+||| than n and ran out" - both just return an immediately-exhausted
+||| continuation - so a client declaring a Content-Length larger than
+||| what it actually sends would otherwise have that shortfall silently
+||| accepted as a complete, valid body (the request looking done, and
+||| whatever the client sends *next* on the same connection - the start
+||| of its next request, say - getting misread as more of this one, or
+||| vice versa: the same request-smuggling shape as the framing checks
+||| in `headers` above). Checked lazily, exactly where `C.splitAt`
+||| itself is - the first time something actually pulls far enough into
+||| the body to reach the shortfall, not eagerly at parse time (keeping
+||| `assemble` itself non-buffering, per `HTTPBody`'s docs).
+export
+splitAtChecked : Chunk c o => Has e es => Lazy e -> Nat -> Pull f c es r -> Pull f c es (Pull f c es r)
+splitAtChecked err 0 p = pure p
+splitAtChecked err k p =
+  assert_total $ FS.Core.uncons p >>= \case
+    Left _       => throw err
+    Right (vs,q) => case splitChunkAt k vs of
+      Middle pre post => cons pre (pure $ cons post q)
+      All n            => cons vs (splitAtChecked err n q)
+
 ||| Parses one request from the front of `p`. `body` (see `HTTPBody`)
 ||| emits up to Content-Length bytes and then results in whatever comes
 ||| after - draining it (the driver's job, exactly once - see `HTTPBody`'s
@@ -424,7 +461,7 @@ assemble maxBodySize p = Prelude.do
       (path,qs) := splitQuery tgt
       qmap := parseQuery qs
   when (cl > maxBodySize) (throw ContentSizeExceeded)
-  pure $ Just (R met path qmap vrs hs cl ct $ C.splitAt cl body)
+  pure $ Just (R met path qmap vrs hs cl ct $ splitAtChecked TruncatedBody cl body)
 
 export
 request : (maxBodySize : Nat) -> HTTPStream ByteString -> HTTPPull o (Maybe Request)
