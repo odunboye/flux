@@ -344,9 +344,21 @@ router`). Guards against path traversal two ways: lexically (rejects
 `..` segments and a leading `/` in the resolved relative path — tested,
 `test/src/TestStatic.idr`) and against a symlink *inside* `root`
 pointing back outside it (both `root` and the resolved request path are
-canonicalized — following any symlinks found, with proper `..`/`.`
-handling in a relative symlink target — before a containment check;
-rejected with 403). There's exactly one `openFile` call: the same `Fd`
+canonicalized before a containment check; rejected with 403). Resolution
+is namei()-style: a single worklist of pending path segments, checking
+whether the accumulated path is a symlink after *every* segment push -
+whether that segment came from the original path or was just spliced in
+from a symlink target a moment ago - following any chain it finds
+(bounded to 40 symlink dereferences, matching Linux's own `MAXSYMLINKS`)
+with proper `..`/`.` handling relative to the link's own directory. This
+one-segment-at-a-time discipline matters: an earlier version of this
+check bulk-substituted a discovered symlink's whole target before a
+single check of the result, which missed an *intermediate* symlink
+introduced by a multi-segment target (e.g. `a -> b/c` where `b` is
+itself a symlink pointing outside `root`) - a real, confirmed bypass,
+fixed by unifying both cases into the one worklist; see
+`test/src/TestStatic.idr`'s `testRejectsIndirectSymlinkEscape` for the
+regression test. There's exactly one `openFile` call: the same `Fd`
 used to confirm the file exists (so a missing file still gets a clean
 404 instead of failing mid-stream, past the point a status code can
 still be chosen) is reused directly for the actual stream, rather than

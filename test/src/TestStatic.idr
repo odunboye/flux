@@ -75,13 +75,28 @@ fixtureRoot = "/tmp/flux-static-test/root"
 
 -- root/escape.txt -> ../outside.txt (a real symlink pointing outside
 -- root); root/inside.txt is a genuinely nested, ordinary file.
+--
+-- root/jump -> /tmp/flux-static-test (absolute symlink outside root);
+-- root/indirect.txt -> jump/outside.txt (relative, two-segment target
+-- whose *first* segment, "jump", is itself a symlink pointing outside
+-- root) - the shape that bypassed an earlier version of this
+-- containment check: a bulk substitute-then-check-once walk never gave
+-- "jump" its own check.
+--
+-- root/alias -> subdir (a symlink to a directory fully *inside* root) -
+-- a legitimate case the per-segment checking must not over-reject.
 setupFixture : IO ()
 setupFixture = do
   _ <- system "rm -rf /tmp/flux-static-test"
   _ <- system "mkdir -p \{fixtureRoot}"
   _ <- system "echo secret > /tmp/flux-static-test/outside.txt"
   _ <- system "ln -s ../outside.txt \{fixtureRoot}/escape.txt"
+  _ <- system "ln -s /tmp/flux-static-test \{fixtureRoot}/jump"
+  _ <- system "ln -s jump/outside.txt \{fixtureRoot}/indirect.txt"
   _ <- system "echo hello > \{fixtureRoot}/inside.txt"
+  _ <- system "mkdir -p \{fixtureRoot}/subdir"
+  _ <- system "echo aliased > \{fixtureRoot}/subdir/file.txt"
+  _ <- system "ln -s subdir \{fixtureRoot}/alias"
   pure ()
 
 dummyRequest : Request
@@ -118,12 +133,41 @@ testServesGenuinelyNestedFile = do
     | Nothing => pure False
   pure (ctx.statusCode /= 403 && ctx.statusCode /= 404)
 
+-- Regression test for a real bypass found in an earlier version of the
+-- containment check: a symlink whose target is itself a multi-segment
+-- path with an intermediate symlink component (see setupFixture) was
+-- never individually checked, because the old code substituted a
+-- discovered target's segments in bulk and checked the result only
+-- once. The fix unifies request-path and symlink-target segments into
+-- one worklist, checking after every single push.
+export
+testRejectsIndirectSymlinkEscape : IO Bool
+testRejectsIndirectSymlinkEscape = do
+  setupFixture
+  Just ctx <- runHandler (staticHandler fixtureRoot defaultMimeFor) (withPath "indirect.txt")
+    | Nothing => pure False
+  pure (ctx.statusCode == 403)
+
+-- Positive case: a symlinked *directory* fully inside root, accessed
+-- via a multi-segment path through it, must still serve normally - the
+-- new per-segment checking must not over-reject a legitimate symlink
+-- that never leaves root.
+export
+testServesThroughSymlinkedDirInsideRoot : IO Bool
+testServesThroughSymlinkedDirInsideRoot = do
+  setupFixture
+  Just ctx <- runHandler (staticHandler fixtureRoot defaultMimeFor) (withPath "alias/file.txt")
+    | Nothing => pure False
+  pure (ctx.statusCode /= 403 && ctx.statusCode /= 404)
+
 -- Run all static-serving tests
 export
 runAllTests : IO (List (String, Bool))
 runAllTests = do
-  escapeRejected <- testRejectsSymlinkEscape
-  nestedServed   <- testServesGenuinelyNestedFile
+  escapeRejected         <- testRejectsSymlinkEscape
+  nestedServed           <- testServesGenuinelyNestedFile
+  indirectEscapeRejected <- testRejectsIndirectSymlinkEscape
+  symlinkedDirServed     <- testServesThroughSymlinkedDirInsideRoot
   pure [
     ("extensionOfSimple", testExtensionOfSimple),
     ("extensionOfNested", testExtensionOfNested),
@@ -137,5 +181,7 @@ runAllTests = do
     ("allowsDotInFilename", testAllowsDotInFilename),
     ("allowsSingleDotSegment", testAllowsSingleDotSegment),
     ("rejectsSymlinkEscape", escapeRejected),
-    ("servesGenuinelyNestedFile", nestedServed)
+    ("servesGenuinelyNestedFile", nestedServed),
+    ("rejectsIndirectSymlinkEscape", indirectEscapeRejected),
+    ("servesThroughSymlinkedDirInsideRoot", symlinkedDirServed)
     ]

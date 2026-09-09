@@ -96,9 +96,6 @@ pushSegment stack ".." = case stack of
   (_ :: rest) => rest
 pushSegment stack s = stack ++ [s]
 
-pushAll : List String -> List String -> List String
-pushAll = foldl pushSegment
-
 -- Everything but the last segment - the directory containing whatever
 -- that last segment names, used to resolve a *relative* symlink target
 -- against the link's own location rather than the caller's.
@@ -107,49 +104,70 @@ dropLastSegment stack = case reverse stack of
   []        => []
   (_ :: rs) => reverse rs
 
-||| How many symlink indirections `resolveLinks` follows before giving up
-||| and treating the result as final - defends a symlink cycle from
-||| becoming an infinite loop. Matches Linux's own kernel-enforced
-||| MAXSYMLINKS.
+||| How many symlink *follows* `resolveWorklist` allows in a single walk
+||| before giving up and failing closed - defends a symlink cycle (or a
+||| deliberately pathological legitimate chain, which looks identical
+||| from here) from becoming an infinite loop. Counts only actual
+||| symlink dereferences, matching Linux's own kernel-enforced
+||| MAXSYMLINKS - *not* every path segment consumed, so a legitimately
+||| deep request path with no symlinks in it at all is never spuriously
+||| rejected by this budget.
 maxSymlinkDepth : Nat
 maxSymlinkDepth = 40
 
--- Follows any symlink chain rooted at `state` - bounded by `budget` -
--- until the result is symlink-free, properly collapsing any ".."/"." a
--- relative symlink target contains (relative to the *link's own*
--- directory, not the caller's - see `dropLastSegment`).
+-- Resolves `segments` onto `state` one segment at a time, checking the
+-- *resulting accumulated path* for being a symlink after every single
+-- push - whether that segment came from the caller's own path or was
+-- just spliced in from a symlink target discovered a moment ago. This
+-- is namei()-style resolution: a single worklist, rather than two loops
+-- of different granularity (one over the caller's own segments, one
+-- that bulk-substituted a discovered symlink's *whole* target before a
+-- single check of the result) - the two-loop shape is what let an
+-- intermediate segment introduced by a multi-segment symlink target
+-- (e.g. "jump/secret.txt", where "jump" is itself a symlink pointing
+-- outside `root`) go unchecked and unresolved in an earlier version of
+-- this function.
 --
--- `readlink` failing (the overwhelmingly common case: this isn't a
--- symlink) is treated the same as anything else that goes wrong reading
--- it - the path is kept as-is. This only exists to compute the true
--- destination for `staticHandler`'s containment check; a path that
--- doesn't actually exist is caught later, when the real `openFile` for
--- it fails.
-resolveLinks : Nat -> PathState -> AppProg PathState
-resolveLinks Z     state = pure state
-resolveLinks (S k) state@(isAbs, stack) = do
-  elink <- attempt (the (AppProg ByteString) (readlink (renderPath state)))
+-- A relative target is resolved against the *link's own* directory
+-- (`dropLastSegment stack'`, not the caller's), matching `readlink`
+-- semantics; an absolute target discards everything resolved so far and
+-- restarts from "/", matching how the OS treats one. Either way the
+-- target's own segments are pushed onto the *front* of the remaining
+-- queue, one at a time - not folded in bulk - so any symlink or ".." the
+-- target itself contains gets exactly the same per-segment check as
+-- everything else.
+--
+-- `Nothing` means the walk exceeded `maxSymlinkDepth` symlink follows -
+-- a real cycle, or a chain too long to distinguish from one - or hit an
+-- empty symlink target (`openFile` would never succeed on one anyway,
+-- so fail closed rather than guess what it should mean). The caller
+-- must treat this as failure and stop, not continue with a partial
+-- result: continuing with incomplete resolution could itself mask an
+-- escape.
+resolveWorklist : (linksLeft : Nat) -> PathState -> List String -> AppProg (Maybe PathState)
+resolveWorklist _         state []              = pure (Just state)
+resolveWorklist linksLeft (isAbs, stack) (s :: rest) = do
+  let stack' = pushSegment stack s
+  elink <- attempt (the (AppProg ByteString) (readlink (renderPath (isAbs, stack'))))
   case elink of
-    Left _      => pure state
-    Right bytes =>
-      let target := toString bytes
-       in if isAbsolutePath target
-            then resolveLinks k (True, pushAll [] (rawSegments target))
-            else resolveLinks k (isAbs, pushAll (dropLastSegment stack) (rawSegments target))
+    Left _      => resolveWorklist linksLeft (isAbs, stack') rest
+    Right bytes => case linksLeft of
+      Z   => pure Nothing
+      S k => case toString bytes of
+        "" => pure Nothing
+        target =>
+          if isAbsolutePath target
+            then resolveWorklist k (True, []) (rawSegments target ++ rest)
+            else resolveWorklist k (isAbs, dropLastSegment stack') (rawSegments target ++ rest)
 
--- Appends every segment of `path` onto `start` in turn, following any
--- symlink chain after each one (see `resolveLinks`), building up the
--- fully symlink-resolved form.
-canonicalizeFrom : PathState -> String -> AppProg PathState
-canonicalizeFrom start path = go start (rawSegments path)
-  where
-    go : PathState -> List String -> AppProg PathState
-    go state []        = pure state
-    go (isAbs, stack) (s :: ss) = do
-      state' <- resolveLinks maxSymlinkDepth (isAbs, pushSegment stack s)
-      go state' ss
+-- Canonicalizes `path` starting from `start`, following every symlink
+-- chain (transitively) it introduces along the way - see
+-- `resolveWorklist`. `Nothing` means the chain was too deep/cyclic to
+-- resolve; the caller must fail closed.
+canonicalizeFrom : PathState -> String -> AppProg (Maybe PathState)
+canonicalizeFrom start path = resolveWorklist maxSymlinkDepth start (rawSegments path)
 
-canonicalize : String -> AppProg PathState
+canonicalize : String -> AppProg (Maybe PathState)
 canonicalize path = canonicalizeFrom (isAbsolutePath path, []) path
 
 isPrefixOfSegments : List String -> List String -> Bool
@@ -196,21 +214,34 @@ staticHandler root mimeFor ctx =
       if not (isSafeRelativePath reqPath)
         then pure (setStatus 403 (sendText "Forbidden" ctx))
         else do
-          canonicalRoot <- canonicalize root
-          resolved      <- canonicalizeFrom canonicalRoot reqPath
-          if not (underRoot canonicalRoot resolved)
-            then pure (setStatus 403 (sendText "Forbidden" ctx))
-            else do
-              let filePath := root ++ "/" ++ reqPath
-              -- Check existence upfront so a missing file renders a
-              -- clean 404 rather than letting the streaming read fail
-              -- later, past the point a status code can still be
-              -- chosen - and reuse this exact Fd for the stream below
-              -- instead of reopening by path (see this handler's doc).
-              opened <- attempt (the (AppProg Fd) (openFile filePath O_RDONLY 0))
-              case opened of
-                Left _   => pure (setStatus 404 (sendText "Not Found" ctx))
-                Right fd => do
-                  let mime := mimeFor (extensionOf reqPath)
-                  pure $ setHeader "Content-Type" mime $
-                    sendStream Nothing (resource (pure fd) (\f => bytes f 0xffff)) ctx
+          -- root is operator-controlled, not attacker input - if it
+          -- can't be resolved (a pathologically deep or literally
+          -- cyclic root symlink) that's a deployment fault, not this
+          -- particular request looking like an attack, so it's a 500
+          -- via the framework's own error channel, not folded into the
+          -- 403 path below.
+          mRoot <- canonicalize root
+          case mRoot of
+            Nothing => throw (MkAppError 500 "Internal Server Error")
+            Just canonicalRoot => do
+              mResolved <- canonicalizeFrom canonicalRoot reqPath
+              case mResolved of
+                Nothing => pure (setStatus 403 (sendText "Forbidden" ctx))
+                Just resolved =>
+                  if not (underRoot canonicalRoot resolved)
+                    then pure (setStatus 403 (sendText "Forbidden" ctx))
+                    else do
+                      let filePath := root ++ "/" ++ reqPath
+                      -- Check existence upfront so a missing file
+                      -- renders a clean 404 rather than letting the
+                      -- streaming read fail later, past the point a
+                      -- status code can still be chosen - and reuse
+                      -- this exact Fd for the stream below instead of
+                      -- reopening by path (see this handler's doc).
+                      opened <- attempt (the (AppProg Fd) (openFile filePath O_RDONLY 0))
+                      case opened of
+                        Left _   => pure (setStatus 404 (sendText "Not Found" ctx))
+                        Right fd => do
+                          let mime := mimeFor (extensionOf reqPath)
+                          pure $ setHeader "Content-Type" mime $
+                            sendStream Nothing (resource (pure fd) (\f => bytes f 0xffff)) ctx
