@@ -490,14 +490,21 @@ thread-count/fiber-pinning issue above - it happens even at
 
 **Effect.** Left alone, leaked fds/sockets accumulate under sustained
 load without bound - a real resource-exhaustion risk for a long-lived
-process. It's also why the round-robin scheduling fix mentioned above
-had to be reverted: that fix (plus a self-pipe change it depended on)
-made this pre-existing leak reproduce far more often, blocking the
-throughput-cliff fix from shipping until this is understood.
+process. An earlier round-robin scheduling attempt (round-robin
+dispatch plus a self-pipe poller-wakeup change together) was reverted
+for making this reproduce far more often - but a *later* attempt,
+testing round-robin dispatch alone (no self-pipe), found via controlled
+A/B testing that it does *not* measurably change this leak's rate at
+all (statistically indistinguishable stuck-connection counts with or
+without it, across repeated trials). What blocks that later attempt
+from shipping is a different, separate bug found the same way - see
+"Concurrency: async worker threads" and the `idris2-async` fork's
+`roundrobin-only-test` branch / `INVESTIGATION_NOTES.md` for where to
+resume that work.
 
-**Mitigation (shipped).** `serveWith` wraps every connection in
-`idleTimeout` (`Flux.Core.HTTP`), a watchdog fiber that cancels a
-connection if a shared "activity" counter hasn't moved in
+**Mitigation (shipped), two layers.** `serveWith` wraps every
+connection in `idleTimeout` (`Flux.Core.HTTP`), a watchdog fiber that
+cancels a connection if a shared "activity" counter hasn't moved in
 `idleConnectionTimeout` (default 60s). Bounded testing (back-to-back
 `wrk` runs against one long-lived process) confirms this works: leaked
 fds/`CLOSE_WAIT` sockets accumulate under load but get reaped within
@@ -506,8 +513,18 @@ rather than growing without bound. Set it lower if you need a tighter
 bound and can accept more false positives against genuinely slow (but
 not stuck) clients - via `ServerConfig.timeout` through
 `runServerFromConfig` (see "Config" above), or the hardcoded
-`idleConnectionTimeout` constant for `runServer`/`runServerArgs`. This
-is a mitigation, not a fix - the underlying race is still there.
+`idleConnectionTimeout` constant for `runServer`/`runServerArgs`.
+
+Separately, `Flux.Core.HTTP.serveConnections` (see "Graceful shutdown")
+bounds how long a *shutdown* specifically waits on a connection stuck
+exactly this way: confirmed by direct reproduction (not assumed) that
+`idleTimeout` alone doesn't help here - a connection can still be well
+inside its 60s idle window when `SIGTERM` arrives, and the old
+`foreachPar`-based drain would then wait for it with no bound of its
+own, requiring `SIGKILL`. `drainTimeout` (30s) caps that wait instead.
+
+Both are mitigations, not fixes - the underlying poller race is still
+there.
 
 **Root-cause investigation, so far (not fixed - findings only):**
 
@@ -827,8 +844,12 @@ whether this is production-ready for their use case:
   its own - see "Concurrency: async worker threads". Stay at the
   default (1) unless you've benchmarked your own workload past it.
 - **A rare, not-root-caused connection-leak race** in the same upstream
-  scheduler. Mitigated (bounded to roughly one idle-timeout window, not
-  eliminated) via `idleTimeout`, not fixed.
+  scheduler. Mitigated in two layers - bounded to roughly one
+  idle-timeout window via `idleTimeout`, and shutdown specifically
+  additionally bounded via `serveConnections`'s `drainTimeout` so a
+  connection stuck this way can't block `SIGTERM` past 30s - not
+  eliminated either way; see "The rare connection-leak race and its
+  mitigation".
 - **Memory growth under sustained load**, independent of the above leak
   (reproduced with zero leaked connections) - real (both RSS and Chez's
   own live-heap size grow, not just an allocator artifact), but
