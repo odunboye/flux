@@ -433,33 +433,49 @@ exist, so every static request 404s. See "Install / build" above.
 
 ## Concurrency: async worker threads
 
-The server accepts connections via `foreachPar`, one fiber per
-connection, driven by `async-posix`'s POSIX `poll()`-based scheduler.
-`Flux.Core.HTTP.defaultAsyncThreads` reads `IDRIS2_ASYNC_THREADS` and
-defaults to **2** threads if it isn't set. That default reflects real,
-repeatedly-verified benchmarking (`wrk`, this project's example server,
-100 concurrent connections, server process fully restarted between
-trials to rule out measurement artifacts): 2 threads is reliably ~2x
-faster than 1 (~21k req/s vs ~44k). Going *past* 2 collapses throughput
-catastrophically — 4 threads measured ~1.5k req/s, 8 threads ~0.9k, each
-additional thread beyond 2 making things worse, not better.
+The server accepts connections via `Flux.Core.HTTP.serveConnections`
+(in place of `FS.Concurrent.foreachPar` — see "Graceful shutdown"),
+one fiber per connection, driven by `async-posix`'s POSIX
+`poll()`-based scheduler. `Flux.Core.HTTP.defaultAsyncThreads` reads
+`IDRIS2_ASYNC_THREADS` and defaults to **1** thread if it isn't set.
+That default reflects real, repeatedly-verified benchmarking (`wrk`,
+this project's example server, 100 concurrent connections, server
+process fully restarted between trials to rule out measurement
+artifacts): across many separate trial runs, 1 thread consistently
+measured the fastest option (~40k req/s), never once reliably beaten by
+2 threads (~2k-9k req/s across different trials — always collapsed
+relative to 1, though by a varying amount) or 4 threads (~660-900
+req/s in most trials). Going past 1 thread doesn't reliably help and
+regularly collapses throughput; it never reliably wins.
 
 That cliff is a real, unfixed bug in `idris2-async`'s scheduler: every
 fiber forked from the accept loop is pinned to whichever worker happens
-to be running the accept loop at the time, so beyond a couple of workers
-most sit permanently idle while one or two do all the work, and the
+to be running the accept loop at the time, so beyond a single worker
+most sit permanently idle while one does all the work, and the
 resulting contention/queueing overhead outweighs any parallelism gained.
 A fix (round-robin fiber scheduling instead of pinning, in a fork of
-`idris2-async`) was built and benchmarked, and reverted — it was found to
-dramatically worsen a separate, rare (~5% of idle-connection gaps in
-testing), not-fully-root-caused connection-leak race already present
-upstream in the same scheduler. Until that's fixed safely, stay at the
-default of 2 threads; only raise it if your own workload doesn't hit this
-cliff (confirm with your own benchmark, restarting the server between
-trials the same way — an earlier round of this project's own testing
-initially reported a *worse* number for 2 threads specifically, which
-turned out to be a benchmarking-harness bug: an orphaned server process
-from a prior trial kept answering requests on the same port across a
+`idris2-async`) was built, and its throughput improvement independently
+confirmed (2 threads reaching ~7k-20k req/s, no longer collapsing worse
+than 1 as thread count rises) — but not shipped: it surfaced a real,
+separate, not-yet-root-caused bug of its own, an intermittent
+cancelation stall under sustained high-concurrency load that can
+itself block graceful shutdown past its own bounded drain (see
+"Graceful shutdown"). An earlier, different round-robin attempt had
+also been reverted for dramatically worsening a rare connection-leak
+race in the same scheduler (see the next section) - that specific
+concern was checked directly against this later attempt and ruled out
+(the leak/stuck-connection rate was statistically indistinguishable
+with or without round-robin, confirmed via controlled A/B testing), but
+the cancelation-stall finding is a different, still-open problem
+blocking it regardless. See the `idris2-async` fork's
+`roundrobin-only-test` branch and its `INVESTIGATION_NOTES.md` for the
+full history. Until that's fixed and shipped, stay at the default of 1
+thread; only raise it if your own workload doesn't hit this cliff
+(confirm with your own benchmark, restarting the server between trials
+the same way — an earlier round of this project's own testing initially
+reported a *worse* number for 2 threads specifically, which turned out
+to be a benchmarking-harness bug: an orphaned server process from a
+prior trial kept answering requests on the same port across a
 supposedly clean restart).
 
 ### The rare connection-leak race and its mitigation
@@ -804,10 +820,12 @@ whether this is production-ready for their use case:
 - **`parseIPv4` only accepts a literal dotted-quad** ("127.0.0.1",
   "0.0.0.0") - no hostnames, no DNS resolution, no IPv6. `ServerConfig.host`
   set to anything else falls back to `127.0.0.1` with a stderr warning.
-- **A throughput cliff beyond 2 async worker threads**, caused by an
+- **A throughput cliff beyond 1 async worker thread**, caused by an
   unfixed fiber-pinning bug in the underlying `idris2-async` scheduler.
-  Stay at the default (2) unless you've benchmarked your own workload
-  past it.
+  A fix exists and its throughput improvement is confirmed, but it's
+  blocked on a separate, not-yet-root-caused cancelation-stall bug of
+  its own - see "Concurrency: async worker threads". Stay at the
+  default (1) unless you've benchmarked your own workload past it.
 - **A rare, not-root-caused connection-leak race** in the same upstream
   scheduler. Mitigated (bounded to roughly one idle-timeout window, not
   eliminated) via `idleTimeout`, not fixed.
