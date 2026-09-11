@@ -69,7 +69,9 @@ main = do
   fresh Add
   freshModel <- readIORef managedModel
   assert "current generation callback dispatches" (freshModel == 1)
-  execCmdManaged QuitApp (dispatchManaged app managedModel control) control
+  dispatchManaged app managedModel control Stop
+  managedDidQuit <- readIORef managedQuit
+  assert "managed update can quit" managedDidQuit
   finalCancelCount <- readIORef cancelled
   assert "shutdown cancels active effects" (finalCancelCount == 2)
 
