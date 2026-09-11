@@ -70,12 +70,39 @@ record ScrollEvent where
 -- ─── Window ────────────────────────────────────────────────────────────────
 
 public export
+data Orientation = Portrait | Landscape
+
+public export
 data WindowEvent
   = WindowResized Size
   | WindowFocusGained
   | WindowFocusLost
   | WindowCloseRequested
   | WindowFullscreenChanged Bool
+  | WindowOrientationChanged Orientation
+
+-- ─── Application lifecycle / text composition ──────────────────────────────
+
+public export
+data LifecycleEvent
+  = PageVisible
+  | PageHidden
+  | AppPaused
+  | AppResumed
+  | BackRequested
+
+public export
+data CompositionAction
+  = CompositionStart
+  | CompositionUpdate
+  | CompositionEnd
+  | CompositionCancel
+
+public export
+record CompositionEvent where
+  constructor MkCompositionEvent
+  action : CompositionAction
+  text   : String
 
 -- ─── Unified event ─────────────────────────────────────────────────────────
 
@@ -85,6 +112,8 @@ data Event
   | PointerEvt      PointerEvent
   | ScrollEvt       ScrollEvent
   | WindowEvt       WindowEvent
-  | TextInput       String       -- IME / composition text
+  | LifecycleEvt    LifecycleEvent
+  | CompositionEvt  CompositionEvent
+  | TextInput       String       -- committed text input
   | Tick            Double       -- timestamp in milliseconds
   | Custom          String       -- escape hatch for platform-specific events
