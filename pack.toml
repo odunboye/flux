@@ -1,0 +1,50 @@
+[custom.all.todo-api]
+type = "local"
+path = "."
+ipkg = "todo-api.ipkg"
+test = "test/test.ipkg"
+
+[custom.all.todo-api-test]
+type = "local"
+path = "test"
+ipkg = "test.ipkg"
+
+[custom.all.todo-api-inmemory-test]
+type = "local"
+path = "test"
+ipkg = "inmemory-test.ipkg"
+
+[custom.all.flux]
+type = "local"
+path = "/Users/odunadeboye/dev/idris2/projects/flux"
+ipkg = "flux.ipkg"
+
+[custom.all.idris2-pg]
+type = "local"
+path = "/Users/odunadeboye/dev/idris2/libs/idris2-pg"
+ipkg = "idris2-pg.ipkg"
+
+[custom.all.idris2-docker]
+type = "local"
+path = "/Users/odunadeboye/dev/idris2/libs/idris2-docker"
+ipkg = "idris2-docker.ipkg"
+
+[custom.all.nebula]
+type = "local"
+path = "/Users/odunadeboye/dev/idris2/libs/nebula"
+ipkg = "nebula.ipkg"
+
+[custom.all.nebula-flux]
+type = "local"
+path = "/Users/odunadeboye/dev/idris2/libs/nebula-flux"
+ipkg = "nebula-flux.ipkg"
+
+[custom.all.flux-async]
+type = "local"
+path = "../../libs/idris2-flux-async"
+ipkg = "flux-async.ipkg"
+
+[custom.all.idris2-pg-async]
+type = "local"
+path = "../../libs/idris2-pg/async"
+ipkg = "idris2-pg-async.ipkg"

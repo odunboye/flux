@@ -1,0 +1,16 @@
+package todo-api-inmemory-test
+version = 0.1.0
+authors = "Odun Adeboye"
+brief   = "In-memory-TodoRepository handler tests for todo-api - no Postgres required"
+
+depends = todo-api
+
+modules = TestHarness
+        , RepositoryBehavior
+        , InMemoryRepository
+        , InMemoryMain
+
+main = InMemoryMain
+
+executable = "todo-api-inmemory-test"
+sourcedir = "src"

@@ -1,0 +1,25 @@
+package todo-api
+version = 0.1.0
+authors = "Odun Adeboye"
+brief   = "A small Todo CRUD API built on Flux and idris2-pg"
+
+depends = flux
+        , idris2-pg
+        , idris2-docker
+        , nebula
+        , nebula-flux
+        , json-simple
+
+modules = Models
+        , TodoRepository
+        , Handlers.ActiveRecord
+        , Handlers.TypedQuery
+        , TodoApi
+        , DevPostgres
+        , Config
+        , Main
+
+main = Main
+
+executable = "todo-api"
+sourcedir = "src"
