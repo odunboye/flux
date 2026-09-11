@@ -152,6 +152,21 @@ lookupNat : Nat -> List (Nat, a) -> Maybe a
 lookupNat _ []               = Nothing
 lookupNat k ((i, v) :: rest) = if k == i then Just v else lookupNat k rest
 
+applyLifecycle : RuntimeControl -> Event -> IO ()
+applyLifecycle control (LifecycleEvt PageHidden) = suspendRuntime control
+applyLifecycle control (LifecycleEvt AppPaused) = suspendRuntime control
+applyLifecycle control (LifecycleEvt PageVisible) = resumeRuntime control
+applyLifecycle control (LifecycleEvt AppResumed) = resumeRuntime control
+applyLifecycle _ _ = pure ()
+
+handlePlatformEvent : IrisApp mdl msg -> IORef mdl -> RuntimeControl -> Event -> IO ()
+handlePlatformEvent app modelRef control event = do
+  applyLifecycle control event
+  model <- readIORef modelRef
+  case app.handleEvent model event of
+    Nothing => pure ()
+    Just message => dispatchManaged app modelRef control message
+
 -- Drains the ONE ordered event queue, dispatching each entry in the
 -- exact order it happened - see this module's doc comment for why that
 -- matters (it's the fix for a real edit-then-submit-in-one-frame bug,
@@ -159,9 +174,9 @@ lookupNat k ((i, v) :: rest) = if k == i then Just v else lookupNat k rest
 -- becomes true partway through, later entries in the same batch are
 -- correctly skipped rather than dispatched into a model that's about
 -- to be torn down.
-drainAll : IrisApp mdl outMsg -> IORef mdl -> IORef Bool
+drainAll : IrisApp mdl outMsg -> IORef mdl -> IORef Bool -> RuntimeControl
          -> IORef (List (Nat, outMsg)) -> IORef (List (Nat, String -> outMsg)) -> IO ()
-drainAll app modelRef quitRef idMapRef inputMapRef = do
+drainAll app modelRef quitRef control idMapRef inputMapRef = do
   raw <- pollEvent
   case unpack raw of
     []                 => pure ()
@@ -170,11 +185,7 @@ drainAll app modelRef quitRef idMapRef inputMapRef = do
       when (not quit) $
         case decodeEvent raw of
           Nothing => pure ()
-          Just event => do
-            m <- readIORef modelRef
-            case app.handleEvent m event of
-              Nothing => pure ()
-              Just msg => dispatch app modelRef quitRef msg
+          Just event => handlePlatformEvent app modelRef control event
       continue
     ('C' :: idChars)   => do
       idMap <- readIORef idMapRef
@@ -182,7 +193,7 @@ drainAll app modelRef quitRef idMapRef inputMapRef = do
       when (not quit) $
         case lookupNat (cast {to=Nat} (cast {to=Int} (pack idChars))) idMap of
           Nothing  => pure ()
-          Just msg => dispatch app modelRef quitRef msg
+          Just msg => dispatchManaged app modelRef control msg
       continue
     ('I' :: rest)      => do
       let (idChars, valChars) = splitOnce sepChar rest
@@ -194,24 +205,24 @@ drainAll app modelRef quitRef idMapRef inputMapRef = do
           when (not quit) $
             case lookupNat (cast {to=Nat} (cast {to=Int} (pack idChars))) inputMap of
               Nothing    => pure ()
-              Just toMsg => dispatch app modelRef quitRef (toMsg (pack valChars))
+              Just toMsg => dispatchManaged app modelRef control (toMsg (pack valChars))
           continue
     _                  => continue -- malformed/unrecognized tag, skip
   where
     continue : IO ()
-    continue = drainAll app modelRef quitRef idMapRef inputMapRef
+    continue = drainAll app modelRef quitRef control idMapRef inputMapRef
 
 -- ─── Render loop ─────────────────────────────────────────────────────────────
 
-renderLoop : IrisApp mdl outMsg -> IORef mdl -> IORef Bool
+renderLoop : IrisApp mdl outMsg -> IORef mdl -> IORef Bool -> RuntimeControl
            -> IORef (List (Nat, outMsg)) -> IORef (List (Nat, String -> outMsg)) -> IO ()
-renderLoop app modelRef quitRef idMapRef inputMapRef = do
+renderLoop app modelRef quitRef control idMapRef inputMapRef = do
   quit <- readIORef quitRef
   if quit
     then setHTML "<div style='padding:24px;color:#3fb950;font-size:1.2em'>👋 Bye! Refresh to restart.</div>"
     else do
       -- drain input, in true chronological order (see drainAll's doc comment)
-      drainAll app modelRef quitRef idMapRef inputMapRef
+      drainAll app modelRef quitRef control idMapRef inputMapRef
 
       -- render
       quit2 <- readIORef quitRef
@@ -221,18 +232,18 @@ renderLoop app modelRef quitRef idMapRef inputMapRef = do
         setHTML html
         writeIORef idMapRef pairs
         writeIORef inputMapRef inputs
-        scheduleIn 33 (renderLoop app modelRef quitRef idMapRef inputMapRef)
+        scheduleIn 33 (renderLoop app modelRef quitRef control idMapRef inputMapRef)
 
 -- ─── Tick loop ───────────────────────────────────────────────────────────────
 
-tickLoop : IrisApp mdl outMsg -> IORef mdl -> IORef Bool -> Int -> IO ()
-tickLoop app modelRef quitRef ms = do
+tickLoop : IrisApp mdl outMsg -> IORef mdl -> IORef Bool -> RuntimeControl -> Int -> IO ()
+tickLoop app modelRef quitRef control ms = do
   quit <- readIORef quitRef
   when (not quit) $ do
     case app.tickMsg of
       Nothing => pure ()
-      Just tm => dispatch app modelRef quitRef tm
-    scheduleIn ms (tickLoop app modelRef quitRef ms)
+      Just tm => dispatchManaged app modelRef control tm
+    scheduleIn ms (tickLoop app modelRef quitRef control ms)
 
 -- ─── runWeb ──────────────────────────────────────────────────────────────────
 
@@ -248,11 +259,12 @@ runWeb app = do
   let (initMdl, initCmd) = app.init
   modelRef    <- newIORef initMdl
   quitRef     <- newIORef False
+  control     <- newRuntimeControl quitRef
   idMapRef    <- newIORef (the (List (Nat, outMsg)) [])
   inputMapRef <- newIORef (the (List (Nat, String -> outMsg)) [])
 
   -- run startup commands
-  execCmd initCmd (dispatch app modelRef quitRef) quitRef
+  execCmdManaged initCmd (dispatchManaged app modelRef control) control
 
   -- initial render
   mdl <- readIORef modelRef
@@ -262,5 +274,5 @@ runWeb app = do
   writeIORef inputMapRef inputs
 
   -- start loops
-  scheduleIn 100 (tickLoop  app modelRef quitRef 100)
-  scheduleIn 33  (renderLoop app modelRef quitRef idMapRef inputMapRef)
+  scheduleIn 100 (tickLoop app modelRef quitRef control 100)
+  scheduleIn 33  (renderLoop app modelRef quitRef control idMapRef inputMapRef)

@@ -75,12 +75,12 @@ prim_raf : IO () -> PrimIO ()
 
 -- ─── Key dispatch ────────────────────────────────────────────────────────────
 
-activateTarget : IrisApp mdl msg -> IORef mdl -> IORef Bool -> HitTarget msg -> IO ()
-activateTarget app modelRef quitRef (ButtonTarget _ _ _ message) =
-  dispatch app modelRef quitRef message
-activateTarget app modelRef quitRef (CheckboxTarget _ _ _ message) =
-  dispatch app modelRef quitRef message
-activateTarget _ _ _ (InputTarget _ _ _ _) = pure ()
+activateTarget : IrisApp mdl msg -> IORef mdl -> IORef Bool -> RuntimeControl -> HitTarget msg -> IO ()
+activateTarget app modelRef quitRef control (ButtonTarget _ _ _ message) =
+  dispatchManaged app modelRef control message
+activateTarget app modelRef quitRef control (CheckboxTarget _ _ _ message) =
+  dispatchManaged app modelRef control message
+activateTarget _ _ _ _ (InputTarget _ _ _ _) = pure ()
 
 lookupTarget : Nat -> List (HitTarget msg) -> Maybe (HitTarget msg)
 lookupTarget _ [] = Nothing
@@ -100,20 +100,20 @@ parseTargetId raw = do
   value <- parseInteger raw
   if value < 0 then Nothing else Just (cast value)
 
-activateById : IrisApp mdl msg -> IORef mdl -> IORef Bool
+activateById : IrisApp mdl msg -> IORef mdl -> IORef Bool -> RuntimeControl
             -> IORef (List (HitTarget msg)) -> Nat -> IO ()
-activateById app modelRef quitRef targetsRef id = do
+activateById app modelRef quitRef control targetsRef id = do
   targets <- readIORef targetsRef
   case lookupTarget id targets of
     Nothing => pure ()
-    Just target => activateTarget app modelRef quitRef target
+    Just target => activateTarget app modelRef quitRef control target
 
-editById : IrisApp mdl msg -> IORef mdl -> IORef Bool
+editById : IrisApp mdl msg -> IORef mdl -> IORef Bool -> RuntimeControl
         -> IORef (List (HitTarget msg)) -> Nat -> String -> IO ()
-editById app modelRef quitRef targetsRef id value = do
+editById app modelRef quitRef control targetsRef id value = do
   targets <- readIORef targetsRef
   case lookupTarget id targets of
-    Just (InputTarget _ _ _ handler) => dispatch app modelRef quitRef (handler value)
+    Just (InputTarget _ _ _ handler) => dispatchManaged app modelRef control (handler value)
     _ => pure ()
 
 pointerCell : CanvasMetric -> Point -> Maybe (Nat, Nat)
@@ -121,13 +121,19 @@ pointerCell metric point =
   if point.x < 0.0 || point.y < 0.0 then Nothing
   else Just (cast (point.x / metric.cellW), cast (point.y / metric.cellH))
 
-handleCanvasEvent : IrisApp mdl msg -> CanvasMetric -> IORef mdl -> IORef Bool
+handleCanvasEvent : IrisApp mdl msg -> CanvasMetric -> IORef mdl -> IORef Bool -> RuntimeControl
                  -> IORef (List (HitTarget msg)) -> IORef PointerCaptures -> Event -> IO ()
-handleCanvasEvent app metric modelRef quitRef targetsRef captureRef event = do
+handleCanvasEvent app metric modelRef quitRef control targetsRef captureRef event = do
+  case event of
+    LifecycleEvt PageHidden => suspendRuntime control
+    LifecycleEvt AppPaused => suspendRuntime control
+    LifecycleEvt PageVisible => resumeRuntime control
+    LifecycleEvt AppResumed => resumeRuntime control
+    _ => pure ()
   model <- readIORef modelRef
   case app.handleEvent model event of
     Nothing => pure ()
-    Just message => dispatch app modelRef quitRef message
+    Just message => dispatchManaged app modelRef control message
   case event of
     PointerEvt pointer =>
       case pointerCell metric pointer.position of
@@ -148,57 +154,57 @@ handleCanvasEvent app metric modelRef quitRef targetsRef captureRef event = do
               case (captured, hitAt col row targets) of
                 (Just expected, Just target) =>
                   when (expected == targetId target) $
-                    activateTarget app modelRef quitRef target
+                    activateTarget app modelRef quitRef control target
                 _ => pure ()
             _ => pure ()
     _ => pure ()
 
-drainEvents : IrisApp mdl msg -> CanvasMetric -> IORef mdl -> IORef Bool
+drainEvents : IrisApp mdl msg -> CanvasMetric -> IORef mdl -> IORef Bool -> RuntimeControl
            -> IORef (List (HitTarget msg)) -> IORef PointerCaptures -> IO ()
-drainEvents app metric modelRef quitRef targetsRef captureRef = do
+drainEvents app metric modelRef quitRef control targetsRef captureRef = do
   raw <- primIO prim_pollEvent
   case unpack raw of
     [] => pure ()
     'A' :: idChars => do
       case parseTargetId (pack idChars) of
         Nothing => pure ()
-        Just id => activateById app modelRef quitRef targetsRef id
-      drainEvents app metric modelRef quitRef targetsRef captureRef
+        Just id => activateById app modelRef quitRef control targetsRef id
+      drainEvents app metric modelRef quitRef control targetsRef captureRef
     'E' :: payload => do
       let (idChars, valueChars) = splitEditorEvent payload
       case parseTargetId (pack idChars) of
         Nothing => pure ()
-        Just id => editById app modelRef quitRef targetsRef id (pack valueChars)
-      drainEvents app metric modelRef quitRef targetsRef captureRef
+        Just id => editById app modelRef quitRef control targetsRef id (pack valueChars)
+      drainEvents app metric modelRef quitRef control targetsRef captureRef
     _ => do
       quit <- readIORef quitRef
       when (not quit) $
         case decodeEvent raw of
           Nothing => pure ()
-          Just event => handleCanvasEvent app metric modelRef quitRef
+          Just event => handleCanvasEvent app metric modelRef quitRef control
                           targetsRef captureRef event
-      drainEvents app metric modelRef quitRef targetsRef captureRef
+      drainEvents app metric modelRef quitRef control targetsRef captureRef
 
 -- ─── Tick loop (animation clock) ─────────────────────────────────────────────
 
 %foreign "javascript:lambda: (ms,f,_w) => setTimeout(function(){ f(0); },ms)"
 prim_setTimeout : Int -> IO () -> PrimIO ()
 
-tickLoop : IrisApp mdl outMsg -> IORef mdl -> IORef Bool -> Int -> IO ()
-tickLoop app modelRef quitRef ms = do
+tickLoop : IrisApp mdl outMsg -> IORef mdl -> IORef Bool -> RuntimeControl -> Int -> IO ()
+tickLoop app modelRef quitRef control ms = do
   quit <- readIORef quitRef
   when (not quit) $ do
     case app.tickMsg of
       Nothing => pure ()
-      Just tm => dispatch app modelRef quitRef tm
-    primIO (prim_setTimeout ms (tickLoop app modelRef quitRef ms))
+      Just tm => dispatchManaged app modelRef control tm
+    primIO (prim_setTimeout ms (tickLoop app modelRef quitRef control ms))
 
 -- ─── Main render / event loop (requestAnimationFrame) ────────────────────────
 
 rafLoop : IrisApp mdl outMsg -> String -> AnyPtr -> CanvasMetric
-        -> IORef mdl -> IORef Bool -> IORef (List (HitTarget outMsg))
+        -> IORef mdl -> IORef Bool -> RuntimeControl -> IORef (List (HitTarget outMsg))
         -> IORef PointerCaptures -> IO ()
-rafLoop app selector ctx metric modelRef quitRef targetsRef captureRef = do
+rafLoop app selector ctx metric modelRef quitRef control targetsRef captureRef = do
   primIO (prim_initCanvas selector)
   pixelWidth <- primIO (prim_canvasClientW selector)
   pixelHeight <- primIO (prim_canvasClientH selector)
@@ -216,7 +222,7 @@ rafLoop app selector ctx metric modelRef quitRef targetsRef captureRef = do
       primIO (prim_fillText "👋 Bye! Refresh to restart."
               (metric.cellW * 2.0) (metric.cellH * 3.0) 0.0 ctx)
     else do
-      drainEvents app metric modelRef quitRef targetsRef captureRef
+      drainEvents app metric modelRef quitRef control targetsRef captureRef
       quit2 <- readIORef quitRef
       when (not quit2) $ do
         mdl <- readIORef modelRef
@@ -226,7 +232,7 @@ rafLoop app selector ctx metric modelRef quitRef targetsRef captureRef = do
         primIO (prim_setSemantics selector
           (semanticOverlay metric.cellW metric.cellH targets))
         renderToCanvas metric widget cols rows ctx
-        primIO (prim_raf (rafLoop app selector ctx metric modelRef quitRef
+        primIO (prim_raf (rafLoop app selector ctx metric modelRef quitRef control
                               targetsRef captureRef))
 
 -- ─── runCanvas ───────────────────────────────────────────────────────────────
@@ -247,6 +253,7 @@ runCanvasOn sel metric _ _ app = do
   let (initMdl, initCmd) = app.init
   modelRef   <- newIORef initMdl
   quitRef    <- newIORef False
+  control    <- newRuntimeControl quitRef
   clientWidth <- primIO (prim_canvasClientW sel)
   clientHeight <- primIO (prim_canvasClientH sel)
   let actualCols = max 1 (cast (cast clientWidth / metric.cellW))
@@ -254,13 +261,13 @@ runCanvasOn sel metric _ _ app = do
   targetsRef <- newIORef (layoutTargets (app.view initMdl) actualCols actualRows)
   captureRef <- newIORef (the PointerCaptures [])
 
-  execCmd initCmd (dispatch app modelRef quitRef) quitRef
+  execCmdManaged initCmd (dispatchManaged app modelRef control) control
 
   -- animation clock (100ms tick for spinners etc.)
-  primIO (prim_setTimeout 100 (tickLoop app modelRef quitRef 100))
+  primIO (prim_setTimeout 100 (tickLoop app modelRef quitRef control 100))
 
   -- first frame via RAF
-  primIO (prim_raf (rafLoop app sel ctx metric modelRef quitRef
+  primIO (prim_raf (rafLoop app sel ctx metric modelRef quitRef control
                             targetsRef captureRef))
 
 ||| Run on an HTML5 Canvas — default desktop settings (80×24 cells, 10×20px).

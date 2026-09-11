@@ -74,8 +74,8 @@ responsibilities.
   labels require richer widget metadata in a future API revision.
 - Canvas stack layout is cell-based and does not yet provide general wrapping
   or scroll-container semantics.
-- Active IO cannot be forcibly cancelled by generic `Cmd`; late deliveries are
-  suppressed after shutdown, while pause/resume cancellation remains
-  effect-specific.
+- `CancellableTask` effects are cancelled on pause and shutdown and stale
+  generation callbacks are rejected after resume. Legacy `Task` actions cannot
+  be forcibly interrupted; use `CancellableTask` for long-running production IO.
 - Desktop SDL2 and embedded framebuffer modules are experimental skeletons and
   are not covered by this release checklist.
