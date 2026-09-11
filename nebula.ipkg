@@ -1,0 +1,30 @@
+package nebula
+version = 0.2.0
+authors = "Odun Adeboye"
+license = "MIT"
+brief   = "A derivable active-record/query-builder layer for idris2-pg (Row<->record mapping, derived CRUD, a typed query builder) - idris2-pg itself stays a primitive wire-protocol client only"
+readme  = "README.md"
+
+-- packages to add to search path
+depends = idris2-pg
+        , elab-util
+        , json-simple
+
+-- modules to install
+modules = Data.PGField
+        , Data.PGRow
+        , Data.PGTable
+        , Data.PGColumnType
+        , Data.PGQuery
+        , Derive.PGActiveRecord
+        , Data.PGCrud
+        , Data.PGRepository
+        , ObjectFromJSON
+
+-- this is a library, not a standalone executable - no single module
+-- among the above is a natural "load at REPL" entry point (unlike
+-- before, when Nebula.PG served that role; see nebula-flux, which took
+-- it with the module itself)
+-- main =
+
+sourcedir = "src"
