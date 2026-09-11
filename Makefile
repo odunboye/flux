@@ -6,7 +6,9 @@ build:
 test: build
 	idris2 --install iris.ipkg
 	cd tests && idris2 -p iris EventWireTest.idr -o event-wire-tests
+	cd tests && idris2 -p iris RuntimeTest.idr -o runtime-tests
 	./tests/build/exec/event-wire-tests
+	./tests/build/exec/runtime-tests
 
 check: test
 	$(MAKE) -C examples/todo check
