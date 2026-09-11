@@ -32,6 +32,13 @@ main = do
   assert "input hit" (messageAt 1 2 == Just 5)
   assert "right boundary is exclusive" (messageAt 40 0 == Nothing)
   assert "outside vertical bounds" (messageAt 1 9 == Nothing)
+  let enlarged = minimumHitTargets 5 2 (layoutTargets (button "tap" 7) 40 10)
+  assert "minimum touch width" (case hitAt 4 0 enlarged of
+                                  Just (ButtonTarget _ _ _ 7) => True
+                                  _ => False)
+  assert "minimum touch height" (case hitAt 0 1 enlarged of
+                                   Just (ButtonTarget _ _ _ 7) => True
+                                   _ => False)
   let semantics = semanticOverlay 10.0 20.0 (layoutTargets widget 40 10)
   assert "semantic button" (contains "aria-label='first'" semantics)
   assert "semantic checkbox" (contains "type='checkbox'" semantics)

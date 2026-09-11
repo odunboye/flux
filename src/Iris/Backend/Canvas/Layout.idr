@@ -109,6 +109,23 @@ public export
 layoutTargets : Widget msg -> Nat -> Nat -> List (HitTarget msg)
 layoutTargets widget cols rows = snd (collect 0 widget (MkWRect 0 0 cols rows))
 
+expandRect : Nat -> Nat -> WRect -> WRect
+expandRect minimumW minimumH rect =
+  MkWRect rect.col rect.row (max minimumW rect.w) (max minimumH rect.h)
+
+||| Enforce minimum logical hit dimensions without changing visual layout.
+public export
+minimumHitTargets : Nat -> Nat -> List (HitTarget msg) -> List (HitTarget msg)
+minimumHitTargets minimumW minimumH = map expand
+  where
+    expand : HitTarget msg -> HitTarget msg
+    expand (ButtonTarget id rect label message) =
+      ButtonTarget id (expandRect minimumW minimumH rect) label message
+    expand (CheckboxTarget id rect checked message) =
+      CheckboxTarget id (expandRect minimumW minimumH rect) checked message
+    expand (InputTarget id rect value handler) =
+      InputTarget id (expandRect minimumW minimumH rect) value handler
+
 escapeAttribute : String -> String
 escapeAttribute value = concatMap escape (unpack value)
   where

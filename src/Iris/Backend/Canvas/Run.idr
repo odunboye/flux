@@ -119,6 +119,12 @@ editById app modelRef quitRef control targetsRef id value = do
     Just (InputTarget _ _ _ handler) => dispatchManaged app modelRef control (handler value)
     _ => pure ()
 
+interactiveLayout : CanvasMetric -> Widget msg -> Nat -> Nat -> List (HitTarget msg)
+interactiveLayout metric widget cols rows =
+  let minimumW = max 1 (S (cast (44.0 / metric.cellW)))
+      minimumH = max 1 (S (cast (44.0 / metric.cellH)))
+  in minimumHitTargets minimumW minimumH (layoutTargets widget cols rows)
+
 pointerCell : CanvasMetric -> Point -> Maybe (Nat, Nat)
 pointerCell metric point =
   if point.x < 0.0 || point.y < 0.0 then Nothing
@@ -231,7 +237,7 @@ rafLoop app selector ctx metric modelRef quitRef control targetsRef captureRef =
       when (not quit2) $ do
         mdl <- readIORef modelRef
         let widget = app.view mdl
-        let targets = layoutTargets widget cols rows
+        let targets = interactiveLayout metric widget cols rows
         writeIORef targetsRef targets
         primIO (prim_setSemantics selector
           (semanticOverlay metric.cellW metric.cellH targets))
@@ -262,7 +268,7 @@ runCanvasOn sel metric _ _ app = do
   clientHeight <- primIO (prim_canvasClientH sel)
   let actualCols = max 1 (cast (cast clientWidth / metric.cellW))
   let actualRows = max 1 (cast (cast clientHeight / metric.cellH))
-  targetsRef <- newIORef (layoutTargets (app.view initMdl) actualCols actualRows)
+  targetsRef <- newIORef (interactiveLayout metric (app.view initMdl) actualCols actualRows)
   captureRef <- newIORef (the PointerCaptures [])
 
   execCmdManaged initCmd (dispatchManaged app modelRef control) control
