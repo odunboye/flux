@@ -36,6 +36,12 @@ main = do
   assert "semantic button" (contains "aria-label='first'" semantics)
   assert "semantic checkbox" (contains "type='checkbox'" semantics)
   assert "semantic text input" (contains "aria-label='Canvas text input'" semantics)
+  let captures = capturePointer 2 20 (capturePointer 1 10 [])
+  let (first, afterFirst) = releasePointer 1 captures
+  let (second, afterSecond) = releasePointer 2 afterFirst
+  assert "independent first pointer capture" (first == Just 10)
+  assert "independent second pointer capture" (second == Just 20)
+  assert "captures released" (afterSecond == [])
   putStrLn "Canvas layout tests passed"
   where
     startsWith : List Char -> List Char -> Bool

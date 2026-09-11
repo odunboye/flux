@@ -122,7 +122,7 @@ pointerCell metric point =
   else Just (cast (point.x / metric.cellW), cast (point.y / metric.cellH))
 
 handleCanvasEvent : IrisApp mdl msg -> CanvasMetric -> IORef mdl -> IORef Bool
-                 -> IORef (List (HitTarget msg)) -> IORef (Maybe Nat) -> Event -> IO ()
+                 -> IORef (List (HitTarget msg)) -> IORef PointerCaptures -> Event -> IO ()
 handleCanvasEvent app metric modelRef quitRef targetsRef captureRef event = do
   model <- readIORef modelRef
   case app.handleEvent model event of
@@ -131,18 +131,20 @@ handleCanvasEvent app metric modelRef quitRef targetsRef captureRef event = do
   case event of
     PointerEvt pointer =>
       case pointerCell metric pointer.position of
-        Nothing => writeIORef captureRef Nothing
+        Nothing => modifyIORef captureRef (cancelPointer pointer.id)
         Just (col, row) => do
           targets <- readIORef targetsRef
           case pointer.action of
             PointerDown =>
               case hitAt col row targets of
-                Nothing => writeIORef captureRef Nothing
-                Just target => writeIORef captureRef (Just (targetId target))
-            PointerCancel => writeIORef captureRef Nothing
+                Nothing => modifyIORef captureRef (cancelPointer pointer.id)
+                Just target => modifyIORef captureRef
+                  (capturePointer pointer.id (targetId target))
+            PointerCancel => modifyIORef captureRef (cancelPointer pointer.id)
             PointerUp => do
-              captured <- readIORef captureRef
-              writeIORef captureRef Nothing
+              captures <- readIORef captureRef
+              let (captured, remaining) = releasePointer pointer.id captures
+              writeIORef captureRef remaining
               case (captured, hitAt col row targets) of
                 (Just expected, Just target) =>
                   when (expected == targetId target) $
@@ -152,7 +154,7 @@ handleCanvasEvent app metric modelRef quitRef targetsRef captureRef event = do
     _ => pure ()
 
 drainEvents : IrisApp mdl msg -> CanvasMetric -> IORef mdl -> IORef Bool
-           -> IORef (List (HitTarget msg)) -> IORef (Maybe Nat) -> IO ()
+           -> IORef (List (HitTarget msg)) -> IORef PointerCaptures -> IO ()
 drainEvents app metric modelRef quitRef targetsRef captureRef = do
   raw <- primIO prim_pollEvent
   case unpack raw of
@@ -195,7 +197,7 @@ tickLoop app modelRef quitRef ms = do
 
 rafLoop : IrisApp mdl outMsg -> String -> AnyPtr -> CanvasMetric
         -> IORef mdl -> IORef Bool -> IORef (List (HitTarget outMsg))
-        -> IORef (Maybe Nat) -> IO ()
+        -> IORef PointerCaptures -> IO ()
 rafLoop app selector ctx metric modelRef quitRef targetsRef captureRef = do
   primIO (prim_initCanvas selector)
   pixelWidth <- primIO (prim_canvasClientW selector)
@@ -250,7 +252,7 @@ runCanvasOn sel metric _ _ app = do
   let actualCols = max 1 (cast (cast clientWidth / metric.cellW))
   let actualRows = max 1 (cast (cast clientHeight / metric.cellH))
   targetsRef <- newIORef (layoutTargets (app.view initMdl) actualCols actualRows)
-  captureRef <- newIORef (the (Maybe Nat) Nothing)
+  captureRef <- newIORef (the PointerCaptures [])
 
   execCmd initCmd (dispatch app modelRef quitRef) quitRef
 

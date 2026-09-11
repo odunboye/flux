@@ -17,6 +17,28 @@ targetId (CheckboxTarget value _ _ _) = value
 targetId (InputTarget value _ _ _) = value
 
 public export
+PointerCaptures : Type
+PointerCaptures = List (Int, Nat)
+
+public export
+capturePointer : Int -> Nat -> PointerCaptures -> PointerCaptures
+capturePointer pointer target captures =
+  (pointer, target) :: filter (\entry => fst entry /= pointer) captures
+
+public export
+cancelPointer : Int -> PointerCaptures -> PointerCaptures
+cancelPointer pointer = filter (\entry => fst entry /= pointer)
+
+public export
+releasePointer : Int -> PointerCaptures -> (Maybe Nat, PointerCaptures)
+releasePointer pointer captures = (findCapture captures, cancelPointer pointer captures)
+  where
+    findCapture : PointerCaptures -> Maybe Nat
+    findCapture [] = Nothing
+    findCapture ((candidate, target) :: rest) =
+      if candidate == pointer then Just target else findCapture rest
+
+public export
 targetRect : HitTarget msg -> WRect
 targetRect (ButtonTarget _ rect _ _) = rect
 targetRect (CheckboxTarget _ rect _ _) = rect
