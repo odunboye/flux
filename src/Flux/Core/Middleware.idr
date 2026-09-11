@@ -313,11 +313,19 @@ export
 cors : List (String, String) -> Middleware
 cors headers ctx = pure (setHeaders headers ctx)
 
+-- `PUT`/`DELETE`/`PATCH` were missing until this project actually had a
+-- browser client that needed them (Iris's todo-web) - a real gap, not
+-- hypothetical: a browser preflights any `PUT`/`DELETE`/`PATCH` request
+-- with `OPTIONS`, and rejects the real request client-side if that
+-- preflight response's `Access-Control-Allow-Methods` doesn't list the
+-- method being asked about, regardless of what the real endpoint would
+-- have done. `GET`/`POST` alone was enough for every client until now
+-- because none of them used any other verb.
 export
 corsAllowAll : Middleware
 corsAllowAll = cors
   [ ("Access-Control-Allow-Origin", "*")
-  , ("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+  , ("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
   , ("Access-Control-Allow-Headers", "Content-Type")
   ]
 

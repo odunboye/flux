@@ -65,6 +65,26 @@ export
 jsonErrorRenderer : ErrorRenderer
 jsonErrorRenderer err = sendJSONError err.status err.message
 
+||| Reads a request body (bounded by `maxBytes` - see `readBody`), then
+||| decodes it as JSON, throwing a `400 AppError` if either step fails -
+||| a read failure (missing/oversized/malformed chunking) gets a fixed
+||| message, a decode failure gets the caller's own `invalidMsg` (since
+||| "expected {...}" is schema-specific per endpoint, unlike the read
+||| failure). Replaces the `readBody maxBytes ctx >>= \case Left _ =>
+||| throw ...; Right bytes => case decodeMaybe {a} (toString bytes) of
+||| Nothing => throw ...; Just x => ...` shape every JSON-body handler
+||| otherwise repeats verbatim.
+covering
+export
+requireJsonBody : FromJSON a => (maxBytes : Nat) -> (invalidMsg : String) -> Context -> AppProg a
+requireJsonBody maxBytes invalidMsg ctx = do
+  result <- readBody maxBytes ctx
+  case result of
+    Left _      => throw (MkAppError 400 "could not read request body")
+    Right bytes => case decodeMaybe {a} (Data.ByteString.toString bytes) of
+      Nothing => throw (MkAppError 400 invalidMsg)
+      Just x  => pure x
+
 -- Content type helper
 export
 isJSON : Request -> Bool

@@ -1,27 +1,9 @@
 # flux
 
-An HTTP/1.1 server framework for Idris2, built from scratch on top of
-[`idris2-streams`](https://github.com/stefan-hoeck/idris2-streams)'
-`async`/`streams-posix` — no C server library, no FFI to an existing web
-server. The wire protocol (request parsing, persistent connections,
-chunked transfer-encoding), the router, and the middleware/`Context`
-pipeline are all implemented directly in this repo; JSON (see "JSON"
-below) is the one thing layered on top that isn't - everything else
-built on top (cookies, sessions, static files, health checks) is.
-
-## Project goals
-
-The goal is a **usable, honestly-documented** framework: routing,
-middleware, JSON, cookies/sessions, static files, structured error
-handling and streaming responses all work and are tested (146 unit tests,
-`test/`). What sets this README apart from a typical framework's docs is
-that every non-obvious tradeoff, gap, and half-solved problem uncovered
-while building it is written down rather than smoothed over — see
-"Limitations" below. Several of those gaps trace back to real bugs found
-in the underlying `idris2-async` scheduler while load-testing this
-project; where a bug couldn't be fixed safely, what's documented here is
-the mitigation actually shipped and the tradeoff it represents, not a
-claim that the underlying issue is solved.
+An HTTP/1.1 framework for Idris2, using the local `flux-async` owned-task
+runtime. Request parsing, persistent connections, streaming responses,
+routing, and middleware are implemented in Idris. A small native shim
+provides socket readiness and standalone shutdown supervision.
 
 ## Install / build
 
@@ -232,8 +214,8 @@ wiring every field to something real:
   actual bind address, so e.g. `FLUX_SERVER_HOST=0.0.0.0` really does
   bind all interfaces, not just loopback. An unparseable host warns to
   stderr and falls back to `127.0.0.1` rather than crashing.
-- `workers` — the `foreachPar` accept-loop concurrency (labeled "workers"
-  in the startup log line) - a different knob from `IDRIS2_ASYNC_THREADS`
+- `workers` — the active connection limit (labeled "connections"
+  in the startup log line) - a different knob from `FLUX_EVENT_LOOPS`
   (see "Concurrency" below), which this doesn't touch.
 - `maxBodySize` — replaces the hardcoded `MaxContentSize` (~4GB) as the
   ceiling `assemble` rejects an oversized Content-Length against.
@@ -431,228 +413,41 @@ example server from anywhere other than `examples/` (e.g. the repo
 root) and `"public"` silently resolves to a directory that doesn't
 exist, so every static request 404s. See "Install / build" above.
 
-## Concurrency: async worker threads
+## Concurrency and ownership
 
-The server accepts connections via `Flux.Core.HTTP.serveConnections`
-(in place of `FS.Concurrent.foreachPar` — see "Graceful shutdown"),
-one fiber per connection, driven by `async-posix`'s POSIX
-`poll()`-based scheduler. `Flux.Core.HTTP.defaultAsyncThreads` reads
-`IDRIS2_ASYNC_THREADS` and defaults to **1** thread if it isn't set.
-That default reflects real, repeatedly-verified benchmarking (`wrk`,
-this project's example server, 100 concurrent connections, server
-process fully restarted between trials to rule out measurement
-artifacts): across many separate trial runs, 1 thread consistently
-measured the fastest option (~40k req/s), never once reliably beaten by
-2 threads (~2k-9k req/s across different trials — always collapsed
-relative to 1, though by a varying amount) or 4 threads (~660-900
-req/s in most trials). Going past 1 thread doesn't reliably help and
-regularly collapses throughput; it never reliably wins.
+Flux now uses `flux-async`; its dependency graph no longer includes
+`async`, `async-posix`, `streams`, or `streams-posix`. `FLUX_EVENT_LOOPS`
+selects the number of connection owner threads and defaults to 2. Accepted
+connections are assigned round robin. A connection's tasks and continuations
+remain on its owner; unrelated connections can run on other owners.
 
-That cliff is a real, unfixed bug in `idris2-async`'s scheduler: every
-fiber forked from the accept loop is pinned to whichever worker happens
-to be running the accept loop at the time, so beyond a single worker
-most sit permanently idle while one does all the work, and the
-resulting contention/queueing overhead outweighs any parallelism gained.
-A fix (round-robin fiber scheduling instead of pinning, in a fork of
-`idris2-async`) was built, and its throughput improvement independently
-confirmed (2 threads reaching ~7k-20k req/s, no longer collapsing worse
-than 1 as thread count rises) — but not shipped: it surfaced a real,
-separate, not-yet-root-caused bug of its own, an intermittent
-cancelation stall under sustained high-concurrency load that can
-itself block graceful shutdown past its own bounded drain (see
-"Graceful shutdown"). An earlier, different round-robin attempt had
-also been reverted for dramatically worsening a rare connection-leak
-race in the same scheduler (see the next section) - that specific
-concern was checked directly against this later attempt and ruled out
-(the leak/stuck-connection rate was statistically indistinguishable
-with or without round-robin, confirmed via controlled A/B testing), but
-the cancelation-stall finding is a different, still-open problem
-blocking it regardless. See the `idris2-async` fork's
-`roundrobin-only-test` branch and its `INVESTIGATION_NOTES.md` for the
-full history. Until that's fixed and shipped, stay at the default of 1
-thread; only raise it if your own workload doesn't hit this cliff
-(confirm with your own benchmark, restarting the server between trials
-the same way — an earlier round of this project's own testing initially
-reported a *worse* number for 2 threads specifically, which turned out
-to be a benchmarking-harness bug: an orphaned server process from a
-prior trial kept answering requests on the same port across a
-supposedly clean restart).
+The `workers` server setting is the maximum number of active connections,
+not the number of OS threads. Blocking operations belong on the runtime's
+bounded worker pool. `Nebula.PG.dbIO` uses that pool, and `Nebula.Pool` supplies
+exclusive database leases. Sharing one raw `DB` across requests is unsafe.
 
-### The rare connection-leak race and its mitigation
-
-**Issue.** A server-side connection occasionally never gets closed after
-the peer sends FIN - the socket is left sitting in `CLOSE_WAIT` and the
-fd is never released. This is a bug in stock upstream `idris2-async`
-itself (reproduces on unmodified `stefan-hoeck/idris2-async`), not
-something Flux or this fork introduced, and it's independent of the
-thread-count/fiber-pinning issue above - it happens even at
-`IDRIS2_ASYNC_THREADS=1`.
-
-**Effect.** Left alone, leaked fds/sockets accumulate under sustained
-load without bound - a real resource-exhaustion risk for a long-lived
-process. An earlier round-robin scheduling attempt (round-robin
-dispatch plus a self-pipe poller-wakeup change together) was reverted
-for making this reproduce far more often - but a *later* attempt,
-testing round-robin dispatch alone (no self-pipe), found via controlled
-A/B testing that it does *not* measurably change this leak's rate at
-all (statistically indistinguishable stuck-connection counts with or
-without it, across repeated trials). What blocks that later attempt
-from shipping is a different, separate bug found the same way - see
-"Concurrency: async worker threads" and the `idris2-async` fork's
-`roundrobin-only-test` branch / `INVESTIGATION_NOTES.md` for where to
-resume that work.
-
-**Mitigation (shipped), two layers.** `serveWith` wraps every
-connection in `idleTimeout` (`Flux.Core.HTTP`), a watchdog fiber that
-cancels a connection if a shared "activity" counter hasn't moved in
-`idleConnectionTimeout` (default 60s). Bounded testing (back-to-back
-`wrk` runs against one long-lived process) confirms this works: leaked
-fds/`CLOSE_WAIT` sockets accumulate under load but get reaped within
-roughly one to two timeout windows, dropping to zero once load stops,
-rather than growing without bound. Set it lower if you need a tighter
-bound and can accept more false positives against genuinely slow (but
-not stuck) clients - via `ServerConfig.timeout` through
-`runServerFromConfig` (see "Config" above), or the hardcoded
-`idleConnectionTimeout` constant for `runServer`/`runServerArgs`.
-
-Separately, `Flux.Core.HTTP.serveConnections` (see "Graceful shutdown")
-bounds how long a *shutdown* specifically waits on a connection stuck
-exactly this way: confirmed by direct reproduction (not assumed) that
-`idleTimeout` alone doesn't help here - a connection can still be well
-inside its 60s idle window when `SIGTERM` arrives, and the old
-`foreachPar`-based drain would then wait for it with no bound of its
-own, requiring `SIGKILL`. `drainTimeout` (30s) caps that wait instead.
-
-Both are mitigations, not fixes - the underlying poller race is still
-there.
-
-**Root-cause investigation, so far (not fixed - findings only):**
-
-- **The key repro lever**: the posix backend runs one dedicated poller
-  thread that does nothing but loop `poll()` on a fixed timeout
-  (10ms by default). Shortening that timeout to 1ms takes the leak from
-  reproducing on roughly 1 in 20 runs of a trivial `wrk -t1 -c2 -d1s`
-  load to reproducing on essentially every run. The trigger is `poll()`
-  *responsiveness* (how soon it reacts to fd-state changes), not the
-  round-robin dispatch change itself - a bisection of the reverted fix
-  showed the leak reproduces from a faster poll loop alone, with no
-  round-robin or self-pipe change present at all. Round-robin dispatch
-  was very likely a red herring for this specific bug (it's still the
-  real, separate cause of the throughput cliff above), bundled into the
-  same reverted commit only because it needed the self-pipe change as a
-  co-requisite.
-- **Ruled out by direct instrumentation**: `Poller.idr`'s `insrt`
-  silently calls `cleanup` instead of retrying on a CAS-insert failure -
-  a plausible-looking way to silently drop a registration. Instrumented
-  and tested against the fast (1ms) repro: a leak reproduced, but this
-  branch never fired. Not the mechanism.
-- **Ruled out, mostly**: that connection cleanup (`RFD`'s `Resource`
-  release in `idris2-streams`, a raw `close()`) bypasses the scheduler's
-  own cancellation-to-registration-cleanup wiring. `IO.Async.Loop.idr`'s
-  `observeCancel` does correctly invoke the `pollFile` cancel hook
-  before a canceled fiber unwinds into resource release, for the
-  ordinary case (fiber canceled while suspended in `poll`, not inside a
-  masked/uncancelable region). Two narrower variants of this - whether
-  *normal* (non-cancellation) stream completion retires a registration
-  the same way, and whether cancellation inside a masked region skips it
-  - remain unconfirmed either way.
-- **Confirmed directly** (not inferred): instrumenting
-  `Flux.Core.HTTP.serveWith`'s entry and its `guarantee` cleanup action,
-  tagged by fd number, caught the actual failure live. For one fd,
-  reused three times in a 15s repro run as short connections cycled
-  through it, the log read `ENTER fd=5`, `CLOSE fd=5`, `ENTER fd=5`,
-  `CLOSE fd=5`, `ENTER fd=5` - no matching third `CLOSE`. `lsof` on the
-  live process at that moment confirmed fd 5 was the exact socket
-  sitting in `CLOSE_WAIT`. So the leaked connection's fiber never reaches
-  *any* of `guaranteeCase`'s terminal branches (success/error/cancel) at
-  all - it's parked forever, not mis-cleaned-up. `guarantee`'s cleanup
-  wiring itself is not the bug.
-- **Leading hypothesis, not yet confirmed**: `Poller.idr`'s
-  `pollWaitImpl` snapshots `(fd, event)` pairs for the `poll()` syscall
-  itself, but when results come back, `handleEvs` re-looks-up the
-  handler for that fd from the *live* registration map, not the
-  snapshot. Fd numbers get reused fast under load (confirmed - the fd=5
-  above cycled through three unrelated connections within 15 seconds).
-  There's a plausible window where a `poll()` result meant for an old,
-  already-closed connection gets delivered against whatever new
-  connection now holds that same fd number by the time results are
-  processed - or a stale cleanup evicts a new connection's live
-  registration. This is grounded in the code's structure, not yet caught
-  in the act; the concrete next step is instrumenting `handleEvs`/
-  `getHandle` itself against the same fast repro used above.
-
-### Memory growth under sustained load
-
-Separately from the connection leak, resident memory grows under sustained
-load and doesn't fully return to baseline once idle — observed even with
-**zero** connection leak present (`IDRIS2_ASYNC_THREADS=1`, `CLOSE_WAIT`/FD
-counts flat the whole time). This rules out both an application-level
-buffer bug (`BatchedAccessLog`'s flush loop correctly drains its buffer
-every tick) and the connection leak as the cause.
-
-Two soak tests (16-24 rounds of 20s `wrk` bursts against `/api/users`,
-followed by 4-5 minutes idle, sampling both process RSS and - via a
-temporary `bytes-allocated` probe - Chez's own live-heap size) narrowed
-down what's actually happening:
-
-- **It is not purely "GC not returning committed pages to the OS."** The
-  live heap itself (not just RSS) measurably grows under load - e.g. one
-  run's live heap averaged ~29MB across its first 8 rounds and ~37MB
-  across its last 8, tracking RSS's growth (though at roughly half the
-  proportional rate). A real, if modest, working set is growing under
-  load, not just an allocator artifact.
-- **It plateaus, at least within the windows tested.** Growth clearly
-  decelerates over each run, and in the longer of the two runs (24
-  rounds), RSS went fully flat - 12 consecutive samples with zero
-  movement - after about 3 minutes idle. The shorter run's 4-minute idle
-  window wasn't quite long enough to reach the same clean flatline (RSS
-  was still creeping slightly at the end), consistent with "takes a
-  couple of minutes to settle," not "never settles."
-- **Not confirmed**: behavior over much longer (hours-scale) continuous
-  operation. Both soak tests here are ~10-15 minutes; a working set that
-  plateaus within 15 minutes could still drift slowly over hours. That
-  needs a real long-running soak test, not done here.
+Handler signatures such as `Async Poll es a` remain compatibility aliases
+for the new `Task es a`; no old scheduler is involved. Low-level socket and
+supervisor APIs changed. Use `Flux.Async.Server.serve` for embedded servers
+and explicit stop tasks. See the [runtime guide](../../libs/idris2-flux-async/README.md).
 
 ## Graceful shutdown
 
-`shutdownOn [SIGINT, SIGTERM]` (wired into `runServer`/`runProgWith`)
-stops accepting new connections on either signal while letting in-flight
-connections finish - `Flux.Core.HTTP.serveConnections` (in place of
-`FS.Concurrent.foreachPar`, which it's otherwise identical to) waits for
-each one to release its concurrency slot, up to `drainTimeout` (30s) -
-past that, it gives up on whatever's left and lets the process exit
-anyway, rather than waiting forever.
+The standalone `runProg`/`runProgWith` runner owns SIGINT/SIGTERM handling.
+On a signal the server stops accepting connections, allows 30 seconds for
+existing connections to finish, then cancels stragglers. Resource cleanup
+joins task children and native work before closing their resources.
 
-That bound exists because unbounded waiting is a real, previously
-undocumented production risk, confirmed by direct reproduction (not
-assumed): a connection that never terminates - the pre-existing,
-not-fully-root-caused `idris2-async` race described below, where a
-socket's readiness notification can be lost entirely - blocked shutdown
-completely under sustained multi-threaded load, leaving a server that
-never responded to `SIGTERM` at all and needed `SIGKILL` to recover
-(confirmed via repeated `wrk` runs against a running example server,
-directly observing the server process outlive its own graceful-shutdown
-signal). `foreachPar`'s own drain has no way to be given a bound from
-outside once it starts (a `bracket`'s release action runs in a scope
-that further external cancellation can't reach, by design - the same
-guarantee that makes it trustworthy to run at all) - `serveConnections`
-instead races the equivalent wait against a plain `sleep` *inside* its
-own cleanup action, which isn't crossing that boundary and so isn't
-subject to it.
+An independent native watchdog exits with status 124 if shutdown still has
+not completed after 35 seconds. It does not depend on a responsive Idris
+owner loop. Embedded runtime APIs never force process exit. Background tasks
+passed to `runProgWith` are canceled and joined when the program ends.
 
-Works on both Linux and macOS. It used to rely on `async-posix`'s
-`awaitSignals`, which calls the POSIX.1b `sigwaitinfo()` syscall — a
-syscall the `posix` package's C support explicitly excludes on Darwin,
-crashing the server (`Exception in foreign-procedure: no entry for
-"li_sigwaitinfo"`) on SIGINT/SIGTERM instead of shutting down cleanly.
-`Flux.Core.HTTP.fluxAwaitSignals` replaces it with a small polling loop
-over `sigpending()` (plain POSIX.1, available on both platforms, already
-exposed portably by the `posix` package) — it only needs to notice that
-one of the watched signals has arrived, not decode which one or recover
-`Siginfo` detail, so it never touches the Darwin-excluded call at all.
-Verified manually on both platforms; there's no unit test for it (not
-realistic for OS-signal behavior) — see `examples/src/Main.idr`'s
-`/slow` handler for the manual verification steps.
+Cancellation cannot safely kill arbitrary synchronous IO. Use deadline-aware
+transports and scoped resources. Old scheduler benchmarks and failure
+investigations do not describe this runtime; measure this implementation
+with your workload. `test/runtime_soak.py` exercises 1, 2, and 4 owner loops
+and records request counts, resident memory, and shutdown outcomes.
 
 ## Errors
 

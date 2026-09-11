@@ -13,13 +13,14 @@ brief   = "A production-grade HTTP server framework for Idris2"
 -- langversion
 
 -- packages to add to search path
-depends    = streams-posix
-           , async-posix
+depends    = flux-async
+           , posix
            , ref1
            , json-simple
 
 -- modules to install
-modules = Flux.Core.HTTP
+modules = Flux.Core.Runtime
+        , Flux.Core.HTTP
         , Flux.Core.Router
         , Flux.Core.Middleware
         , Flux.Middleware.Internal.Stripe

@@ -23,8 +23,7 @@ import System.Clock
 %default total
 
 ||| Number of stripes to use, fixed rather than tied to
-||| `IDRIS2_ASYNC_THREADS` (application code has no way to query the
-||| async runtime's worker-thread count) - chosen to comfortably exceed
+||| `FLUX_EVENT_LOOPS` - chosen to comfortably exceed
 ||| any realistic thread count for this kind of server.
 |||
 ||| Kept as a plain `Nat` only for reference/display; every actual use

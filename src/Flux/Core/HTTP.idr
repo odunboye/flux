@@ -1,21 +1,17 @@
 module Flux.Core.HTTP
 
 import public Data.SortedMap
-import public FS.Posix
-import public FS.Socket
+import public Flux.Core.Runtime
+import Flux.Async.Server as Server
+import Flux.Async.Runner
+import Flux.Async.Standalone
+import Flux.Async.Socket as Net
 import Data.List1
 import Data.Linear.Ref1
-import Data.Linear.Deferred
 import Data.String
 import Data.Vect
 
 import Flux.Server.Config
-
-import public IO.Async.Loop.Posix
-import IO.Async.Loop.Poller
-import IO.Async.Semaphore
-import IO.Async.Signal
-import System.Posix.Signal
 
 import public System
 import System.File
@@ -29,182 +25,38 @@ public export
 0 Prog : List Type -> Type -> Type
 Prog = AsyncStream Poll
 
-||| How often `fluxAwaitSignals` re-checks `sigpending` while idle. Small
-||| enough that a shutdown signal is noticed promptly, large enough that
-||| the check is a rounding error against any real request's latency.
-pendingSignalPollInterval : Clock Duration
-pendingSignalPollInterval = 200.ms
-
-||| Polls for one of the given (already process-blocked, see `runProg`)
-||| signals becoming pending, without ever blocking a scheduler worker
-||| thread on a syscall.
-|||
-||| This exists instead of `async-posix`'s own `awaitSignals` because
-||| that calls the POSIX.1b `sigwaitinfo()` syscall, which does not exist
-||| on macOS/Darwin - the `posix` package's own C support explicitly
-||| excludes it there (`#ifndef __APPLE__` around `li_sigwaitinfo` in
-||| `idris2-linux/posix/support/posix.c`). `sigpending()`, by contrast, is
-||| plain POSIX.1 and available unconditionally on both platforms (used
-||| here via `System.Posix.Signal.sigpending`, which is not behind that
-||| guard). `shutdownOn`'s only requirement of this action is that it
-||| eventually produces *something* once a watched signal fires
-||| (`haltOn`/`FS.Concurrent.haltOn` discards the value) - it doesn't need
-||| `awaitSignals`'s `Siginfo` detail (sender pid/uid etc.), so trading
-||| that away for portability costs nothing here. It also never consumes
-||| the signal from the pending set, unlike `sigwaitinfo`/`sigwait` - it
-||| is left blocked-and-pending (per `runProg`'s process-level
-||| `sigprocmask`) until the process exits shortly after, which is fine
-||| since nothing here ever needs it delivered.
+||| Poll process-blocked termination signals without blocking an owner loop.
 export covering
-fluxAwaitSignals : List Signal -> Async Poll [Errno] ()
+fluxAwaitSignals : List Signal -> Task [] ()
 fluxAwaitSignals sigs = do
-  pending <- liftIO sigpending
-  if any (`elem` pending) sigs
-    then pure ()
-    else sleep pendingSignalPollInterval >> fluxAwaitSignals sigs
+  stopping <- liftIO shutdownRequested
+  unless stopping (Flux.Async.Core.sleep 50 >> fluxAwaitSignals sigs)
 
-||| Runs the second stream (typically an accept loop) until any of the
-||| given signals arrives, then lets it terminate normally rather than
-||| erroring. `Flux.Core.HTTP.runProg` blocks these signals at the process
-||| level so they reach here instead of killing the process outright.
-|||
-||| `runServer` wraps its accept loop in `shutdownOn [SIGINT, SIGTERM]`: no
-||| new connections are accepted once a signal arrives, but connections
-||| already in flight are allowed to finish (`serveConnections`'s internal
-||| semaphore-drain guarantees this - see the `async`/`streams` library's
-||| `finally`/`guaranteeCase` semantics, and `serveConnections`'s own doc
-||| comment for why *that* drain is itself time-bounded, unlike
-||| `FS.Concurrent.foreachPar`'s).
-|||
-||| Built on `fluxAwaitSignals` (see its doc) rather than `async-posix`'s
-||| own `awaitSignals`, specifically so this works on macOS as well as
-||| Linux - verified manually on both.
-export covering
-shutdownOn : List Signal -> Prog [Errno] o -> Prog [Errno] o
-shutdownOn sigs = haltOn (eval (fluxAwaitSignals sigs))
-
-||| How long `serveConnections`'s shutdown drain (see its own doc
-||| comment) waits for already-in-flight connections to finish on their
-||| own before giving up on the stragglers and letting the process exit
-||| anyway. Not a tuning knob for typical use, just a backstop.
-export
-drainTimeout : Clock Duration
-drainTimeout = 30.s
-
-||| Like `FS.Concurrent.foreachPar`, but bounds how long its own
-||| shutdown drain (waiting for in-flight `sink` calls to finish once
-||| `outer` itself has stopped, e.g. because the accept loop was
-||| canceled by `shutdownOn`) is allowed to take, instead of waiting for
-||| it forever.
-|||
-||| `foreachPar`'s own drain has no such bound, and - confirmed by
-||| direct testing, not assumed - cannot be given one from outside by
-||| wrapping it in additional cancellation: a `bracket`'s release action
-||| (which is what that drain actually is) runs in a scope that plain
-||| external cancellation does not reach once the release itself has
-||| started, by design - the same reason a `finally`/`guarantee` cleanup
-||| action is trustworthy in the first place. Racing the *equivalent*
-||| wait against a plain `sleep` from *inside* this function's own
-||| cleanup action, instead of relying on outside interruption, sidesteps
-||| that entirely: `race_` here is racing two ordinary `Async` values
-||| against each other, not crossing any release-action scope boundary,
-||| so canceling the losing side (whichever it is) works normally.
-|||
-||| Without this bound, a single connection that never terminates - the
-||| pre-existing, not-fully-root-caused `idris2-async` race
-||| `idleTimeout`'s own doc comment describes, where a socket's readiness
-||| notification can be lost entirely - blocks the whole drain forever:
-||| confirmed by direct reproduction under sustained multi-threaded load
-||| to leave a running server requiring `SIGKILL`, never responding to
-||| `SIGTERM` at all, even though the signal itself was received and
-||| handled correctly right up to this drain.
-export
-serveConnections :
-     {auto th : TimerH e}
-  -> (maxOpen : Nat) -> {auto 0 prf : IsSucc maxOpen}
-  -> (sink : o -> Async e [] ())
-  -> AsyncPull e o es r
-  -> AsyncPull e q es r
-serveConnections maxOpen sink outer = do
-  available <- semaphore maxOpen
-  finally
-    (race_ [acquireN available maxOpen, sleep drainTimeout])
-    (foreach (run available) outer)
-
-  where
-    run : Semaphore -> o -> Async e es ()
-    run available v = do
-      acquire available
-      ignore $ start (guarantee (sink v) (release available))
-
-||| Reads `IDRIS2_ASYNC_THREADS` the same way `async-posix`'s own
-||| `asyncThreads` does, but defaults to a single OS thread when it
-||| isn't set - unlike `async-posix`'s own default of two, and unlike
-||| an earlier version of this project which itself defaulted to two.
-|||
-||| Benchmarking (100 concurrent connections, `wrk`, this project's
-||| example server, repeatable across interleaved trials with the
-||| server fully restarted between each) repeatedly and consistently
-||| found 1 thread the fastest option, not just the simplest: ~40k
-||| req/s, with 2 threads collapsing to anywhere from ~2k-9k req/s
-||| across separate trial runs (never beating 1 thread in any of them)
-||| and 4 threads similarly collapsed (~660-900 req/s in most trials,
-||| occasionally higher but still never reliably beating 1 thread).
-||| This matches a known, unfixed bug in the underlying `idris2-async`
-||| scheduler: every fiber forked from the accept loop stays pinned to
-||| whichever worker happens to be running the accept loop at the time,
-||| so beyond a single worker most sit idle while one does all the
-||| work, and the resulting contention outweighs any parallelism
-||| gained. A fix (round-robin fiber scheduling instead of pinning) was
-||| built, and its own throughput improvement confirmed (2 threads
-||| ~7-20k req/s, no longer collapsing worse than 1 as thread count
-||| increases) - but it surfaced a separate, real, not-yet-root-caused
-||| bug of its own (an intermittent cancelation stall under sustained
-||| high-concurrency load, found via this project's own load testing)
-||| and was not shipped because of it; see the `idris2-async` fork's
-||| `roundrobin-only-test` branch and its `INVESTIGATION_NOTES.md` for
-||| the full history. Until that's fixed and shipped, 1 thread is the
-||| best default; set `IDRIS2_ASYNC_THREADS` explicitly higher only if
-||| you've confirmed your own workload doesn't hit the same cliff.
-|||
-||| Earlier versions of this doc comment claimed first that 2 threads
-||| itself regressed throughput (traced to a benchmarking-harness bug:
-||| a leaked orphaned server process answering requests across a
-||| supposedly clean restart), then that 2 threads was reliably ~2x
-||| faster than 1 and the best default. Neither held up under repeated,
-||| interleaved-restart benchmarking - the collapse past 1 thread is
-||| real, but its exact severity varies enough between trials that "2
-||| threads is faster" was never reliably true either. Corrected here.
 export
 defaultAsyncThreads : IO (Subset Nat IsSucc)
 defaultAsyncThreads = do
-  s <- getEnv "IDRIS2_ASYNC_THREADS"
-  pure $ case cast {to = Nat} <$> s of
+  setting <- getEnv "FLUX_EVENT_LOOPS"
+  pure $ case cast {to = Nat} <$> setting of
     Just (S k) => Element (S k) %search
-    _          => Element 1 %search
+    _ => Element 2 %search
 
-||| Like `runProg`, but also runs the given no-error, no-result
-||| computations concurrently with `prog` for as long as the server
-||| runs - e.g. `Flux.Server.Logging.flushLoop`'s periodic log flush.
-|||
-||| Each one is canceled the moment `prog` itself stops, the same way
-||| `shutdownOn` already stops the accept loop: they run for exactly as
-||| long as the server does, they are not a place to depend on a final
-||| action happening at shutdown (a background task's own cancellation
-||| doesn't wait for its current step to finish first). Do that
-||| yourself, after `runProgWith` returns.
+||| Run background tasks within the program's lifetime. Scope exit joins their
+||| finalizers before returning. Servers use separate fixed connection owners.
 export covering
 runProgWith : List (Async Poll [] ()) -> Prog [Errno] Void -> IO ()
 runProgWith background prog = do
-  n <- defaultAsyncThreads
-  app n [SIGINT, SIGTERM] posixPoller $
-    race_ (mpull (handle [stderrLn . interpolate] prog) :: background)
+  Right () <- startShutdownWatchdog 35000 | Left err => do
+    stderrLn ("Flux: " ++ err)
+    exitFailure
+  result <- runTask $ the (Task [Errno] ()) $ do
+    traverse_ (\task => ignore (spawn task)) background
+    pullIn prog
+  stopShutdownWatchdog
+  case result of
+    Left err => stderrLn ("Flux runtime: " ++ err) >> exitFailure
+    Right (Error (Here err)) => stderrLn "\{err}" >> exitFailure
+    _ => pure ()
 
-||| Runs a `Prog`, blocking SIGINT/SIGTERM at the process level so
-||| `shutdownOn` can react to them instead of the OS killing the process
-||| immediately. See `shutdownOn`'s platform note: this only works on
-||| Linux. See `defaultAsyncThreads`'s doc for why this defaults to a
-||| single OS thread rather than `async-posix`'s own default of two.
 export covering
 runProg : Prog [Errno] Void -> IO ()
 runProg = runProgWith []
@@ -495,7 +347,7 @@ export
 splitAtChecked : Chunk c o => Has e es => Lazy e -> Nat -> Pull f c es r -> Pull f c es (Pull f c es r)
 splitAtChecked err 0 p = pure p
 splitAtChecked err k p =
-  assert_total $ FS.Core.uncons p >>= \case
+  assert_total $ Flux.Stream.Core.uncons p >>= \case
     Left _       => throw err
     Right (vs,q) => case splitChunkAt k vs of
       Middle pre post => cons pre (pure $ cons post q)
@@ -712,7 +564,7 @@ respondWith f (Just r) = Prelude.do
 export covering
 echoWith :
      Responder
-  -> Socket AF_INET
+  -> Net.Socket
   -> HTTPPull ByteString (Maybe Request)
   -> AsyncPull Poll Void [Errno] (Bool, HTTPStream ByteString)
 echoWith f cli p =
@@ -736,7 +588,7 @@ echoWith f cli p =
 -- open - only a connection that stops progressing entirely is.
 covering
 servePull :
-     Responder -> Socket AF_INET -> Ref World Nat -> (maxBodySize : Nat) -> HTTPStream ByteString
+     Responder -> Net.Socket -> Ref World Nat -> (maxBodySize : Nat) -> HTTPStream ByteString
   -> AsyncPull Poll Void [Errno] ()
 servePull f cli activity maxBodySize byteStream = Prelude.do
   (continue, rest) <- byteStream |> request maxBodySize |> echoWith f cli
@@ -744,13 +596,6 @@ servePull f cli activity maxBodySize byteStream = Prelude.do
     liftIO (mod activity S)
     servePull f cli activity maxBodySize rest
 
-disableNagle : Socket AF_INET -> Async Poll [Errno] ()
-disableNagle cli = setNoDelay cli True
-
-||| How long a connection may go without completing a request before
-||| `idleTimeout` gives up on it and lets `serveWith`'s `guarantee`
-||| close it. Not a tuning knob for typical use - see `idleTimeout`'s
-||| doc comment for what this actually guards against.
 export
 idleConnectionTimeout : Clock Duration
 idleConnectionTimeout = 60.s
@@ -772,83 +617,44 @@ export
 defaultLimits : ServerLimits
 defaultLimits = MkLimits MaxContentSize idleConnectionTimeout
 
-||| Runs `str`, but interrupts it if `activity` hasn't changed for
-||| `dur` - unlike `FS.Concurrent.timeout`, which fires `dur` after
-||| being entered regardless of what's happened since, this resets
-||| every time whoever owns `activity` bumps it (see `servePull`),
-||| so it only fires on genuine, sustained inactivity.
-|||
-||| `serveWith` wraps every connection's `servePull` in this as a
-||| defense against a connection getting stuck forever with no further
-||| progress possible - not a fix for any specific cause, a backstop
-||| against all of them, expected or not: a slow/idle client that
-||| never sends another request is the everyday case this also
-||| happens to cover, but the case this was actually added for is a
-||| confirmed, rare (~5% of idle gaps, in this project's testing), not
-||| fully root-caused race in the underlying `idris2-async` scheduler,
-||| where a socket's readiness notification can be lost entirely,
-||| leaving `servePull` waiting on a callback that will never fire and
-||| the connection's fiber (and its file descriptor) leaked for the
-||| life of the process. Without this, that specific bug has no
-||| ceiling - each occurrence holds a connection open forever. With
-||| it, the worst case is bounded to `idleConnectionTimeout`
-||| (twice that, worst case, since this checks for activity once per
-||| `dur` rather than reacting the instant it stops).
+||| Watch completed requests; active persistent connections reset the idle bound.
+covering
+watchIdle : Ref World Nat -> Clock Duration -> Task [] ()
+watchIdle activity duration = do
+  before <- liftIO (readref activity)
+  Flux.Core.Runtime.sleep duration
+  after <- liftIO (readref activity)
+  unless (before == after) (watchIdle activity duration)
+
+||| Borrows a peer owned by the server supervisor, which joins this task and
+||| its children before closing the descriptor.
 export covering
-idleTimeout : {auto th : TimerH e} -> Ref World Nat -> Clock Duration -> AsyncStream e es o -> AsyncStream e es o
-idleTimeout activity dur str = do
-  def <- deferredOf ()
-  _   <- acquire (start {es = []} $ watchdog def) cancel
-  interruptOnAny def str
+serveWith : Responder -> ServerLimits -> Net.Socket -> Task [] ()
+serveWith f limits cli = do
+  activity <- newref 0
+  ignore $ race
+    (mpull $ handleErrors (\(Here err) => the (Pull Task Void [] ()) (stderrLn "\{err}")) $
+      servePull f cli activity limits.maxBodySize (Flux.Stream.Socket.bytes cli 0xfff))
+    (watchIdle activity limits.idleConnTimeout)
 
-  where
-    covering
-    watchdog : Deferred World () -> Async e [] ()
-    watchdog def = do
-      before <- liftIO (readref activity)
-      sleep dur
-      after  <- liftIO (readref activity)
-      if before == after
-        then putDeferred def ()
-        else watchdog def
-
-||| Serves one connection, looping to handle further requests on it
-||| (HTTP/1.1 persistent connections) until the client closes it, a
-||| malformed request is received, the connection goes idle for longer
-||| than `idleConnectionTimeout` (see `idleTimeout`), or the connection
-||| is canceled (e.g. by `shutdownOn`, mid-request - a currently
-||| in-flight request/response still completes first, since `servePull`
-||| isn't interrupted until it next yields, but no further requests are
-||| read off this connection once canceled).
-export covering
-serveWith : Responder -> ServerLimits -> Socket AF_INET -> Async Poll [] ()
-serveWith f limits cli =
-  flip guarantee (close' cli) $ Prelude.do
-    -- Without this, Nagle's algorithm can batch/delay the writes that
-    -- make up a response on a connection kept open across multiple
-    -- requests, adding tens of milliseconds of latency per request that
-    -- a one-request-per-connection socket never lived long enough to hit.
-    handleErrors (\(Here x) => stderrLn "\{x}") (disableNagle cli)
-    activity <- newref 0
-    mpull $ handleErrors (\(Here x) => stderrLn "\{x}") $
-      idleTimeout activity limits.idleConnTimeout $
-        servePull f cli activity limits.maxBodySize (bytes cli 0xfff)
-
--- Shared by runServer (fixed to 127.0.0.1 and defaultLimits, unchanged
--- behavior) and runServerFromConfig (both driven by a real ServerConfig).
 covering
 runServerAt :
      Responder -> (octets : Vect 4 Bits8) -> Bits16 -> (n : Nat)
   -> (0 p : IsSucc n) => ServerLimits -> Prog [Errno] Void
-runServerAt f octets port n limits = Prelude.do
-  liftIO $ do
-    putStrLn "Flux server listening on http://\{showOctets octets}:\{show port} (\{show n} workers)"
-    -- Without this, stdout is fully block-buffered whenever it's not a
-    -- TTY (e.g. redirected to a log file), so this message wouldn't
-    -- actually appear until the process exits.
-    fflush stdout
-  shutdownOn [SIGINT, SIGTERM] $
-    serveConnections n (serveWith f limits) (acceptOn AF_INET SOCK_STREAM (addr octets port))
+runServerAt f octets port n limits = exec $ do
+  Element owners _ <- liftIO defaultAsyncThreads
+  Flux.Async.Core.bracket
+    (liftIO (Net.listen (showOctets octets) (cast port) 2048) >>= socketResult)
+    (\listener => ignore (Net.close listener))
+    (\listener => do
+      liftIO $ do
+        putStrLn "Flux server listening on http://\{showOctets octets}:\{show port} (\{show owners} event loops, \{show n} connections)"
+        fflush stdout
+      result <- attempt $ Server.serve owners n 30000 listener
+        (serveWith f limits) (fluxAwaitSignals [SIGINT, SIGTERM])
+      case result of
+        Left (Here err) => liftIO (stderrLn ("Flux: " ++ err)) >> throw EIO
+        Right () => pure ())
 
 export covering
 runServer : Responder -> Bits16 -> (n : Nat) -> (0 p : IsSucc n) => Prog [Errno] Void

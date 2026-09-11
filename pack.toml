@@ -14,3 +14,8 @@ type = "local"
 path = "examples"
 ipkg = "examples.ipkg"
 
+
+[custom.all.flux-async]
+type = "local"
+path = "../../libs/idris2-flux-async"
+ipkg = "flux-async.ipkg"
