@@ -28,6 +28,7 @@ import Iris.Widget
 import Iris.Backend.Terminal.WidgetRender
 import Iris.Backend.Canvas.Render
 import Iris.Runtime.Common
+import Iris.App.EventWire
 
 -- ─── Canvas acquisition ──────────────────────────────────────────────────────
 
@@ -46,21 +47,14 @@ prim_initCanvas : String -> PrimIO ()
 
 -- ─── Input queues ────────────────────────────────────────────────────────────
 
--- Global key queue (same as DOM backend)
-%foreign "javascript:lambda: _w => { if(window.__irisKeyListenerReady) return; window.__irisKeyListenerReady=true; window.__irisKeys=window.__irisKeys||[]; document.addEventListener('keydown',function(e){ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault(); window.__irisKeys.push(e.key); }); }"
-prim_setupKeys : PrimIO ()
+-- One ordered, versioned event queue shared by every browser/Capacitor source.
+-- Touch gestures also emit compatibility keyboard events until Canvas hit
+-- testing replaces the original list-oriented gesture mapping.
+%foreign "javascript:lambda: _w => { if(window.__irisCanvasEventsReady)return; window.__irisCanvasEventsReady=true; const q=window.__irisCanvasEvents=window.__irisCanvasEvents||[]; const enc=s=>Array.from(String(s)).map(c=>c.codePointAt(0)).join('.'); const b=v=>v?'1':'0'; const mods=e=>[b(e.shiftKey),b(e.ctrlKey),b(e.altKey),b(e.metaKey)].join('|'); const push=s=>q.push(s); const key=(name,code=name)=>push('i1|K|down|'+enc(name)+'|'+enc(code)+'|0|0|0|0|'+(Array.from(name).length===1?name.codePointAt(0):'none')); document.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();push('i1|K|'+(e.repeat?'repeat':'down')+'|'+enc(e.key)+'|'+enc(e.code||e.key)+'|'+mods(e)+'|'+(Array.from(e.key).length===1?e.key.codePointAt(0):'none'));}); document.addEventListener('keyup',e=>push('i1|K|up|'+enc(e.key)+'|'+enc(e.code||e.key)+'|'+mods(e)+'|'+(Array.from(e.key).length===1?e.key.codePointAt(0):'none'))); const pa={pointerdown:'down',pointerup:'up',pointermove:'move',pointerenter:'enter',pointerleave:'leave',pointercancel:'cancel'}; const pb=n=>n===0?'primary':n===1?'middle':n===2?'secondary':n===3?'back':n===4?'forward':'none'; Object.keys(pa).forEach(name=>document.addEventListener(name,e=>push('i1|P|'+pa[name]+'|'+(['mouse','touch','pen'].includes(e.pointerType)?e.pointerType:'mouse')+'|'+Math.max(0,e.pointerId||0)+'|'+e.clientX+'|'+e.clientY+'|'+(e.movementX||0)+'|'+(e.movementY||0)+'|'+pb(e.button)+'|'+Math.max(0,Math.min(1,e.pressure||0))+'|'+mods(e)),{passive:true})); document.addEventListener('wheel',e=>push('i1|S|'+e.clientX+'|'+e.clientY+'|'+e.deltaX+'|'+e.deltaY+'|'+e.deltaZ),{passive:true}); addEventListener('resize',()=>push('i1|R|'+innerWidth+'|'+innerHeight)); addEventListener('focus',()=>push('i1|F|gain')); addEventListener('blur',()=>push('i1|F|lost')); addEventListener('orientationchange',()=>push('i1|O|'+(innerHeight>=innerWidth?'portrait':'landscape'))); document.addEventListener('visibilitychange',()=>push('i1|L|'+(document.hidden?'hidden':'visible'))); addEventListener('pagehide',()=>push('i1|L|pause')); addEventListener('pageshow',()=>push('i1|L|resume')); addEventListener('popstate',()=>push('i1|L|back')); document.addEventListener('compositionstart',e=>push('i1|M|start|'+enc(e.data||''))); document.addEventListener('compositionupdate',e=>push('i1|M|update|'+enc(e.data||''))); document.addEventListener('compositionend',e=>push('i1|M|end|'+enc(e.data||''))); let tx=0,ty=0; document.addEventListener('touchstart',e=>{if(e.touches.length){tx=e.touches[0].clientX;ty=e.touches[0].clientY;}},{passive:true}); document.addEventListener('touchend',e=>{if(!e.changedTouches.length)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty,ax=Math.abs(dx),ay=Math.abs(dy);if(ax<10&&ay<10)key(' ');else if(ay>ax)key(dy<0?'ArrowUp':'ArrowDown');else key(dx<0?'Escape':'a');},{passive:true}); if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App){window.Capacitor.Plugins.App.addListener('backButton',()=>push('i1|L|back'));window.Capacitor.Plugins.App.addListener('pause',()=>push('i1|L|pause'));window.Capacitor.Plugins.App.addListener('resume',()=>push('i1|L|resume'));} }"
+prim_setupEvents : PrimIO ()
 
--- Touch gesture recogniser
--- Records touchstart position and on touchend decides the gesture:
---   short swipe up/down  → ArrowUp / ArrowDown
---   short swipe left     → Escape
---   tap (small movement) → ' ' (space = select)
---   swipe right far      → 'a' (add, like a "swipe to add" gesture)
-%foreign "javascript:lambda: _w => { if(window.__irisTouchListenerReady) return; window.__irisTouchListenerReady=true; window.__irisKeys=window.__irisKeys||[]; let tx=0,ty=0; document.addEventListener('touchstart',function(e){ if(e.touches.length){ tx=e.touches[0].clientX; ty=e.touches[0].clientY; } },{passive:true}); document.addEventListener('touchend',function(e){ if(!e.changedTouches.length) return; const dx=e.changedTouches[0].clientX-tx; const dy=e.changedTouches[0].clientY-ty; const adx=Math.abs(dx),ady=Math.abs(dy); if(adx<10&&ady<10){ window.__irisKeys.push(' '); } else if(ady>adx){ window.__irisKeys.push(dy<0?'ArrowUp':'ArrowDown'); } else { window.__irisKeys.push(dx<0?'Escape':'a'); } },{passive:true}); }"
-prim_setupTouch : PrimIO ()
-
-%foreign "javascript:lambda: _w => (window.__irisKeys&&window.__irisKeys.length>0)?window.__irisKeys.shift():''"
-prim_pollKey : PrimIO String
+%foreign "javascript:lambda: _w => (window.__irisCanvasEvents&&window.__irisCanvasEvents.length>0)?window.__irisCanvasEvents.shift():''"
+prim_pollEvent : PrimIO String
 
 -- ─── Animation loop ──────────────────────────────────────────────────────────
 
@@ -69,24 +63,22 @@ prim_raf : IO () -> PrimIO ()
 
 -- ─── Key dispatch ────────────────────────────────────────────────────────────
 
-domKey : String -> KeyEvent
-domKey k =
-  let ch = case unpack k of [c] => Just c; _ => Nothing
-  in MkKeyEvent KeyDown k k (MkModifiers False False False False) ch
-
-drainKeys : IrisApp mdl outMsg -> IORef mdl -> IORef Bool -> IO ()
-drainKeys app modelRef quitRef = do
-  k <- primIO prim_pollKey
-  case k of
+drainEvents : IrisApp mdl outMsg -> IORef mdl -> IORef Bool -> IO ()
+drainEvents app modelRef quitRef = do
+  raw <- primIO prim_pollEvent
+  case raw of
     "" => pure ()
-    _  => do
+    _ => do
       quit <- readIORef quitRef
-      when (not quit) $ do
-        m <- readIORef modelRef
-        case app.handleEvent m (KeyboardEvent (domKey k)) of
-          Nothing  => pure ()
-          Just msg => dispatch app modelRef quitRef msg
-        drainKeys app modelRef quitRef
+      when (not quit) $
+        case decodeEvent raw of
+          Nothing => pure ()
+          Just event => do
+            m <- readIORef modelRef
+            case app.handleEvent m event of
+              Nothing => pure ()
+              Just msg => dispatch app modelRef quitRef msg
+      drainEvents app modelRef quitRef
 
 -- ─── Tick loop (animation clock) ─────────────────────────────────────────────
 
@@ -119,7 +111,7 @@ rafLoop app ctx metric cols rows modelRef quitRef = do
       primIO (prim_fillText "👋 Bye! Refresh to restart."
               (metric.cellW * 2.0) (metric.cellH * 3.0) 0.0 ctx)
     else do
-      drainKeys app modelRef quitRef
+      drainEvents app modelRef quitRef
       quit2 <- readIORef quitRef
       when (not quit2) $ do
         mdl <- readIORef modelRef
@@ -135,8 +127,7 @@ runCanvasOn sel metric cols rows app = do
   primIO (prim_initCanvas sel)
   ctx <- primIO (prim_getCtx sel)
 
-  primIO prim_setupKeys
-  primIO prim_setupTouch
+  primIO prim_setupEvents
 
   let (initMdl, initCmd) = app.init
   modelRef <- newIORef initMdl

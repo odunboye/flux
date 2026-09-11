@@ -99,7 +99,7 @@ prim_setHTML : String -> PrimIO ()
 -- `<input>` in focus gets its normal native text-editing behavior;
 -- nothing focused (the traditional TUI-nav-on-a-page case) keeps the
 -- old scroll-prevention behavior.
-%foreign "javascript:lambda: _w => { if(window.__irisQueuesReady) return; window.__irisQueuesReady=true; window.__irisEvents=[]; document.addEventListener('keydown', function(e){ const inField = document.activeElement && document.activeElement.tagName === 'INPUT'; if(!inField && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault(); window.__irisEvents.push('K' + e.key); }); window.__irisClick=function(id){ window.__irisEvents.push('C' + id); }; window.__irisInput=function(id, value){ window.__irisEvents.push('I' + id + '' + value); }; }"
+%foreign "javascript:lambda: _w => { if(window.__irisQueuesReady) return; window.__irisQueuesReady=true; const q=window.__irisEvents=window.__irisEvents||[]; const enc=s=>Array.from(String(s)).map(c=>c.codePointAt(0)).join('.'); const b=v=>v?'1':'0'; const mods=e=>[b(e.shiftKey),b(e.ctrlKey),b(e.altKey),b(e.metaKey)].join('|'); const push=s=>q.push(s); const key=(a,e)=>push('i1|K|'+a+'|'+enc(e.key)+'|'+enc(e.code||e.key)+'|'+mods(e)+'|'+(Array.from(e.key).length===1?e.key.codePointAt(0):'none')); document.addEventListener('keydown',e=>{ const inField=document.activeElement&&document.activeElement.tagName==='INPUT'; if(!inField&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault(); key(e.repeat?'repeat':'down',e); }); document.addEventListener('keyup',e=>key('up',e)); const pa={pointerdown:'down',pointerup:'up',pointermove:'move',pointerenter:'enter',pointerleave:'leave',pointercancel:'cancel'}; const pb=n=>n===0?'primary':n===1?'middle':n===2?'secondary':n===3?'back':n===4?'forward':'none'; Object.keys(pa).forEach(name=>document.addEventListener(name,e=>push('i1|P|'+pa[name]+'|'+(['mouse','touch','pen'].includes(e.pointerType)?e.pointerType:'mouse')+'|'+Math.max(0,e.pointerId||0)+'|'+e.clientX+'|'+e.clientY+'|'+(e.movementX||0)+'|'+(e.movementY||0)+'|'+pb(e.button)+'|'+Math.max(0,Math.min(1,e.pressure||0))+'|'+mods(e)),{passive:true})); document.addEventListener('wheel',e=>push('i1|S|'+e.clientX+'|'+e.clientY+'|'+e.deltaX+'|'+e.deltaY+'|'+e.deltaZ),{passive:true}); addEventListener('resize',()=>push('i1|R|'+innerWidth+'|'+innerHeight)); addEventListener('focus',()=>push('i1|F|gain')); addEventListener('blur',()=>push('i1|F|lost')); addEventListener('orientationchange',()=>push('i1|O|'+(innerHeight>=innerWidth?'portrait':'landscape'))); document.addEventListener('visibilitychange',()=>push('i1|L|'+(document.hidden?'hidden':'visible'))); addEventListener('pagehide',()=>push('i1|L|pause')); addEventListener('pageshow',()=>push('i1|L|resume')); addEventListener('popstate',()=>push('i1|L|back')); document.addEventListener('compositionstart',e=>push('i1|M|start|'+enc(e.data||''))); document.addEventListener('compositionupdate',e=>push('i1|M|update|'+enc(e.data||''))); document.addEventListener('compositionend',e=>push('i1|M|end|'+enc(e.data||''))); window.__irisClick=id=>push('C'+id); window.__irisInput=(id,value)=>push('I'+id+''+value); if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App){ window.Capacitor.Plugins.App.addListener('backButton',()=>push('i1|L|back')); window.Capacitor.Plugins.App.addListener('pause',()=>push('i1|L|pause')); window.Capacitor.Plugins.App.addListener('resume',()=>push('i1|L|resume')); } }"
 prim_setupQueues : PrimIO ()
 
 -- Poll one tagged event string from the queue ('' if empty)
@@ -165,19 +165,16 @@ drainAll app modelRef quitRef idMapRef inputMapRef = do
   raw <- pollEvent
   case unpack raw of
     []                 => pure ()
-    ('K' :: keyChars)  => do
+    ('i' :: _)         => do
       quit <- readIORef quitRef
-      when (not quit) $ do
-        m <- readIORef modelRef
-        let key = domKey (pack keyChars)
-        case decodeEvent (wireVersion ++ ":K:" ++ pack keyChars) of
-          Just (KeyboardEvent decoded) =>
-            case app.handleEvent m (KeyboardEvent decoded) of
-              Nothing  => pure ()
+      when (not quit) $
+        case decodeEvent raw of
+          Nothing => pure ()
+          Just event => do
+            m <- readIORef modelRef
+            case app.handleEvent m event of
+              Nothing => pure ()
               Just msg => dispatch app modelRef quitRef msg
-          _ => case app.handleEvent m (KeyboardEvent key) of
-            Nothing  => pure ()
-            Just msg => dispatch app modelRef quitRef msg
       continue
     ('C' :: idChars)   => do
       idMap <- readIORef idMapRef
