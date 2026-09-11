@@ -38,8 +38,8 @@ make browser-test
 - Shutdown-safe command and streaming-message delivery.
 - Canvas button/checkbox hit testing with pointer capture and responsive
   relayout from the measured viewport.
-- Typed route serialization, path parameters, query parsing, fragments,
-  browser history commands, and deep-link startup events.
+- Typed route serialization, path parameters, validated UTF-8 query parsing,
+  fragments, browser history commands, and deep-link startup events.
 - Semantic DOM controls, accessible names, focus-visible styling, progress and
   status semantics, mobile touch sizing, and reduced-motion CSS.
 - A synchronized native-control overlay for Canvas buttons, checkboxes, and
@@ -74,8 +74,6 @@ responsibilities.
   labels require richer widget metadata in a future API revision.
 - Canvas stack layout is cell-based and does not yet provide general wrapping
   or scroll-container semantics.
-- URL percent decoding currently handles escaped byte values directly; full
-  UTF-8 escape-sequence decoding remains a router enhancement.
 - Active IO cannot be forcibly cancelled by generic `Cmd`; late deliveries are
   suppressed after shutdown, while pause/resume cancellation remains
   effect-specific.

@@ -34,7 +34,18 @@ main = do
   assert "path parameter" (matchPath "/users/:id" "/users/bob" == Just [("id", "bob")])
   assert "route parsing" (case fromUrl {route=Route} "/users/bob" of Just (User "bob") => True; _ => False)
   assert "not found" (case fromUrl {route=Route} "/unknown" of Nothing => True; _ => False)
+  assert "UTF-8 path decoding"
+    (case parseLocation "/caf%C3%A9/%E2%9C%93" of
+       Just location => location.path == "/café/✓"
+       _ => False)
+  assert "UTF-8 query decoding"
+    (case parseLocation "/?q=%E6%97%A5%E6%9C%AC" of
+       Just location => queryParam "q" location == Just "日本"
+       _ => False)
   assert "malformed escape" (case parseLocation "/bad%2" of Nothing => True; _ => False)
+  assert "overlong UTF-8 rejected" (case parseLocation "/%C0%AF" of Nothing => True; _ => False)
+  assert "surrogate UTF-8 rejected" (case parseLocation "/%ED%A0%80" of Nothing => True; _ => False)
+  assert "out-of-range UTF-8 rejected" (case parseLocation "/%F4%90%80%80" of Nothing => True; _ => False)
   let moved = applyNav (Push (User "a")) (initNav Home)
   assert "push" (case moved.current of User "a" => True; _ => False)
   assert "back" (case (applyNav (Back 1) moved).current of Home => True; _ => False)

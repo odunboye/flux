@@ -75,16 +75,59 @@ hexValue char =
   else if char >= 'A' && char <= 'F' then Just (10 + ord char - ord 'A')
   else Nothing
 
+escapedBytes : List Char -> Maybe (List Int, List Char)
+escapedBytes ('%' :: high :: low :: rest) = do
+  hi <- hexValue high
+  lo <- hexValue low
+  let byte = hi * 16 + lo
+  case rest of
+    '%' :: _ => do
+      (bytes, remaining) <- escapedBytes rest
+      pure (byte :: bytes, remaining)
+    _ => pure ([byte], rest)
+escapedBytes _ = Nothing
+
+continuation : Int -> Bool
+continuation byte = byte >= 128 && byte <= 191
+
+utf8Chars : List Int -> Maybe (List Char)
+utf8Chars [] = Just []
+utf8Chars (first :: rest) =
+  if first <= 127 then map (chr first ::) (utf8Chars rest)
+  else case rest of
+    second :: remaining =>
+      if first >= 194 && first <= 223 && continuation second
+         then emit ((first - 192) * 64 + (second - 128)) remaining
+      else case remaining of
+        third :: afterThree =>
+          if first >= 224 && first <= 239 && continuation second && continuation third &&
+             (first /= 224 || second >= 160) && (first /= 237 || second <= 159)
+             then emit ((first - 224) * 4096 + (second - 128) * 64 +
+                        (third - 128)) afterThree
+          else case afterThree of
+            fourth :: afterFour =>
+              if first >= 240 && first <= 244 && continuation second &&
+                 continuation third && continuation fourth &&
+                 (first /= 240 || second >= 144) && (first /= 244 || second <= 143)
+                 then emit ((first - 240) * 262144 + (second - 128) * 4096 +
+                            (third - 128) * 64 + (fourth - 128)) afterFour
+                 else Nothing
+            [] => Nothing
+        [] => Nothing
+    [] => Nothing
+  where
+    emit : Int -> List Int -> Maybe (List Char)
+    emit code remaining = map (chr code ::) (utf8Chars remaining)
+
 urlDecodeChars : Bool -> List Char -> Maybe (List Char)
 urlDecodeChars _ [] = Just []
 urlDecodeChars plusAsSpace ('+' :: rest) =
   map ((if plusAsSpace then ' ' else '+') ::) (urlDecodeChars plusAsSpace rest)
-urlDecodeChars plusAsSpace ('%' :: hi :: lo :: rest) = do
-  high <- hexValue hi
-  low <- hexValue lo
+urlDecodeChars plusAsSpace chars@('%' :: _) = do
+  (bytes, rest) <- escapedBytes chars
+  unicode <- utf8Chars bytes
   decoded <- urlDecodeChars plusAsSpace rest
-  pure (chr (high * 16 + low) :: decoded)
-urlDecodeChars _ ('%' :: _) = Nothing
+  pure (unicode ++ decoded)
 urlDecodeChars plusAsSpace (char :: rest) =
   map (char ::) (urlDecodeChars plusAsSpace rest)
 
