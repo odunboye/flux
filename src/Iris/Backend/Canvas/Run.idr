@@ -44,7 +44,7 @@ prim_canvasClientW : String -> PrimIO Int
 prim_canvasClientH : String -> PrimIO Int
 
 -- Scale canvas for the device pixel ratio (sharp on Retina / high-DPI)
-%foreign "javascript:lambda: (sel,_w) => { const dpr=window.devicePixelRatio||1; const c=document.querySelector(sel); if(c){c.width=c.clientWidth*dpr; c.clientHeight&&(c.height=c.clientHeight*dpr); c.getContext('2d').scale(dpr,dpr);} }"
+%foreign "javascript:lambda: (sel,_w) => { const dpr=window.devicePixelRatio||1; const c=document.querySelector(sel); if(c){const w=Math.max(1,Math.round(c.clientWidth*dpr)),h=Math.max(1,Math.round(c.clientHeight*dpr)); if(c.width!==w||c.height!==h){c.width=w;c.height=h;} const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);} }"
 prim_initCanvas : String -> PrimIO ()
 
 -- ─── Input queues ────────────────────────────────────────────────────────────
@@ -136,10 +136,15 @@ tickLoop app modelRef quitRef ms = do
 
 -- ─── Main render / event loop (requestAnimationFrame) ────────────────────────
 
-rafLoop : IrisApp mdl outMsg -> AnyPtr -> CanvasMetric -> Nat -> Nat
+rafLoop : IrisApp mdl outMsg -> String -> AnyPtr -> CanvasMetric
         -> IORef mdl -> IORef Bool -> IORef (List (HitTarget outMsg))
         -> IORef (Maybe Nat) -> IO ()
-rafLoop app ctx metric cols rows modelRef quitRef targetsRef captureRef = do
+rafLoop app selector ctx metric modelRef quitRef targetsRef captureRef = do
+  primIO (prim_initCanvas selector)
+  pixelWidth <- primIO (prim_canvasClientW selector)
+  pixelHeight <- primIO (prim_canvasClientH selector)
+  let cols = max 1 (cast (cast pixelWidth / metric.cellW))
+  let rows = max 1 (cast (cast pixelHeight / metric.cellH))
   quit <- readIORef quitRef
   if quit
     then do
@@ -159,15 +164,17 @@ rafLoop app ctx metric cols rows modelRef quitRef targetsRef captureRef = do
         let widget = app.view mdl
         writeIORef targetsRef (layoutTargets widget cols rows)
         renderToCanvas metric widget cols rows ctx
-        primIO (prim_raf (rafLoop app ctx metric cols rows modelRef quitRef
+        primIO (prim_raf (rafLoop app selector ctx metric modelRef quitRef
                               targetsRef captureRef))
 
 -- ─── runCanvas ───────────────────────────────────────────────────────────────
 
-||| Run with custom canvas selector, cell metric, and virtual dimensions.
+||| Run with a custom canvas selector and cell metric. The legacy dimensions
+||| arguments are retained for source compatibility; the viewport is measured
+||| from the Canvas on every frame so resize and orientation changes relayout.
 public export
 runCanvasOn : String -> CanvasMetric -> Nat -> Nat -> IrisApp mdl outMsg -> IO ()
-runCanvasOn sel metric cols rows app = do
+runCanvasOn sel metric _ _ app = do
   primIO (prim_initCanvas sel)
   ctx <- primIO (prim_getCtx sel)
 
@@ -176,7 +183,11 @@ runCanvasOn sel metric cols rows app = do
   let (initMdl, initCmd) = app.init
   modelRef   <- newIORef initMdl
   quitRef    <- newIORef False
-  targetsRef <- newIORef (layoutTargets (app.view initMdl) cols rows)
+  clientWidth <- primIO (prim_canvasClientW sel)
+  clientHeight <- primIO (prim_canvasClientH sel)
+  let actualCols = max 1 (cast (cast clientWidth / metric.cellW))
+  let actualRows = max 1 (cast (cast clientHeight / metric.cellH))
+  targetsRef <- newIORef (layoutTargets (app.view initMdl) actualCols actualRows)
   captureRef <- newIORef (the (Maybe Nat) Nothing)
 
   execCmd initCmd (dispatch app modelRef quitRef) quitRef
@@ -185,7 +196,7 @@ runCanvasOn sel metric cols rows app = do
   primIO (prim_setTimeout 100 (tickLoop app modelRef quitRef 100))
 
   -- first frame via RAF
-  primIO (prim_raf (rafLoop app ctx metric cols rows modelRef quitRef
+  primIO (prim_raf (rafLoop app sel ctx metric modelRef quitRef
                             targetsRef captureRef))
 
 ||| Run on an HTML5 Canvas — default desktop settings (80×24 cells, 10×20px).

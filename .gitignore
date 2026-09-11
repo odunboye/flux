@@ -1,0 +1,9 @@
+# Idris build output
+build/
+**/build/
+
+# Generated JavaScript bundles
+examples/todo/mobile/app.js
+
+# Local tooling
+.DS_Store

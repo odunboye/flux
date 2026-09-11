@@ -84,9 +84,9 @@ spinFrame n =
 renderProgress : Double -> String
 renderProgress frac =
   let pct = show (cast {to=Int} (frac * 100.0))
-  in "<div class='iris-progress'>" ++
+  in "<div class='iris-progress' role='progressbar' aria-label='Progress' aria-valuemin='0' aria-valuemax='100' aria-valuenow='" ++ pct ++ "'>" ++
      "<div class='iris-progress-bar' style='width:" ++ pct ++ "%'></div>" ++
-     "<span class='iris-progress-label'>" ++ pct ++ "%</span>" ++
+     "<span class='iris-progress-label' aria-hidden='true'>" ++ pct ++ "%</span>" ++
      "</div>"
 
 -- ─── Sparkline ───────────────────────────────────────────────────────────────
@@ -180,13 +180,19 @@ renderHTML (WVStack s children) st idMap inputMap = do
   let title = case s.label of
                 Nothing => ""
                 Just t  => "<div class='iris-panel-title'>" ++ escapeHTML t ++ "</div>"
-  pure $ "<div style='" ++ css ++ "'>" ++ title ++ concat inner ++ "</div>"
+  let semantics = case s.label of
+                    Nothing => " role='group'"
+                    Just label => " role='group' aria-label='" ++ escapeHTML label ++ "'"
+  pure $ "<div" ++ semantics ++ " style='" ++ css ++ "'>" ++ title ++ concat inner ++ "</div>"
 
 renderHTML (WHStack s children) st idMap inputMap = do
   let css = "display:flex;flex-direction:row;gap:8px;" ++
             styleToCSS s ++ flexStyle s
   inner <- mapIO (\c => renderHTML c st idMap inputMap) children
-  pure $ "<div style='" ++ css ++ "'>" ++ concat inner ++ "</div>"
+  let semantics = case s.label of
+                    Nothing => " role='group'"
+                    Just label => " role='group' aria-label='" ++ escapeHTML label ++ "'"
+  pure $ "<div" ++ semantics ++ " style='" ++ css ++ "'>" ++ concat inner ++ "</div>"
 
 renderHTML (WButton s label msg) st idMap _ = do
   eid <- nextId st
@@ -204,8 +210,9 @@ renderHTML (WCheckbox s checked msg) st idMap _ = do
   let chk = if checked then " checked" else ""
       css = "display:flex;align-items:center;gap:8px;cursor:pointer;" ++
             styleToCSS s
+  let accessibleName = case s.label of Nothing => "Toggle"; Just label => label
   pure $ "<label style='" ++ css ++ "'>" ++
-         "<input type='checkbox' aria-label='Toggle'" ++ chk ++
+         "<input type='checkbox' aria-label='" ++ escapeHTML accessibleName ++ "'" ++ chk ++
          " onchange='__irisClick(" ++ show eid ++ ")'/>" ++
          "</label>"
 
@@ -233,7 +240,8 @@ renderHTML (WInput s val onChange) st _ inputMap = do
   -- same `oninput` this field already wires - indistinguishable from
   -- real typing to `onChange`. Seen firsthand mid-testing: an unrelated
   -- autofill suggestion got submitted as a real todo.
-  pure $ "<input type='text' aria-label='Text input' id='iris-input-" ++ show eid ++ "' autocomplete='off' style='" ++ css ++ "' " ++
+  let accessibleName = case s.label of Nothing => "Text input"; Just label => label
+  pure $ "<input type='text' aria-label='" ++ escapeHTML accessibleName ++ "' id='iris-input-" ++ show eid ++ "' autocomplete='off' style='" ++ css ++ "' " ++
          "value='" ++ escapeHTML val ++ "' " ++
          "oninput='__irisInput(" ++ show eid ++ ", this.value)'/>"
 
@@ -243,8 +251,8 @@ renderHTML (WProgress s frac) _ _ _ =
 renderHTML (WSpinner s tick) _ _ _ = do
   let css   = styleToCSS s
       frame = spinFrame tick
-  pure $ "<span class='iris-spinner' style='" ++ css ++ "'>" ++
-         frame ++ "</span>"
+  pure $ "<span class='iris-spinner' role='status' aria-live='polite' aria-label='Working' style='" ++ css ++ "'>" ++
+         "<span aria-hidden='true'>" ++ frame ++ "</span></span>"
 
 renderHTML (WSparkline s vals) _ _ _ = do
   let css   = styleToCSS s
@@ -335,10 +343,23 @@ irisCSS = """
   .iris-spinner { font-family: monospace; }
   input[type='checkbox'] { accent-color: var(--iris-accent); width: 16px; height: 16px; }
   button:hover { background: #30363d !important; }
+  button:focus-visible, input:focus-visible {
+    outline: 3px solid var(--iris-accent);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
   @media (max-width: 600px) {
     body { font-size: 16px; }
-    button { min-height: 44px; }
+    button { min-width: 44px; min-height: 44px; }
     input[type='text'] { min-height: 44px; box-sizing: border-box; }
+    input[type='checkbox'] { width: 24px; height: 24px; }
   }
 """
 
