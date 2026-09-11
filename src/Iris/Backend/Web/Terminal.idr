@@ -114,6 +114,7 @@ webExecCmd (Batch cs)       send quitRef = traverse_ (\c => webExecCmd c send qu
 webExecCmd (MapCmd f c)     send quitRef = webExecCmd c (send . f) quitRef
 webExecCmd (Task io)        send _       = io >>= send
 webExecCmd (StreamTask act) send _       = act send
+webExecCmd (CancellableTask act) send _  = ignore (act send)
 webExecCmd QuitApp          _    quitRef = writeIORef quitRef True
 
 -- ─── Message dispatcher ──────────────────────────────────────────────────────

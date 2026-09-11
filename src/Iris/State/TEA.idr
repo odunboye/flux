@@ -26,6 +26,9 @@ data Cmd : (msg : Type) -> Type where
   ||| A streaming task: calls `send` zero or more times.
   ||| Use this for LLM token streaming, file tailing, etc.
   StreamTask : ((msg -> IO ()) -> IO ()) -> Cmd msg
+  ||| Start cooperative asynchronous work and return its cancellation action.
+  ||| The runtime invokes the action on shutdown or lifecycle suspension.
+  CancellableTask : ((msg -> IO ()) -> IO (IO ())) -> Cmd msg
   ||| Tell the runtime to exit cleanly.
   ||| Use `quit` in your update function instead of returning `none`.
   QuitApp : Cmd msg
@@ -37,6 +40,7 @@ Functor Cmd where
   map f (MapCmd g c)       = MapCmd (f . g) c
   map f (Task io)          = Task (map f io)
   map f (StreamTask act)   = StreamTask (\send => act (send . f))
+  map f (CancellableTask act) = CancellableTask (\send => act (send . f))
   map _ QuitApp            = QuitApp
 
 public export

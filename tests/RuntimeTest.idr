@@ -46,4 +46,31 @@ main = do
   afterLateCommand <- readIORef model
   assert "commands after shutdown are ignored" (afterLateCommand == 2)
 
+  managedModel <- newIORef 0
+  managedQuit <- newIORef False
+  control <- newRuntimeControl managedQuit
+  cancelled <- newIORef 0
+  callback <- newIORef (\_ => pure ())
+  let managed = CancellableTask (\send => do
+        writeIORef callback send
+        pure (modifyIORef cancelled S))
+  execCmdManaged managed (dispatchManaged app managedModel control) control
+  suspendRuntime control
+  cancelCount <- readIORef cancelled
+  assert "suspension cancels active effects" (cancelCount == 1)
+  resumeRuntime control
+  stale <- readIORef callback
+  stale Add
+  staleModel <- readIORef managedModel
+  assert "pre-pause callback is stale after resume" (staleModel == 0)
+
+  execCmdManaged managed (dispatchManaged app managedModel control) control
+  fresh <- readIORef callback
+  fresh Add
+  freshModel <- readIORef managedModel
+  assert "current generation callback dispatches" (freshModel == 1)
+  execCmdManaged QuitApp (dispatchManaged app managedModel control) control
+  finalCancelCount <- readIORef cancelled
+  assert "shutdown cancels active effects" (finalCancelCount == 2)
+
   putStrLn "Runtime tests passed"
