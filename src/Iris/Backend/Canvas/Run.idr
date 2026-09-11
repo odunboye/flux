@@ -54,7 +54,7 @@ prim_setupSemantics : String -> PrimIO ()
 %foreign "javascript:lambda: (sel,html,_w) => { const canvas=document.querySelector(sel);const overlay=canvas&&canvas.nextElementSibling;if(!overlay)return;const active=document.activeElement;const id=active&&overlay.contains(active)?active.id:null;const start=id&&active.selectionStart,end=id&&active.selectionEnd;if(overlay.__irisHTML!==html){overlay.__irisHTML=html;overlay.innerHTML=html;if(id){const next=document.getElementById(id);if(next){next.focus();try{next.setSelectionRange(start,end)}catch(e){}}}} }"
 prim_setSemantics : String -> String -> PrimIO ()
 
-%foreign "javascript:lambda: _w => { const q=window.__irisCanvasEvents,enc=s=>Array.from(String(s)).map(c=>c.codePointAt(0)).join('.');window.__irisCanvasActivate=id=>q&&q.push('A'+id);window.__irisCanvasInput=(id,value)=>q&&q.push('E'+id+'\\x01'+value); }"
+%foreign "javascript:lambda: _w => { if(window.__irisSemanticEventsReady)return;window.__irisSemanticEventsReady=true;const q=window.__irisCanvasEvents;document.addEventListener('click',e=>{const target=e.target&&e.target.closest('[data-iris-canvas-activate]');if(target&&target.closest('.iris-canvas-semantics'))q&&q.push('A'+target.dataset.irisCanvasActivate);});document.addEventListener('input',e=>{const target=e.target&&e.target.closest('[data-iris-canvas-input]');if(target&&target.closest('.iris-canvas-semantics'))q&&q.push('E'+target.dataset.irisCanvasInput+'\\x01'+target.value);}); }"
 prim_setupSemanticEvents : PrimIO ()
 
 -- ─── Input queues ────────────────────────────────────────────────────────────

@@ -137,14 +137,13 @@ semanticOverlay cellW cellH = concatMap renderTarget
     renderTarget (ButtonTarget id rect label _) =
       "<button class='iris-canvas-control' aria-label='" ++ escapeAttribute label ++
       "' style='" ++ semanticStyle cellW cellH rect ++ "' " ++
-      "onclick='__irisCanvasActivate(" ++ show id ++ ")'></button>"
+      "data-iris-canvas-activate='" ++ show id ++ "'></button>"
     renderTarget (CheckboxTarget id rect checked _) =
       "<input class='iris-canvas-control' type='checkbox' aria-label='Toggle' " ++
       (if checked then "checked " else "") ++ "style='" ++ semanticStyle cellW cellH rect ++
-      "' onchange='__irisCanvasActivate(" ++ show id ++ ")'/>"
+      "' data-iris-canvas-activate='" ++ show id ++ "'/>"
     renderTarget (InputTarget id rect value _) =
       "<input class='iris-canvas-control iris-canvas-input' type='text' " ++
       "aria-label='Canvas text input' autocomplete='off' id='iris-canvas-input-" ++
       show id ++ "' style='" ++ semanticStyle cellW cellH rect ++ "' value='" ++
-      escapeAttribute value ++ "' oninput='__irisCanvasInput(" ++ show id ++
-      ",this.value)'/>"
+      escapeAttribute value ++ "' data-iris-canvas-input='" ++ show id ++ "'/>"

@@ -40,6 +40,11 @@ main = do
   assert "checkbox accessible name" (contains "aria-label='Task complete'" html)
   assert "checked state" (contains " checked" html)
   assert "button accessible name" (contains "aria-label='Save &amp; close'" html)
+  assert "delegated button event" (contains "data-iris-click='" html)
+  assert "delegated input event" (contains "data-iris-input='" html)
+  assert "no inline event handlers" (not (contains "onclick=" html) &&
+                                      not (contains "oninput=" html) &&
+                                      not (contains "onchange=" html))
   assert "progress semantics" (contains "role='progressbar'" html && contains "aria-valuenow='50'" html)
   assert "live status" (contains "role='status'" html && contains "aria-live='polite'" html)
   assert "group semantics" (contains "role='group'" html)

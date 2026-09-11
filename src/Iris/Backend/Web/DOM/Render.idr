@@ -201,7 +201,7 @@ renderHTML (WButton s label msg) st idMap _ = do
             "border:1px solid #30363d;background:#21262d;" ++
             "color:#c9d1d9;font-size:14px;" ++ styleToCSS s
   pure $ "<button type='button' aria-label='" ++ escapeHTML label ++ "' style='" ++ css ++ "' " ++
-         "onclick='__irisClick(" ++ show eid ++ ")'>" ++
+         "data-iris-click='" ++ show eid ++ "'>" ++
          escapeHTML label ++ "</button>"
 
 renderHTML (WCheckbox s checked msg) st idMap _ = do
@@ -213,7 +213,7 @@ renderHTML (WCheckbox s checked msg) st idMap _ = do
   let accessibleName = case s.label of Nothing => "Toggle"; Just label => label
   pure $ "<label style='" ++ css ++ "'>" ++
          "<input type='checkbox' aria-label='" ++ escapeHTML accessibleName ++ "'" ++ chk ++
-         " onchange='__irisClick(" ++ show eid ++ ")'/>" ++
+         " data-iris-click='" ++ show eid ++ "'/>" ++
          "</label>"
 
 renderHTML (WInput s val onChange) st _ inputMap = do
@@ -243,7 +243,7 @@ renderHTML (WInput s val onChange) st _ inputMap = do
   let accessibleName = case s.label of Nothing => "Text input"; Just label => label
   pure $ "<input type='text' aria-label='" ++ escapeHTML accessibleName ++ "' id='iris-input-" ++ show eid ++ "' autocomplete='off' style='" ++ css ++ "' " ++
          "value='" ++ escapeHTML val ++ "' " ++
-         "oninput='__irisInput(" ++ show eid ++ ", this.value)'/>"
+         "data-iris-input='" ++ show eid ++ "'/>"
 
 renderHTML (WProgress s frac) _ _ _ =
   pure (renderProgress frac)
