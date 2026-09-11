@@ -221,8 +221,8 @@ drainAll app modelRef quitRef control idMapRef inputMapRef = do
 -- ─── Render loop ─────────────────────────────────────────────────────────────
 
 renderLoop : IrisApp mdl outMsg -> IORef mdl -> IORef Bool -> RuntimeControl
-           -> IORef (List (Nat, outMsg)) -> IORef (List (Nat, String -> outMsg)) -> IO ()
-renderLoop app modelRef quitRef control idMapRef inputMapRef = do
+           -> IORef String -> IORef (List (Nat, outMsg)) -> IORef (List (Nat, String -> outMsg)) -> IO ()
+renderLoop app modelRef quitRef control htmlRef idMapRef inputMapRef = do
   quit <- readIORef quitRef
   if quit
     then do
@@ -237,10 +237,13 @@ renderLoop app modelRef quitRef control idMapRef inputMapRef = do
       when (not quit2) $ do
         mdl <- readIORef modelRef
         (html, pairs, inputs) <- renderPage (app.view mdl)
-        setHTML html
+        previous <- readIORef htmlRef
+        when (html /= previous) $ do
+          setHTML html
+          writeIORef htmlRef html
         writeIORef idMapRef pairs
         writeIORef inputMapRef inputs
-        scheduleIn 33 (renderLoop app modelRef quitRef control idMapRef inputMapRef)
+        scheduleIn 33 (renderLoop app modelRef quitRef control htmlRef idMapRef inputMapRef)
 
 -- ─── Tick loop ───────────────────────────────────────────────────────────────
 
@@ -268,6 +271,7 @@ runWeb app = do
   modelRef    <- newIORef initMdl
   quitRef     <- newIORef False
   control     <- newRuntimeControl quitRef
+  htmlRef     <- newIORef ""
   idMapRef    <- newIORef (the (List (Nat, outMsg)) [])
   inputMapRef <- newIORef (the (List (Nat, String -> outMsg)) [])
 
@@ -278,9 +282,10 @@ runWeb app = do
   mdl <- readIORef modelRef
   (html, pairs, inputs) <- renderPage (app.view mdl)
   setHTML html
+  writeIORef htmlRef html
   writeIORef idMapRef pairs
   writeIORef inputMapRef inputs
 
   -- start loops
   scheduleIn 100 (tickLoop app modelRef quitRef control 100)
-  scheduleIn 33  (renderLoop app modelRef quitRef control idMapRef inputMapRef)
+  scheduleIn 33  (renderLoop app modelRef quitRef control htmlRef idMapRef inputMapRef)

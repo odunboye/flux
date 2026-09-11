@@ -10,11 +10,14 @@ test('DOM app preserves native input behavior and accessible output', async ({ p
   await expect(input).toHaveAttribute('aria-label', 'Text input');
   await input.fill('browser ordered task');
   await expect(input).toHaveValue('browser ordered task');
-
-  // A render replaces the app fragment; focus and selection must survive it.
+  // The model-changing frame may replace the node once, preserving focus.
   await page.waitForTimeout(80);
   await expect(input).toBeFocused();
   await expect(input).toHaveValue('browser ordered task');
+  await input.evaluate(element => { window.__irisStableInput = element; });
+  // Subsequent unchanged frames must retain the same native node.
+  await page.waitForTimeout(80);
+  expect(await input.evaluate(element => element === window.__irisStableInput)).toBe(true);
   await page.keyboard.press('Enter');
   await expect(page.locator('#iris-app')).toContainText('browser ordered task');
   await expect(page.locator('[role=progressbar]')).toHaveAttribute('aria-valuenow');
