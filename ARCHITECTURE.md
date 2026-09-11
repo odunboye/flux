@@ -99,8 +99,9 @@ release checklist is [`WEB_MOBILE_COMPLETION.md`](WEB_MOBILE_COMPLETION.md).
 - `Platform/Interface.idr` has unimplemented PAL operations.
 - `Layout/Types.idr` and the duplicate generic `Core/Runtime.idr` are not the layout
   and runtime used by the supported DOM/Canvas application runners.
-- Canvas text accessibility, general wrapping/scrolling, and generic effect
-  cancellation across pause/resume remain limitations.
+- Canvas uses a synchronized semantic DOM overlay for native controls and text
+  entry; general wrapping/scrolling and generic effect cancellation across
+  pause/resume remain limitations.
 
 In short: **TUI remains the flagship backend**. Web DOM and Capacitor-hosted Canvas
 are supported foundations with the explicit limitations in the release checklist;

@@ -1,4 +1,4 @@
-.PHONY: build test check release-check clean
+.PHONY: build test browser-test check release-check clean
 
 build:
 	idris2 --build iris.ipkg
@@ -15,6 +15,9 @@ test: build
 	./tests/build/exec/canvas-layout-tests
 	./tests/build/exec/router-tests
 	./tests/build/exec/dom-render-tests
+
+browser-test:
+	npm run test:browser
 
 check: test
 	$(MAKE) -C examples/todo check

@@ -21,6 +21,7 @@
 module Iris.Backend.Canvas.Run
 
 import Data.IORef
+import Data.String
 import Iris.State.TEA
 import Iris.Platform.Event
 import Iris.Core.Types
@@ -47,6 +48,15 @@ prim_canvasClientH : String -> PrimIO Int
 %foreign "javascript:lambda: (sel,_w) => { const dpr=window.devicePixelRatio||1; const c=document.querySelector(sel); if(c){const w=Math.max(1,Math.round(c.clientWidth*dpr)),h=Math.max(1,Math.round(c.clientHeight*dpr)); if(c.width!==w||c.height!==h){c.width=w;c.height=h;} const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);} }"
 prim_initCanvas : String -> PrimIO ()
 
+%foreign "javascript:lambda: (sel,_w) => { const canvas=document.querySelector(sel); if(!canvas)return; let overlay=canvas.nextElementSibling; if(!overlay||!overlay.classList.contains('iris-canvas-semantics')){overlay=document.createElement('div');overlay.className='iris-canvas-semantics';canvas.insertAdjacentElement('afterend',overlay);} const parent=canvas.parentElement;if(parent&&getComputedStyle(parent).position==='static')parent.style.position='relative'; Object.assign(overlay.style,{position:'absolute',left:canvas.offsetLeft+'px',top:canvas.offsetTop+'px',width:canvas.clientWidth+'px',height:canvas.clientHeight+'px',pointerEvents:'none'}); if(!document.getElementById('iris-canvas-a11y-style')){const style=document.createElement('style');style.id='iris-canvas-a11y-style';style.textContent='.iris-canvas-control{opacity:.001;background:transparent;color:transparent;border:0;pointer-events:auto}.iris-canvas-control:focus-visible{opacity:1;outline:3px solid #58a6ff;outline-offset:2px}.iris-canvas-input{caret-color:#58a6ff}';document.head.appendChild(style);} }"
+prim_setupSemantics : String -> PrimIO ()
+
+%foreign "javascript:lambda: (sel,html,_w) => { const canvas=document.querySelector(sel);const overlay=canvas&&canvas.nextElementSibling;if(!overlay)return;const active=document.activeElement;const id=active&&overlay.contains(active)?active.id:null;const start=id&&active.selectionStart,end=id&&active.selectionEnd;if(overlay.__irisHTML!==html){overlay.__irisHTML=html;overlay.innerHTML=html;if(id){const next=document.getElementById(id);if(next){next.focus();try{next.setSelectionRange(start,end)}catch(e){}}}} }"
+prim_setSemantics : String -> String -> PrimIO ()
+
+%foreign "javascript:lambda: _w => { const q=window.__irisCanvasEvents,enc=s=>Array.from(String(s)).map(c=>c.codePointAt(0)).join('.');window.__irisCanvasActivate=id=>q&&q.push('A'+id);window.__irisCanvasInput=(id,value)=>q&&q.push('E'+id+'\\x01'+value); }"
+prim_setupSemanticEvents : PrimIO ()
+
 -- ─── Input queues ────────────────────────────────────────────────────────────
 
 -- One ordered, versioned event queue shared by every browser/Capacitor source.
@@ -66,9 +76,45 @@ prim_raf : IO () -> PrimIO ()
 -- ─── Key dispatch ────────────────────────────────────────────────────────────
 
 activateTarget : IrisApp mdl msg -> IORef mdl -> IORef Bool -> HitTarget msg -> IO ()
-activateTarget app modelRef quitRef (ActivateTarget _ _ message) =
+activateTarget app modelRef quitRef (ButtonTarget _ _ _ message) =
+  dispatch app modelRef quitRef message
+activateTarget app modelRef quitRef (CheckboxTarget _ _ _ message) =
   dispatch app modelRef quitRef message
 activateTarget _ _ _ (InputTarget _ _ _ _) = pure ()
+
+lookupTarget : Nat -> List (HitTarget msg) -> Maybe (HitTarget msg)
+lookupTarget _ [] = Nothing
+lookupTarget id (target :: rest) =
+  if targetId target == id then Just target else lookupTarget id rest
+
+splitEditorEvent : List Char -> (List Char, List Char)
+splitEditorEvent = go []
+  where
+    go : List Char -> List Char -> (List Char, List Char)
+    go acc [] = (reverse acc, [])
+    go acc ('\x01' :: rest) = (reverse acc, rest)
+    go acc (char :: rest) = go (char :: acc) rest
+
+parseTargetId : String -> Maybe Nat
+parseTargetId raw = do
+  value <- parseInteger raw
+  if value < 0 then Nothing else Just (cast value)
+
+activateById : IrisApp mdl msg -> IORef mdl -> IORef Bool
+            -> IORef (List (HitTarget msg)) -> Nat -> IO ()
+activateById app modelRef quitRef targetsRef id = do
+  targets <- readIORef targetsRef
+  case lookupTarget id targets of
+    Nothing => pure ()
+    Just target => activateTarget app modelRef quitRef target
+
+editById : IrisApp mdl msg -> IORef mdl -> IORef Bool
+        -> IORef (List (HitTarget msg)) -> Nat -> String -> IO ()
+editById app modelRef quitRef targetsRef id value = do
+  targets <- readIORef targetsRef
+  case lookupTarget id targets of
+    Just (InputTarget _ _ _ handler) => dispatch app modelRef quitRef (handler value)
+    _ => pure ()
 
 pointerCell : CanvasMetric -> Point -> Maybe (Nat, Nat)
 pointerCell metric point =
@@ -109,8 +155,19 @@ drainEvents : IrisApp mdl msg -> CanvasMetric -> IORef mdl -> IORef Bool
            -> IORef (List (HitTarget msg)) -> IORef (Maybe Nat) -> IO ()
 drainEvents app metric modelRef quitRef targetsRef captureRef = do
   raw <- primIO prim_pollEvent
-  case raw of
-    "" => pure ()
+  case unpack raw of
+    [] => pure ()
+    'A' :: idChars => do
+      case parseTargetId (pack idChars) of
+        Nothing => pure ()
+        Just id => activateById app modelRef quitRef targetsRef id
+      drainEvents app metric modelRef quitRef targetsRef captureRef
+    'E' :: payload => do
+      let (idChars, valueChars) = splitEditorEvent payload
+      case parseTargetId (pack idChars) of
+        Nothing => pure ()
+        Just id => editById app modelRef quitRef targetsRef id (pack valueChars)
+      drainEvents app metric modelRef quitRef targetsRef captureRef
     _ => do
       quit <- readIORef quitRef
       when (not quit) $
@@ -162,7 +219,10 @@ rafLoop app selector ctx metric modelRef quitRef targetsRef captureRef = do
       when (not quit2) $ do
         mdl <- readIORef modelRef
         let widget = app.view mdl
-        writeIORef targetsRef (layoutTargets widget cols rows)
+        let targets = layoutTargets widget cols rows
+        writeIORef targetsRef targets
+        primIO (prim_setSemantics selector
+          (semanticOverlay metric.cellW metric.cellH targets))
         renderToCanvas metric widget cols rows ctx
         primIO (prim_raf (rafLoop app selector ctx metric modelRef quitRef
                               targetsRef captureRef))
@@ -179,6 +239,8 @@ runCanvasOn sel metric _ _ app = do
   ctx <- primIO (prim_getCtx sel)
 
   primIO (prim_setupEvents sel)
+  primIO (prim_setupSemantics sel)
+  primIO prim_setupSemanticEvents
 
   let (initMdl, initCmd) = app.init
   modelRef   <- newIORef initMdl

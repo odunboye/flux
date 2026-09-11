@@ -19,7 +19,15 @@ bundle limit, and rejects generated artifacts tracked by Git. Override the
 size limit with `IRIS_MAX_BUNDLE_BYTES` when intentionally evaluating a larger
 bundle.
 
-CI runs the same command on every push and pull request.
+CI runs the same command on every push and pull request, then installs
+Playwright Chromium and runs real-browser integration tests. To run those
+locally:
+
+```sh
+npm ci
+npx playwright install chromium
+make browser-test
+```
 
 ## Implemented behavior
 
@@ -34,6 +42,11 @@ CI runs the same command on every push and pull request.
   browser history commands, and deep-link startup events.
 - Semantic DOM controls, accessible names, focus-visible styling, progress and
   status semantics, mobile touch sizing, and reduced-motion CSS.
+- A synchronized native-control overlay for Canvas buttons, checkboxes, and
+  text fields, providing keyboard focus, screen-reader semantics, mobile soft
+  keyboard input, and model-driven text editing.
+- Playwright coverage for DOM input/focus preservation, Canvas semantic text
+  input, and browser-history lifecycle delivery.
 
 ## Native Capacitor validation
 
@@ -56,9 +69,9 @@ responsibilities.
 
 ## Known limitations
 
-- Canvas text fields are drawn controls, not a complete accessible semantic DOM
-  overlay; production applications requiring text entry should currently use
-  the DOM backend.
+- The Canvas semantic overlay exposes standard controls, but complex input
+  features such as validation descriptions and application-defined checkbox
+  labels require richer widget metadata in a future API revision.
 - Canvas stack layout is cell-based and does not yet provide general wrapping
   or scroll-container semantics.
 - URL percent decoding currently handles escaped byte values directly; full

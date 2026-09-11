@@ -14,7 +14,8 @@ widget = vstack
 messageAt : Nat -> Nat -> Maybe Nat
 messageAt col row =
   case hitAt col row (layoutTargets widget 40 10) of
-    Just (ActivateTarget _ _ message) => Just message
+    Just (ButtonTarget _ _ _ message) => Just message
+    Just (CheckboxTarget _ _ _ message) => Just message
     Just (InputTarget _ _ value handler) => Just (handler value)
     Nothing => Nothing
 
@@ -31,4 +32,20 @@ main = do
   assert "input hit" (messageAt 1 2 == Just 5)
   assert "right boundary is exclusive" (messageAt 40 0 == Nothing)
   assert "outside vertical bounds" (messageAt 1 9 == Nothing)
+  let semantics = semanticOverlay 10.0 20.0 (layoutTargets widget 40 10)
+  assert "semantic button" (contains "aria-label='first'" semantics)
+  assert "semantic checkbox" (contains "type='checkbox'" semantics)
+  assert "semantic text input" (contains "aria-label='Canvas text input'" semantics)
   putStrLn "Canvas layout tests passed"
+  where
+    startsWith : List Char -> List Char -> Bool
+    startsWith [] _ = True
+    startsWith _ [] = False
+    startsWith (x :: xs) (y :: ys) = x == y && startsWith xs ys
+
+    tails : List a -> List (List a)
+    tails [] = [[]]
+    tails value@(_ :: rest) = value :: tails rest
+
+    contains : String -> String -> Bool
+    contains needle haystack = any (startsWith (unpack needle)) (tails (unpack haystack))

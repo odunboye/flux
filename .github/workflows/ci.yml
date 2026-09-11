@@ -16,3 +16,9 @@ jobs:
           node-version: 20
       - name: Build, test, and validate release assets
         run: make check
+      - name: Install browser test dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Run browser integration tests
+        run: make browser-test

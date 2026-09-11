@@ -6,17 +6,20 @@ import Iris.Backend.Terminal.WidgetRender
 
 public export
 data HitTarget msg
-  = ActivateTarget Nat WRect msg
+  = ButtonTarget Nat WRect String msg
+  | CheckboxTarget Nat WRect Bool msg
   | InputTarget Nat WRect String (String -> msg)
 
 public export
 targetId : HitTarget msg -> Nat
-targetId (ActivateTarget value _ _) = value
+targetId (ButtonTarget value _ _ _) = value
+targetId (CheckboxTarget value _ _ _) = value
 targetId (InputTarget value _ _ _) = value
 
 public export
 targetRect : HitTarget msg -> WRect
-targetRect (ActivateTarget _ rect _) = rect
+targetRect (ButtonTarget _ rect _ _) = rect
+targetRect (CheckboxTarget _ rect _ _) = rect
 targetRect (InputTarget _ rect _ _) = rect
 
 inside : Nat -> Nat -> WRect -> Bool
@@ -36,10 +39,10 @@ hitAt col row targets = findHit (reverse targets)
 
 mutual
   collect : Nat -> Widget msg -> WRect -> (Nat, List (HitTarget msg))
-  collect next (WButton _ _ message) rect =
-    (S next, [ActivateTarget next rect message])
-  collect next (WCheckbox _ _ message) rect =
-    (S next, [ActivateTarget next rect message])
+  collect next (WButton _ label message) rect =
+    (S next, [ButtonTarget next rect label message])
+  collect next (WCheckbox _ checked message) rect =
+    (S next, [CheckboxTarget next rect checked message])
   collect next (WInput _ value handler) rect =
     (S next, [InputTarget next rect value handler])
   collect next (WVStack style children) rect =
@@ -83,3 +86,43 @@ mutual
 public export
 layoutTargets : Widget msg -> Nat -> Nat -> List (HitTarget msg)
 layoutTargets widget cols rows = snd (collect 0 widget (MkWRect 0 0 cols rows))
+
+escapeAttribute : String -> String
+escapeAttribute value = concatMap escape (unpack value)
+  where
+    escape : Char -> String
+    escape '&' = "&amp;"
+    escape '<' = "&lt;"
+    escape '>' = "&gt;"
+    escape '"' = "&quot;"
+    escape '\'' = "&#39;"
+    escape char = pack [char]
+
+semanticStyle : Double -> Double -> WRect -> String
+semanticStyle cellW cellH rect =
+  "position:absolute;left:" ++ show (cast rect.col * cellW) ++ "px;top:" ++
+  show (cast rect.row * cellH) ++ "px;width:" ++ show (cast rect.w * cellW) ++
+  "px;height:" ++ show (cast rect.h * cellH) ++ "px;box-sizing:border-box;"
+
+||| Build the transparent native-control layer associated with a Canvas. It
+||| supplies keyboard focus, mobile text input, and screen-reader semantics
+||| while Canvas remains responsible for visual rendering.
+public export
+semanticOverlay : Double -> Double -> List (HitTarget msg) -> String
+semanticOverlay cellW cellH = concatMap renderTarget
+  where
+    renderTarget : HitTarget msg -> String
+    renderTarget (ButtonTarget id rect label _) =
+      "<button class='iris-canvas-control' aria-label='" ++ escapeAttribute label ++
+      "' style='" ++ semanticStyle cellW cellH rect ++ "' " ++
+      "onclick='__irisCanvasActivate(" ++ show id ++ ")'></button>"
+    renderTarget (CheckboxTarget id rect checked _) =
+      "<input class='iris-canvas-control' type='checkbox' aria-label='Toggle' " ++
+      (if checked then "checked " else "") ++ "style='" ++ semanticStyle cellW cellH rect ++
+      "' onchange='__irisCanvasActivate(" ++ show id ++ ")'/>"
+    renderTarget (InputTarget id rect value _) =
+      "<input class='iris-canvas-control iris-canvas-input' type='text' " ++
+      "aria-label='Canvas text input' autocomplete='off' id='iris-canvas-input-" ++
+      show id ++ "' style='" ++ semanticStyle cellW cellH rect ++ "' value='" ++
+      escapeAttribute value ++ "' oninput='__irisCanvasInput(" ++ show id ++
+      ",this.value)'/>"

@@ -5,5 +5,10 @@ build/
 # Generated JavaScript bundles
 examples/todo/mobile/app.js
 
+# JavaScript/browser test output
+node_modules/
+playwright-report/
+test-results/
+
 # Local tooling
 .DS_Store
