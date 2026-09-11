@@ -33,21 +33,23 @@ getAt def 0 (x :: _) = x
 getAt def n (_ :: xs) = if n <= 0 then def else getAt def (n - 1) xs
 
 buildSchedule : List Bits32 -> List Bits32
-buildSchedule w16 = go w16 16
+-- Keep newest words first: each recurrence reads only the previous 16
+-- words. Consing avoids copying the growing schedule on every round.
+buildSchedule w16 = go (reverse w16) 16
   where
     go : List Bits32 -> Int -> List Bits32
     go ws i =
       if i >= 64
-         then ws
+         then reverse ws
          else
-           let w15  = getAt 0 (i - 15) ws
-               w2   = getAt 0 (i - 2) ws
-               w16' = getAt 0 (i - 16) ws
-               w7   = getAt 0 (i - 7) ws
+           let w15  = getAt 0 14 ws
+               w2   = getAt 0 1 ws
+               w16' = getAt 0 15 ws
+               w7   = getAt 0 6 ws
                s0 = rotr32 w15 7 `xor` rotr32 w15 18 `xor` (w15 `shiftR` 3)
                s1 = rotr32 w2 17 `xor` rotr32 w2 19 `xor` (w2 `shiftR` 10)
                wi = w16' + s0 + w7 + s1
-           in go (ws ++ [wi]) (i + 1)
+           in go (wi :: ws) (i + 1)
 
 chFn : Bits32 -> Bits32 -> Bits32 -> Bits32
 chFn e f g = (e .&. f) `xor` (complement e .&. g)
@@ -59,25 +61,23 @@ record ShaState where
   constructor MkShaState
   sA, sB, sC, sD, sE, sF, sG, sH : Bits32
 
-shaRound : List Bits32 -> Int -> ShaState -> ShaState
-shaRound w i st@(MkShaState a b c d e f g h) =
-  if i >= 64
-     then st
-     else
+-- Consume the schedule and constants together instead of indexing linked
+-- lists from their heads for every round.
+shaRound : List Bits32 -> List Bits32 -> ShaState -> ShaState
+shaRound (wi :: ws) (ki :: ks) (MkShaState a b c d e f g h) =
        let bigS1 = rotr32 e 6 `xor` rotr32 e 11 `xor` rotr32 e 25
            ch    = chFn e f g
-           ki    = getAt 0 i kTable
-           wi    = getAt 0 i w
            temp1 = h + bigS1 + ch + ki + wi
            bigS0 = rotr32 a 2 `xor` rotr32 a 13 `xor` rotr32 a 22
            maj   = majFn a b c
            temp2 = bigS0 + maj
-       in shaRound w (i + 1) (MkShaState (temp1 + temp2) a b c (d + temp1) e f g)
+       in shaRound ws ks (MkShaState (temp1 + temp2) a b c (d + temp1) e f g)
+shaRound _ _ st = st
 
 compress : ShaState -> List Bits32 -> ShaState
 compress st0 w16 =
   let w  = buildSchedule w16
-      st1 = shaRound w 0 st0
+      st1 = shaRound w kTable st0
   in MkShaState (sA st0 + sA st1) (sB st0 + sB st1) (sC st0 + sC st1) (sD st0 + sD st1)
                 (sE st0 + sE st1) (sF st0 + sF st1) (sG st0 + sG st1) (sH st0 + sH st1)
 

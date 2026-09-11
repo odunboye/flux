@@ -92,6 +92,21 @@ main = do
     "md51624175f66e00dca25e3ed157168c105"
     (pgMD5Password "pâsswörd🔒" "tëst_user" [0x01, 0x02, 0x03, 0x04])
 
+  -- SHA-256 padding/block boundaries, against Python hashlib.sha256(b'a' * n).
+  -- Protect the schedule/round traversal optimization across multiple blocks.
+  check "sha256 55 bytes" "9f4390f8d30c2dd92ec9f095b65e2b9ae9b0a925a5258e241c9f1e910f734318"
+    (toHex (sha256 (replicate 55 97)))
+  check "sha256 56 bytes" "b35439a4ac6f0948b6d6f9e3c6af0f5f590ce20f1bde7090ef7970686ec6738a"
+    (toHex (sha256 (replicate 56 97)))
+  check "sha256 63 bytes" "7d3e74a05d7db15bce4ad9ec0658ea98e3f06eeecf16b4c6fff2da457ddc2f34"
+    (toHex (sha256 (replicate 63 97)))
+  check "sha256 64 bytes" "ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb"
+    (toHex (sha256 (replicate 64 97)))
+  check "sha256 65 bytes" "635361c48bb9eab14198e76ea8ab7f1a41685d6ad62aa9146d301d4f17eb0ae0"
+    (toHex (sha256 (replicate 65 97)))
+  check "sha256 1000 bytes" "41edece42d63e8d9bf515a9ba6932e1c20cbc9f5a5d134645adb5db1b9737ea3"
+    (toHex (sha256 (replicate 1000 97)))
+
   -- SCRAM-SHA-256 building blocks (against Python hashlib/hmac/base64
   -- reference values)
   check "hmac-sha256" "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8"
