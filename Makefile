@@ -1,4 +1,4 @@
-.PHONY: build test browser-test check release-check clean
+.PHONY: build test browser-test check release-check native-check clean
 
 build:
 	idris2 --build iris.ipkg
@@ -26,6 +26,9 @@ check: test
 release-check:
 	$(MAKE) -C examples/todo check
 	./scripts/validate-release.sh
+
+native-check:
+	./scripts/validate-native.sh all
 
 clean:
 	rm -rf build tests/build
