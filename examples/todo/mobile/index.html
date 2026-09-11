@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <!-- Disable user scaling — we control zoom via canvas DPR -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0,
+                 user-scalable=no, viewport-fit=cover"/>
+  <title>Iris Todo</title>
+  <style>
+    /* Full-screen, no scroll, no bounce on iOS */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #0d1117;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    /* The canvas IS the entire app surface */
+    #iris-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      /* Disable default touch scroll so our gesture recogniser gets every event */
+      touch-action: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="iris-canvas"></canvas>
+
+  <!--
+    Capacitor bridge (auto-injected when running in a native app;
+    a no-op stub when loaded in a browser for development).
+  -->
+  <script>
+    // Minimal Capacitor stub for browser dev/testing.
+    // In the real Capacitor build this file is replaced by the native bridge.
+    window.Capacitor = window.Capacitor || {
+      isNative: false,
+      getPlatform: () => 'web',
+      Plugins: {}
+    };
+  </script>
+
+  <!--
+    The Iris canvas application.
+    runMobile() draws onto #iris-canvas and handles touch events.
+  -->
+  <!-- app.js is the compiled Idris2 JS, copied here by `make build-mobile` -->
+  <script src="app.js"></script>
+</body>
+</html>

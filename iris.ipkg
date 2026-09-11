@@ -1,0 +1,90 @@
+package iris
+
+authors    = "Odun Adeboye"
+version    = 0.1.0
+brief      = "Iris — cross-platform declarative UI framework (Web, Desktop, Mobile, Embedded, TUI)"
+
+depends    = contrib
+
+sourcedir  = "src"
+executable = "iris-demo"
+main       = Main
+
+prebuild   = "mkdir -p build/exec/iris-demo_app && cc -dynamiclib c/iristui.c -o build/exec/iris-demo_app/libiristui.dylib 2>/dev/null || cc -shared -fPIC c/iristui.c -o build/exec/iris-demo_app/libiristui.so"
+
+modules =
+  -- Universal widget + app
+    Iris.Widget
+  , Iris.App
+  , Iris.App.Events
+  , Iris.App.EventWire
+
+  -- Core
+  , Iris.Core.Types
+  , Iris.Core.Widget
+  , Iris.Core.VTree
+  , Iris.Core.Runtime
+  , Iris.Runtime.Common
+
+  -- State
+  , Iris.State.TEA
+  , Iris.State.Signal
+
+  -- Layout
+  , Iris.Layout.Types
+
+  -- Render IR
+  , Iris.Render.Types
+
+  -- Effects
+  , Iris.Effect.Http
+  , Iris.Effect.Http.Web
+  , Iris.Effect.Keyboard
+
+  -- Platform abstraction
+  , Iris.Platform.Event
+  , Iris.Platform.Interface
+
+  -- Animation
+  , Iris.Animation.Types
+
+  -- Theme
+  , Iris.Theme.Types
+  , Iris.Theme.Default
+
+  -- Router
+  , Iris.Router.Types
+
+  -- GUI Backends
+  , Iris.Backend.Canvas.Render
+  , Iris.Backend.Canvas.Run
+  , Iris.Backend.Web.DOM
+  , Iris.Backend.Web.Terminal
+  , Iris.Backend.Web.DOM.Render
+  , Iris.Backend.Web.DOM.Run
+  , Iris.Backend.Desktop.SDL2
+  , Iris.Backend.Embedded.Framebuffer
+
+  -- TUI Backend
+  , Iris.Backend.Terminal.WidgetRender
+  , Iris.Backend.Terminal.Run
+  , Iris.Backend.Terminal.Types
+  , Iris.Backend.Terminal.ANSI
+  , Iris.Backend.Terminal.Diff
+  , Iris.Backend.Terminal.Input
+  , Iris.Backend.Terminal.Runtime
+  , Iris.Backend.Terminal.FFI
+  , Iris.Backend.Terminal.Renderer
+  , Iris.Backend.Terminal.App
+
+  -- TUI Core
+  , Iris.Widget.TUI.Core
+
+  -- TUI Widgets
+  , Iris.Widget.TUI.Primitives
+  , Iris.Widget.TUI.List
+  , Iris.Widget.TUI.Table
+  , Iris.Widget.TUI.Progress
+  , Iris.Widget.TUI.Input
+  , Iris.Widget.TUI.Chart
+  , Iris.Widget.TUI.Scroll
