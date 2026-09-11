@@ -1,13 +1,70 @@
-# Web and hybrid-mobile completion
+# Web and hybrid-mobile release checklist
 
-The supported web and Canvas targets currently build through `examples/todo/make check`.
+Iris has a tested Web DOM target and an HTML Canvas target suitable for a
+Capacitor WebView. This checklist defines what is automated and what still
+requires a machine with native SDKs.
 
-The remaining implementation milestone is the typed platform-event bridge:
+## Portable validation
 
-1. Capture pointer, scroll, resize, focus, blur, and lifecycle events in the DOM and Canvas shells.
-2. Encode events with a versioned tagged format rather than ad-hoc strings.
-3. Decode and validate events before dispatching them through `EventApp`.
-4. Test ordering, malformed payloads, multi-touch IDs, orientation changes, and background/resume behavior.
-5. Validate Capacitor iOS and Android sync/builds on machines with the platform SDKs.
+Run from the repository root:
 
-Existing `IrisApp` applications remain supported through the keyboard fallback in `Iris.App.Events`.
+```sh
+make check
+```
+
+This command builds Iris, runs the EventWire/runtime/layout/router/DOM tests,
+builds both Todo browser bundles, checks their JavaScript syntax and
+entrypoints, validates the Capacitor configuration and shell, enforces a 5 MB
+bundle limit, and rejects generated artifacts tracked by Git. Override the
+size limit with `IRIS_MAX_BUNDLE_BYTES` when intentionally evaluating a larger
+bundle.
+
+CI runs the same command on every push and pull request.
+
+## Implemented behavior
+
+- One `IrisApp` model/update/view API across terminal, DOM, and Canvas.
+- Versioned and validated platform events for keyboard, pointer, wheel,
+  viewport, focus, orientation, lifecycle, composition, and browser location.
+- Ordered DOM and Canvas queues with idempotent listener installation.
+- Shutdown-safe command and streaming-message delivery.
+- Canvas button/checkbox hit testing with pointer capture and responsive
+  relayout from the measured viewport.
+- Typed route serialization, path parameters, query parsing, fragments,
+  browser history commands, and deep-link startup events.
+- Semantic DOM controls, accessible names, focus-visible styling, progress and
+  status semantics, mobile touch sizing, and reduced-motion CSS.
+
+## Native Capacitor validation
+
+Native validation is intentionally not part of portable CI. On a machine with
+Xcode or the Android SDK installed:
+
+```sh
+cd examples/todo
+make build-mobile
+cd mobile
+npm ci
+npx cap sync ios       # macOS + Xcode
+npx cap sync android   # Android SDK/Studio
+```
+
+Then build and smoke-test the generated projects. Confirm startup, rotation,
+background/resume, hardware back behavior, multi-touch pointer IDs, safe-area
+appearance, and offline loading. Signing and store packaging remain deployment
+responsibilities.
+
+## Known limitations
+
+- Canvas text fields are drawn controls, not a complete accessible semantic DOM
+  overlay; production applications requiring text entry should currently use
+  the DOM backend.
+- Canvas stack layout is cell-based and does not yet provide general wrapping
+  or scroll-container semantics.
+- URL percent decoding currently handles escaped byte values directly; full
+  UTF-8 escape-sequence decoding remains a router enhancement.
+- Active IO cannot be forcibly cancelled by generic `Cmd`; late deliveries are
+  suppressed after shutdown, while pause/resume cancellation remains
+  effect-specific.
+- Desktop SDL2 and embedded framebuffer modules are experimental skeletons and
+  are not covered by this release checklist.

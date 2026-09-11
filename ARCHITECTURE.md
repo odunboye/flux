@@ -62,9 +62,11 @@ TUI        — ANSI/VT100 terminal  (via Idris2 → C or JS/Node)
 
 ### Current Implementation Status
 
-This document describes the full target architecture. As of the last audit, roughly
-**40–50% of it is actually built**. The rest is design intent, not existing capability.
-Status tags (✅ / 🚧 / 📋) are used throughout the doc below to distinguish the two.
+This document describes the full target architecture. The terminal, Web DOM, and
+hybrid-mobile Canvas foundation is implemented; desktop, embedded, and several
+advanced framework layers remain design intent. Status tags (✅ / 🚧 / 📋) are used
+throughout the document to distinguish shipped behavior from plans. The executable
+release checklist is [`WEB_MOBILE_COMPLETION.md`](WEB_MOBILE_COMPLETION.md).
 
 **✅ Built and working today:**
 
@@ -74,7 +76,10 @@ Status tags (✅ / 🚧 / 📋) are used throughout the doc below to distinguish
 | VTree / Reconciler | Diffing implemented |
 | TUI backend (`Backend/Terminal/*`) | 10 files, ~57 KB, zero TODOs; real POSIX/Windows terminal C shim (`c/iristui.c`) |
 | TUI widgets (`Widget/TUI/*`) | 8 files, ~1,065 lines |
-| Web DOM backend | Functional but with known gaps (see 🚧 below) |
+| Web DOM backend | Typed browser events, semantic controls, responsive CSS, focus preservation, and ordered dispatch |
+| Canvas/WebView backend | Rendering, responsive viewport layout, typed pointer/lifecycle events, and button/checkbox hit testing |
+| Event protocol/runtime | Versioned validation, structured errors, ordered queues, and shutdown-safe command delivery |
+| Router | URL parsing, path/query parameters, history commands, deep-link location events |
 | Effects: Http, Keyboard | Implemented |
 | Theme (`Theme/`) | Implemented (Light/Dark tokens) |
 | Render IR, Animation types | Core types implemented |
@@ -88,13 +93,18 @@ Status tags (✅ / 🚧 / 📋) are used throughout the doc below to distinguish
 
 **🚧 Partial / skeleton (some code, but with explicit TODOs or stubbed fields):**
 
-- `Backend/Web/*` (4 TODOs), `Backend/Desktop/SDL2.idr` (6 TODOs), `Backend/Embedded/Framebuffer.idr` (6 TODOs)
-- `Platform/Interface.idr` (some PAL record fields are stubs)
-- `Layout/Types.idr` (well-formedness proof TODO'd out), `Core/Runtime.idr` (hit-testing TODO)
-- `Router/Types.idr` (basic types only, no parser combinators yet)
+- The older `Backend/Web/DOM.idr` PAL adapter still contains stubs; applications use
+  the functional `Backend/Web/DOM/Run.idr` runner.
+- `Backend/Desktop/SDL2.idr` and `Backend/Embedded/Framebuffer.idr` remain skeletons.
+- `Platform/Interface.idr` has unimplemented PAL operations.
+- `Layout/Types.idr` and the duplicate generic `Core/Runtime.idr` are not the layout
+  and runtime used by the supported DOM/Canvas application runners.
+- Canvas text accessibility, general wrapping/scrolling, and generic effect
+  cancellation across pause/resume remain limitations.
 
-In short: **TUI is the flagship backend today**, followed by a partially-working Web DOM
-backend. Desktop/Mobile/Embedded and the Style/A11y/I18n systems remain future work.
+In short: **TUI remains the flagship backend**. Web DOM and Capacitor-hosted Canvas
+are supported foundations with the explicit limitations in the release checklist;
+desktop and embedded targets are deferred.
 
 ---
 

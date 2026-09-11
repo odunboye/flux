@@ -1,4 +1,4 @@
-.PHONY: build test check clean
+.PHONY: build test check release-check clean
 
 build:
 	idris2 --build iris.ipkg
@@ -18,6 +18,11 @@ test: build
 
 check: test
 	$(MAKE) -C examples/todo check
+	./scripts/validate-release.sh
+
+release-check:
+	$(MAKE) -C examples/todo check
+	./scripts/validate-release.sh
 
 clean:
 	rm -rf build tests/build
