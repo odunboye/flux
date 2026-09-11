@@ -78,11 +78,25 @@ headersToJson hs = "{" ++ joinComma (map pair hs) ++ "}"
 -- rejection - the one native `Iris.Effect.Http` doesn't have to
 -- distinguish, since curl fails the whole process the same way for any
 -- of those).
-%foreign "javascript:lambda: (method, url, headersJson, body, hasBody, onDone, _w) => { const opts = { method: method, headers: JSON.parse(headersJson) }; if (hasBody !== 0) { opts.body = body; } fetch(url, opts).then(function(r){ return r.text().then(function(t){ onDone(r.status)(t)(0); }); }).catch(function(e){ onDone(-1)(String(e))(0); }); }"
-prim_fetch : String -> String -> String -> String -> Int -> (Int -> String -> IO ()) -> PrimIO ()
+%foreign "javascript:lambda: (method,url,headersJson,body,hasBody,timeoutMs,maxBytes,onDone,_w) => { const controller=new AbortController();let settled=false,timedOut=false;const finish=(status,text)=>{if(settled)return;settled=true;clearTimeout(timer);onDone(status)(text)(0);};const timer=timeoutMs>0?setTimeout(()=>{timedOut=true;controller.abort();},timeoutMs):null;const opts={method,headers:JSON.parse(headersJson),signal:controller.signal};if(hasBody!==0)opts.body=body;fetch(url,opts).then(async r=>{const declared=Number(r.headers.get('content-length')||0);if(maxBytes>0&&declared>maxBytes){controller.abort();finish(-3,String(declared));return;}const text=await r.text();if(maxBytes>0&&new TextEncoder().encode(text).length>maxBytes){finish(-3,String(maxBytes));return;}finish(r.status,text);}).catch(e=>finish(timedOut?-2:(e&&e.name==='AbortError'?-4:-1),String(e)));return controller; }"
+prim_fetch : String -> String -> String -> String -> Int -> Int -> Int
+          -> (Int -> String -> IO ()) -> PrimIO AnyPtr
 
-runFetch : HttpRequest -> (Either HttpError HttpResponse -> IO ()) -> IO ()
-runFetch req deliver =
+%foreign "javascript:lambda: (controller,_w) => { if(controller)controller.abort(); }"
+prim_abort : AnyPtr -> PrimIO ()
+
+public export
+record FetchOptions where
+  constructor MkFetchOptions
+  timeoutMs        : Nat
+  maxResponseBytes : Nat
+
+public export
+defaultFetchOptions : FetchOptions
+defaultFetchOptions = MkFetchOptions 30000 10485760
+
+runFetch : FetchOptions -> HttpRequest -> (Either HttpError HttpResponse -> IO ()) -> IO (IO ())
+runFetch options req deliver =
   let headersJson       = headersToJson req.headers
       (body, hasBody)   = case req.body of
                              Nothing => ("", 0)
@@ -90,12 +104,18 @@ runFetch req deliver =
       onDone : Int -> String -> IO ()
       onDone status respBody =
         deliver $
-          if status < 0
+          if status == -2 then Left Timeout
+          else if status == -3 then Left (ResponseTooLarge options.maxResponseBytes)
+          else if status == -4 then Left Cancelled
+          else if status < 0
              then Left (NetworkError respBody)
              else if status >= 200 && status < 300
                     then Right (MkResponse status [] respBody)
                     else Left (BadStatus status respBody)
-  in primIO (prim_fetch (methodStr req.method) req.url headersJson body hasBody onDone)
+  in do
+    controller <- primIO (prim_fetch (methodStr req.method) req.url headersJson body hasBody
+      (cast options.timeoutMs) (cast options.maxResponseBytes) onDone)
+    pure (primIO (prim_abort controller))
 
 -- ─── Public Cmd constructors ─────────────────────────────────────────────────
 
@@ -103,8 +123,14 @@ runFetch req deliver =
 ||| asynchronously through the Web runtime's own dispatch loop, same as
 ||| any other `msg`.
 public export
+requestWith : FetchOptions -> HttpRequest
+           -> (Either HttpError HttpResponse -> msg) -> Cmd msg
+requestWith options req toMsg =
+  CancellableTask (\send => runFetch options req (send . toMsg))
+
+public export
 request : HttpRequest -> (Either HttpError HttpResponse -> msg) -> Cmd msg
-request req toMsg = StreamTask (\send => runFetch req (send . toMsg))
+request req toMsg = requestWith defaultFetchOptions req toMsg
 
 public export
 get : String -> (Either HttpError HttpResponse -> msg) -> Cmd msg

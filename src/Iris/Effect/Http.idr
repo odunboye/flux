@@ -37,6 +37,8 @@ data HttpError
   | Timeout
   | BadStatus Int String
   | BadBody   String
+  | Cancelled
+  | ResponseTooLarge Nat
 
 -- ─── Stream events ───────────────────────────────────────────────────────────
 
