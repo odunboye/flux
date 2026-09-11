@@ -59,12 +59,28 @@ verification work ran on the same machine during the soak.
 
 ## Outstanding verification and limits
 
-- The Linux socket executable builds, but the latest container script could
-  not run its Python driver because the image has no `python3`. Linux core,
-  service, stream, and native results above are independently confirmed.
-- A follow-up one-owner live todo-api check was interrupted; its result has
-  not been confirmed. The four-owner live application check passed.
-- End-to-end Linux Flux/PG application testing remains outstanding.
+- Follow-up verification closed the Linux socket and macOS one-owner live
+  application gaps. Linux runtime/service/stream suites and macOS Flux
+  regressions and live protocol probes also passed again. See
+  `../test/reports/runtime-completion/README.md` for commands and evidence.
+- The follow-up Linux full-stack timeout failure is resolved in `idris2-pg`
+  commit `2e22c85078578d8128fecf1a489d700f7675fb15` by optimizing pure-Idris
+  SHA-256 list traversal. SCRAM authentication
+  previously took about 2.6 seconds per connection in Docker emulation;
+  serialized cold connection setup consumed queued borrowers' deadlines.
+  No deadline, SCRAM iteration count, or pool setting was relaxed.
+- Final regression drivers exit 0 on macOS arm64 and Docker Linux amd64
+  (emulated). Both pass 163 PG unit checks, crypto properties, PG integration,
+  runtime/service/stream/socket suites, native sanitizer checks, Flux regressions,
+  protocol probes, 24 pooled todo-api checks, and live 1/2/4-owner workloads
+  (3,360 checked HTTP requests per owner configuration; clean shutdown).
+  macOS additionally passes the 15-check pool suite, isolated TLS transport
+  tests, and Nebula integration. Linux native sanitizers disable leak detection
+  under emulation; the ordinary Linux PG integration TLS case skips because
+  that test database has SSL disabled. See `../test/reports/runtime-completion/final/`.
+- The recorded two-hour soak predates the SHA-256 optimization; it has not
+  been repeated after that change. Native-hardware Linux performance and
+  production readiness are not established by these Docker checks.
 - Cancellation joins arbitrary IO; it cannot preempt arbitrary native calls,
   DNS resolution, or CPU work. Pool acquisition can exceed its nominal
   deadline while owned native work finishes; resources are not abandoned.

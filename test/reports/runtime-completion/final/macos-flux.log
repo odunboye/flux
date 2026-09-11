@@ -1,0 +1,396 @@
+  ● <interactive> passed 0 tests (running)
+[1A[0K  ● <interactive> passed 100 tests (running)
+[1A[0K  ● <interactive> passed 0 tests (running)
+[1A[0K  ● <interactive> passed 100 tests (running)
+[1A[0K  ● <interactive> passed 0 tests (running)
+[1A[0K  ● <interactive> passed 100 tests (running)
+[1A[0K  ● <interactive> passed 0 tests (running)
+[1A[0K  ● <interactive> passed 100 tests (running)
+[1A[0K  ● <interactive> passed 0 tests (running)
+[1A[0K  ● <interactive> passed 100 tests (running)
+[1A[0K  ● <interactive> passed 0 tests (running)
+[1A[0K  ● <interactive> passed 100 tests (running)
+[1A[0K  ● <interactive> passed 0 tests (running)
+[1A[0K  ● <interactive> passed 100 tests (running)
+[1A[0K
+FLUX FRAMEWORK TEST SUITE
+=========================
+
+=== Running Router Tests ===
+
+========================================
+           TEST RESULTS
+========================================
+
+  [PASS] parsePattern
+  [PASS] matchPathLiteral
+  [PASS] matchPathParams
+  [PASS] matchPathMismatch
+  [PASS] matchPathSplat
+  [PASS] matchPathSplatEmpty
+  [PASS] matchPathParamPercentDecoded
+  [PASS] matchPathLiteralPercentDecoded
+  [PASS] matchPathMalformedEscapeIsLiteral
+  [PASS] emptyRouter
+  [PASS] addRoute
+  [PASS] getHelper
+  [PASS] postHelper
+  [PASS] putHelper
+  [PASS] deleteHelper
+  [PASS] patchHelper
+  [PASS] optionsHelper
+  [PASS] methodMismatchIs405
+  [PASS] multipleRoutes
+  [PASS] routeWithParams
+  [PASS] declarationOrder
+  [PASS] routeNotFound
+  [PASS] headFallsBackToGet
+  [PASS] explicitHeadOverridesGetFallback
+  [PASS] headFallbackDoesNotApplyToPost
+  [PASS] headWrongMethodDoesNotGainHeadWithoutGet
+  [PASS] allowIncludesHeadForNonHeadRequest
+
+========================================
+Total: 27 | Passed: 27 | Failed: 0
+========================================
+
+=== Running HTTP Tests ===
+
+========================================
+           TEST RESULTS
+========================================
+
+  [PASS] methodGet
+  [PASS] methodAllVariants
+  [PASS] methodUnknown
+  [PASS] methodLowercaseRejected
+  [PASS] version11
+  [PASS] versionUnknown
+  [PASS] startLineValid
+  [PASS] startLineWrongArity
+  [PASS] startLineBadMethod
+  [PASS] headersParse
+  [PASS] headersLowercasesNames
+  [PASS] headersMalformed
+  [PASS] headersEmpty
+  [PASS] headersRejectsDuplicateContentLength
+  [PASS] headersRejectsTransferEncoding
+  [PASS] headersRejectsSpaceBeforeColon
+  [PASS] headersRejectsTabBeforeColon
+  [PASS] headersRejectsSpaceBeforeColonTransferEncoding
+  [PASS] headersRejectsDuplicateHost
+  [PASS] headersRejectsObsoleteLineFolding
+  [PASS] contentLength
+  [PASS] contentLengthMissing
+  [PASS] contentLengthMalformed
+  [PASS] contentLengthEmpty
+  [PASS] contentType
+  [PASS] splitQueryPresent
+  [PASS] splitQueryAbsent
+  [PASS] splitQueryEmpty
+  [PASS] parseQuerySingle
+  [PASS] parseQueryMultiple
+  [PASS] parseQueryNoValue
+  [PASS] parseQueryEmptyString
+  [PASS] parseQueryPercentDecoded
+  [PASS] parseQueryKeyPercentDecoded
+  [PASS] percentDecodeBasic
+  [PASS] percentDecodeNoEscapes
+  [PASS] percentDecodeMalformedTrailing
+  [PASS] percentDecodeMalformedNonHex
+  [PASS] percentDecodeLowercaseHex
+  [PASS] toHexSmall
+  [PASS] toHexLarge
+  [PASS] chunkEncodeSingle
+  [PASS] chunkEncodeMultiple
+  [PASS] chunkEncodeEmpty
+  [PASS] chunkEncodeSkipsEmptyEmission
+  [PASS] parseIPv4Loopback
+  [PASS] parseIPv4AllInterfaces
+  [PASS] parseIPv4MaxOctet
+  [PASS] parseIPv4OutOfRangeOctet
+  [PASS] parseIPv4WrongSegmentCount
+  [PASS] parseIPv4NonNumeric
+  [PASS] requestRejectsMissingHostOnV11
+  [PASS] requestAllowsMissingHostOnV10
+  [PASS] requestRejectsDuplicateHost
+  [PASS] requestRejectsLowercaseMethod
+  [PASS] requestAcceptsAbsoluteFormTargetAsLiteralPath
+  [PASS] requestCRLFCannotSmuggleAHeaderValue
+
+========================================
+Total: 57 | Passed: 57 | Failed: 0
+========================================
+  ✓ <interactive> passed 100 tests.
+  ✓ <interactive> passed 100 tests.
+  ✓ <interactive> passed 100 tests.
+  ✓ <interactive> passed 100 tests.
+  ✓ <interactive> passed 100 tests.
+  ✓ <interactive> passed 100 tests.
+  ✓ <interactive> passed 100 tests.
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: content size exceeded
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: truncated request body
+runRequestParse: unexpected HTTPErr: invalid HTTP request
+runRequestParse: unexpected HTTPErr: invalid HTTP request
+runRequestParse: unexpected HTTPErr: invalid HTTP request
+runRequestParse: unexpected HTTPErr: truncated request body
+
+=== Running HTTP Properties Tests ===
+
+========================================
+           TEST RESULTS
+========================================
+
+  [PASS] methodRoundTrip
+  [PASS] versionRoundTrip
+  [PASS] startLineRoundTrip
+  [PASS] headersRoundTrip
+  [PASS] headersNamesAreCaseInsensitive
+  [PASS] splitQueryRoundTrip
+  [PASS] parseQueryRoundTrip
+  [PASS] requestRoundTrip
+  [PASS] requestRejectsOversizedContentLength
+  [PASS] requestRejectsTruncatedBody
+  [PASS] duplicateContentLengthDoesNotDesyncOntoNextRequest
+  [PASS] transferEncodingDoesNotDesyncOntoNextRequest
+  [PASS] spaceBeforeColonDoesNotDesyncOntoNextRequest
+  [PASS] truncatedBodyDoesNotDesyncOntoNextRequest
+
+========================================
+Total: 14 | Passed: 14 | Failed: 0
+========================================
+
+=== Running JSON Tests ===
+
+========================================
+           TEST RESULTS
+========================================
+
+  [PASS] sendJSONSetsContentType
+  [PASS] sendJSONEncodesBody
+  [PASS] sendJSONErrorSetsStatus
+  [PASS] sendJSONErrorBodyShapeIsErrorObject
+  [PASS] jsonErrorRendererMatchesSendJSONError
+  [PASS] isJSONTrueForApplicationJSON
+  [PASS] isJSONTrueWithCharset
+  [PASS] isJSONFalseForOtherType
+  [PASS] isJSONFalseForNoType
+  [PASS] jsonResponseBody
+  [PASS] jsonResponseSetsContentType
+  [PASS] jsonErrorStandaloneBody
+
+========================================
+Total: 12 | Passed: 12 | Failed: 0
+========================================
+
+=== Running Logging Tests ===
+
+========================================
+           TEST RESULTS
+========================================
+
+  [PASS] levelToString
+  [PASS] showLogLevel
+  [PASS] eqLogLevel
+  [PASS] ordLogLevel
+  [PASS] mkEntry
+  [PASS] mkLogger
+  [PASS] logFiltersByLevel
+  [PASS] logPassesLevel
+  [PASS] debugHelper
+  [PASS] infoHelper
+  [PASS] warnHelper
+  [PASS] errorHelper
+  [PASS] HTTPLogContext
+  [PASS] logHTTP
+
+========================================
+Total: 14 | Passed: 14 | Failed: 0
+========================================
+
+=== Running Config Tests ===
+
+========================================
+           TEST RESULTS
+========================================
+
+  [PASS] stringRoundTrip
+  [PASS] intRoundTrip
+  [PASS] boolRoundTrip
+  [PASS] getMissing
+  [PASS] getDefault
+  [PASS] getIntFromString
+  [PASS] getIntFromStringInvalid
+  [PASS] getBoolFromStringTrue
+  [PASS] getBoolFromStringFalse
+  [PASS] getBoolFromStringInvalid
+  [PASS] loadFromEnv
+  [PASS] serverConfigFromEnv
+
+========================================
+Total: 12 | Passed: 12 | Failed: 0
+========================================
+
+=== Running Middleware Tests ===
+
+========================================
+           TEST RESULTS
+========================================
+
+  [PASS] setHeaderStripsCRLF
+  [PASS] emptyApp
+  [PASS] use
+  [PASS] useAfter
+  [PASS] useAlways
+  [PASS] withRoutes
+  [PASS] runAppCatchesAppError
+  [PASS] runAppCatchesErrno
+  [PASS] withErrorRenderer
+  [PASS] alwaysRunsOnSuccess
+  [PASS] alwaysRunsOnError
+  [PASS] afterStillSkippedOnError
+  [PASS] renderSuppressesBodyForHead
+  [PASS] renderSuppressesBodyFor204
+  [PASS] renderDoesNotDuplicateContentLength
+  [PASS] readBodySuccess
+  [PASS] readBodyTooLargeClosesConnection
+  [PASS] readBodySurvivesLaterThrow
+  [PASS] untouchedBodyKeepsConnectionAlive
+  [PASS] responseOmitsConnectionCloseByDefaultOnV11
+  [PASS] responseCarriesConnectionCloseWhenClientAsksOnV11
+  [PASS] responseCarriesConnectionCloseByDefaultOnV10
+  [PASS] responseOmitsConnectionCloseWhenV10AsksKeepAlive
+  [PASS] readBodyFailureForcesConnectionCloseDespiteKeepAliveRequest
+
+========================================
+Total: 24 | Passed: 24 | Failed: 0
+========================================
+
+=== Running Cookies Tests ===
+
+========================================
+           TEST RESULTS
+========================================
+
+  [PASS] cookieDefaults
+  [PASS] renderSetCookieBasic
+  [PASS] renderSetCookieWithMaxAgeAndSecure
+  [PASS] renderSetCookieNotHttpOnly
+  [PASS] renderSetCookieStripsSemicolonInValue
+  [PASS] renderSetCookieStripsCRLFInValue
+  [PASS] parseCookiesSingle
+  [PASS] parseCookiesMultiple
+  [PASS] parseCookiesAbsent
+  [PASS] getCookie
+  [PASS] getCookieMissing
+  [PASS] setCookieAddsToRespCookies
+
+========================================
+Total: 12 | Passed: 12 | Failed: 0
+========================================
+
+=== Running Session Tests ===
+
+========================================
+           TEST RESULTS
+========================================
+
+  [PASS] freshSessionGetsCookie
+  [PASS] sessionRoundTrip
+  [PASS] getSessionMissing
+  [PASS] expiredSessionGetsFreshId
+  [PASS] gcLoopReclaimsExpiredSession
+
+========================================
+Total: 5 | Passed: 5 | Failed: 0
+========================================
+
+=== Running Static Tests ===
+
+========================================
+           TEST RESULTS
+========================================
+
+  [PASS] extensionOfSimple
+  [PASS] extensionOfNested
+  [PASS] extensionOfNone
+  [PASS] mimeForKnown
+  [PASS] mimeForUnknown
+  [PASS] safeSimplePath
+  [PASS] rejectsParentTraversal
+  [PASS] rejectsEmbeddedTraversal
+  [PASS] rejectsAbsolutePath
+  [PASS] allowsDotInFilename
+  [PASS] allowsSingleDotSegment
+  [PASS] rejectsSymlinkEscape
+  [PASS] servesGenuinelyNestedFile
+  [PASS] rejectsIndirectSymlinkEscape
+  [PASS] servesThroughSymlinkedDirInsideRoot
+  [PASS] headRequestDoesNotLeakFd
+  [PASS] afterHookFailureDoesNotLeakFd
+
+========================================
+Total: 17 | Passed: 17 | Failed: 0
+========================================
+
+=== Running Health Tests ===
+
+========================================
+           TEST RESULTS
+========================================
+
+  [PASS] overallStatusEmptyIsHealthy
+  [PASS] overallStatusUnhealthyWins
+  [PASS] overallStatusDegradedWithoutUnhealthy
+  [PASS] emptyRegistryIsHealthy
+  [PASS] timestampIsReal
+  [PASS] parseVmRSSKbValid
+  [PASS] parseVmRSSKbMissing
+  [PASS] parseVmRSSKbMalformed
+  [PASS] memoryCheckNeverFalselyUnhealthy
+  [PASS] memoryCheckFlagsOverThreshold
+  [PASS] readinessHandlerHealthyIs200
+  [PASS] readinessHandlerUnhealthyIs503
+
+========================================
+Total: 12 | Passed: 12 | Failed: 0
+========================================
+All tests passed!

@@ -1,0 +1,29 @@
+Connecting to Postgres at 172.18.0.3:5432/todo_api_test ...
+Connected. Schema ready.
+Flux server listening on http://127.0.0.1:49173 (1 event loops, 128 connections)
+db error: connection error: connection timed out
+
+Traceback (most recent call last):
+  File "/tmp/flux-application/playground/todo-api/test/runtime_http_test.py", line 87, in <module>
+    list(executor.map(scenario, range(24)))
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 619, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 317, in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/flux-application/playground/todo-api/test/runtime_http_test.py", line 50, in scenario
+    todo = request('POST', '/todos', {'title': title}, 201)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/flux-application/playground/todo-api/test/runtime_http_test.py", line 45, in request
+    assert response.status == expected, (method, path, response.status, payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('POST', '/todos', 500, b'{"error":"internal server error"}')
