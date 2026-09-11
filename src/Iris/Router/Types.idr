@@ -182,3 +182,93 @@ matchPath pattern actual = match (segments pattern) (segments actual)
         ':' :: name => map ((pack name, value) ::) (match patterns values)
         _ => if expected == value then match patterns values else Nothing
     match _ _ = Nothing
+
+hexDigit : Int -> Char
+hexDigit value =
+  if value < 10 then chr (ord '0' + value) else chr (ord 'A' + value - 10)
+
+percentByte : Int -> List Char
+percentByte byte = ['%', hexDigit (byte `div` 16), hexDigit (byte `mod` 16)]
+
+utf8Bytes : Char -> List Int
+utf8Bytes char =
+  let code = ord char in
+  if code <= 127 then [code]
+  else if code <= 2047 then
+    [192 + code `div` 64, 128 + code `mod` 64]
+  else if code <= 65535 then
+    [224 + code `div` 4096, 128 + (code `div` 64) `mod` 64, 128 + code `mod` 64]
+  else
+    [240 + code `div` 262144, 128 + (code `div` 4096) `mod` 64,
+     128 + (code `div` 64) `mod` 64, 128 + code `mod` 64]
+
+unreserved : Char -> Bool
+unreserved char =
+  (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
+  (char >= '0' && char <= '9') || elem char ['-', '.', '_', '~']
+
+encodeComponent : Bool -> String -> String
+encodeComponent allowSlash value = pack (concatMap encodeChar (unpack value))
+  where
+    encodeChar : Char -> List Char
+    encodeChar char =
+      if unreserved char || (allowSlash && char == '/') then [char]
+      else concatMap percentByte (utf8Bytes char)
+
+public export
+renderLocation : Location -> String
+renderLocation location =
+  let path = if location.path == "" then "/" else encodeComponent True location.path
+      queryString = case location.query of
+        [] => ""
+        values => "?" ++ joinQuery values
+      fragmentString = case location.fragment of
+        Nothing => ""
+        Just value => "#" ++ encodeComponent False value
+  in path ++ queryString ++ fragmentString
+  where
+    joinQuery : List (String, String) -> String
+    joinQuery [] = ""
+    joinQuery [(key, value)] = encodeComponent False key ++ "=" ++ encodeComponent False value
+    joinQuery ((key, value) :: rest) = encodeComponent False key ++ "=" ++
+      encodeComponent False value ++ "&" ++ joinQuery rest
+
+public export
+withBasePath : String -> String -> String
+withBasePath base path =
+  let cleanBase = pack (reverse (dropWhile (== '/') (reverse (unpack base))))
+      cleanPath = pack (dropWhile (== '/') (unpack path))
+  in if cleanBase == "" then "/" ++ cleanPath else cleanBase ++ "/" ++ cleanPath
+
+public export
+stripBasePath : String -> String -> Maybe String
+stripBasePath base path =
+  let basePrefix = withBasePath base ""
+  in if base == "" then Just path
+     else if path == base then Just "/"
+     else if substr 0 (length basePrefix) path == basePrefix
+             then Just ("/" ++ substr (length basePrefix) (length path `minus` length basePrefix) path)
+             else Nothing
+
+public export
+data RouteResolution route = Matched route | NotFound Location | MalformedLocation
+
+public export
+resolveRoute : {route : Type} -> Router route => String -> RouteResolution route
+resolveRoute raw =
+  case parseLocation raw of
+    Nothing => MalformedLocation
+    Just location => case fromUrl raw of
+      Nothing => NotFound location
+      Just route => Matched route
+
+public export
+data NavigationDecision route = Allow route | Redirect route | Block
+
+public export
+applyNavigationGuard : (route -> NavigationDecision route) -> route -> Maybe route
+applyNavigationGuard guard route =
+  case guard route of
+    Allow target => Just target
+    Redirect target => Just target
+    Block => Nothing

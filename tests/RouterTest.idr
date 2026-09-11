@@ -34,6 +34,22 @@ main = do
   assert "path parameter" (matchPath "/users/:id" "/users/bob" == Just [("id", "bob")])
   assert "route parsing" (case fromUrl {route=Route} "/users/bob" of Just (User "bob") => True; _ => False)
   assert "not found" (case fromUrl {route=Route} "/unknown" of Nothing => True; _ => False)
+  assert "explicit not-found result"
+    (case resolveRoute {route=Route} "/unknown?q=1" of NotFound _ => True; _ => False)
+  let encoded = renderLocation (MkLocation "/café/✓" [("q", "日本 tea")] (Just "résumé"))
+  assert "location encoding"
+    (encoded == "/caf%C3%A9/%E2%9C%93?q=%E6%97%A5%E6%9C%AC%20tea#r%C3%A9sum%C3%A9")
+  assert "location round trip"
+    (case parseLocation encoded of
+       Just location => location.path == "/café/✓" && queryParam "q" location == Just "日本 tea"
+       _ => False)
+  assert "base path" (withBasePath "/iris" "/users/a" == "/iris/users/a")
+  assert "strip base path" (stripBasePath "/iris" "/iris/users/a" == Just "/users/a")
+  assert "reject wrong base" (stripBasePath "/iris" "/other/users/a" == Nothing)
+  assert "navigation guard allow"
+    (case applyNavigationGuard (\route => Allow route) Home of Just Home => True; _ => False)
+  assert "navigation guard block"
+    (case applyNavigationGuard (const Block) Home of Nothing => True; _ => False)
   assert "UTF-8 path decoding"
     (case parseLocation "/caf%C3%A9/%E2%9C%93" of
        Just location => location.path == "/café/✓"
