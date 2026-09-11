@@ -267,13 +267,19 @@ mutual
   renderBox m s r ctx
   let ir    = innerRect s r
       sizes = distributeV children ir.w ir.h
+  cSave ctx
+  cClip (cx m ir.col) (cy m ir.row) (cw m ir.w) (ch m ir.h) ctx
   renderVKidsC m children sizes ir.col ir.row ir.w ir.h ctx
+  cRestore ctx
 
  renderOnCanvas m (WHStack s children) r ctx = do
   renderBox m s r ctx
   let ir    = innerRect s r
       sizes = distributeH children ir.w ir.h
+  cSave ctx
+  cClip (cx m ir.col) (cy m ir.row) (cw m ir.w) (ch m ir.h) ctx
   renderHKidsC m children sizes ir.col ir.row ir.w ir.h ctx
+  cRestore ctx
 
  renderOnCanvas m (WProgress s frac) r ctx = do
   let ir = innerRect s r
