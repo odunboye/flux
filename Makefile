@@ -7,8 +7,10 @@ test: build
 	idris2 --install iris.ipkg
 	cd tests && idris2 -p iris EventWireTest.idr -o event-wire-tests
 	cd tests && idris2 -p iris RuntimeTest.idr -o runtime-tests
+	cd tests && idris2 -p iris CanvasLayoutTest.idr -o canvas-layout-tests
 	./tests/build/exec/event-wire-tests
 	./tests/build/exec/runtime-tests
+	./tests/build/exec/canvas-layout-tests
 
 check: test
 	$(MAKE) -C examples/todo check

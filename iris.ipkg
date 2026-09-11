@@ -57,6 +57,7 @@ modules =
 
   -- GUI Backends
   , Iris.Backend.Canvas.Render
+  , Iris.Backend.Canvas.Layout
   , Iris.Backend.Canvas.Run
   , Iris.Backend.Web.DOM
   , Iris.Backend.Web.Terminal
