@@ -1,6 +1,7 @@
 module Helper
 
 import Network.Socket
+import Network.Deadline
 import Data.Bits
 import Data.IORef
 import Data.List
@@ -23,7 +24,7 @@ getSock = socket AF_INET Stream 0
 export
 getConnection :  Socket -> SocketAddress -> Port ->  IO (Maybe Socket)
 getConnection s addr p= do
-         res <- connect s addr p
+         res <- connectSocket s (show addr) p
          case res of 
               0 => do 
                 pure (Just (s))

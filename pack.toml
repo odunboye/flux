@@ -8,3 +8,12 @@ test = "test/test.ipkg"
 type = "local"
 path = "test"
 ipkg = "test.ipkg"
+[custom.all.flux-async]
+type = "local"
+path = "../idris2-flux-async"
+ipkg = "flux-async.ipkg"
+
+[custom.all.idris2-pg-async]
+type = "local"
+path = "async"
+ipkg = "idris2-pg-async.ipkg"

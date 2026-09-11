@@ -18,7 +18,10 @@ bugtracker = "https://github.com/odunboye/idris2-pg/issues"
         ,  contrib
 
 -- modules to install
-modules = Network.Core
+prebuild = "make native"
+
+modules = Network.Deadline
+        , Network.Core
         , Network.RawSocket
         , Network.Timeout
         , Network.TLSWire

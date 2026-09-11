@@ -396,8 +396,8 @@ record PGConfig where
   database         : String
   -- Bounds connectDB (the TCP connect plus the auth handshake) and, on a
   -- listening connection, cancelQuery's own fresh connection - see
-  -- Network.Timeout for what "bounds" means here (the wait, not the
-  -- underlying socket). Nothing (the default via mkPGConfig) preserves the
+  -- Network.Deadline for the transport deadline. DNS and CPU work are not
+  -- preempted; late results are reclaimed before returning. Nothing preserves the
   -- old behavior: block indefinitely.
   connectTimeoutMs : Maybe Nat
   -- Bounds any single DB operation that waits on the server: execCommand/
@@ -433,7 +433,7 @@ record DB where
   -- repeated query skips re-Parse on the server. A plain association list
   -- is fine here - realistically dozens of distinct statements per
   -- connection, not thousands. No cache size cap or explicit statement
-  -- cleanup (Terminate frees them all on close).
+  -- cleanup (disconnect frees them all on close).
   stmtCache   : IORef (List (String, String))
   stmtCounter : IORef Int
   -- NotificationResponse can arrive interleaved with any query's own
@@ -443,3 +443,6 @@ record DB where
   -- currently assembling; waitForNotification drains this before it
   -- blocks on a fresh read.
   notifQueue  : IORef (List Notification)
+
+  -- A timed-out or closed connection can never be reused by a pool.
+  unusable : IORef Bool

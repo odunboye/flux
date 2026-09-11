@@ -1,6 +1,7 @@
 module Network.RawSocket
 
 import Network.Socket
+import Network.Deadline
 import Network.Core
 import Data.Either
 import Data.List
@@ -21,10 +22,10 @@ Network IO where
     case res of
       Left err => pure (Left (show err))
       Right sock => do
-        rc <- connect sock addr port
+        rc <- connectSocket sock (show addr) port
         if rc == 0
           then pure (Right (MkConnected sock))
-          else pure (Left "Connection failed")
+          else Network.Socket.close sock >> pure (Left "Connection failed")
 
   send (MkConnected sock) bytes = go bytes
     where
@@ -33,7 +34,7 @@ Network IO where
       go : List Bits8 -> IO (Either String ())
       go [] = pure (Right ())
       go remaining = do
-        sent <- sendBytes sock remaining
+        sent <- sendSocket sock (take 65536 remaining)
         case sent of
              (Left x) => pure (Left "Send failed")
              (Right n) =>
@@ -42,7 +43,7 @@ Network IO where
                   else go (drop (cast n) remaining)
 
   receive (MkConnected sock) len = do
-    resp <- recvBytes sock len
+    resp <- receiveSocket sock len
     case resp of
          (Left x) => pure (Left "Error receiving")
          (Right x) => pure (Right x)
@@ -73,4 +74,3 @@ receiveExact conn len = go len []
                 (Left err) => pure (Left err)
                 (Right []) => pure (Left "receiveExact: connection closed before all bytes received")
                 (Right bytes) => go (remaining - cast (length bytes)) (bytes :: chunks)
-

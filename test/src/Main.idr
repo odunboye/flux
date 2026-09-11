@@ -302,7 +302,7 @@ testAuthFailureHandling cfg = do
   -- repeated failures (e.g. a retry loop with a stale/wrong password)
   -- would exhaust file descriptors.
   let badCfg = { password := "definitely-the-wrong-password" } cfg
-  results <- traverse (const (connectDB badCfg)) (replicate 50 ())
+  results <- traverse (const (connectDB badCfg)) (Data.List.replicate 50 ())
   if all isLeft results
      then putStrLn "OK 50 repeated failed connectDB calls (wrong password) all rejected cleanly, no FD exhaustion"
      else putStrLn "FAIL: a bad-password connectDB call unexpectedly succeeded"

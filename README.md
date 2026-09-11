@@ -80,6 +80,14 @@ See `test/src/Main.idr` for a fuller worked example (CRUD, transactions,
 `execMulti`, `cancelQuery`, array/date/timestamp/numeric values, NULL
 handling).
 
+This library is deliberately just the wire-protocol client: connect/query/
+execute, the value getters below, transactions, LISTEN/NOTIFY, COPY, and
+TLS - nothing that maps a `Row` onto an application record type. That
+layer - `Row`<->record derivation, generated CRUD, a typed query builder -
+lives in [nebula](https://github.com/odunboye/nebula), built on top of
+this client (and meant to grow support for other DB clients later, not
+stay idris2-pg-specific forever).
+
 ### Value decoding
 
 `Data.PGValue` decodes a `Row`'s columns on demand: `getText`, `getInt`,
@@ -115,29 +123,40 @@ out-of-band connection; `readTimeoutMs` bounds any single call that waits
 on the server (`execCommand`/`queryRows`/`queryRowsBinary`/`execMulti`,
 `waitForNotification`, `copyOut`/`copyIn`).
 
-These are **not** OS-level socket timeouts (`SO_RCVTIMEO`/a non-blocking
-`connect()`) — Idris2's `network` package has no support for those at all,
-and adding it would mean shipping a hand-written C shared library that
-every consumer of this package would need to compile before `pack build`
-even works, which felt like too large a regression to how easy this
-package is to install today. Instead, `Network.Timeout` races the
-underlying call against a timer on a background thread (`fork` +
-`Channel`, both already part of Idris2's base install — no new
-dependency), and returns as soon as either finishes. That bounds how long
-the *caller* waits, but not the underlying resource: if the timed-out call
-was a blocking syscall stuck on a truly unresponsive server, timing out
-here does not close the socket or interrupt that syscall — the abandoned
-call keeps running in the background (its result, if any, is just never
-read) until the OS's own TCP retry limit gives up, or the process exits.
-This isn't always harmless: a timed-out `connectTimeoutMs` attempt against
-an unreachable host was observed to interfere with an unrelated
-connection attempted immediately afterward in the same process (in this
-project's own test suite - see the ordering note in `test/src/Main.idr`),
-likely by holding onto some OS-level resource for as long as it keeps
-retrying. A connection whose read has timed out should be treated as
-unusable and reconnected, not reused, and code with tight latency
-requirements should be wary of firing off many timeout-bounded connection
-attempts in a row.
+Network waits now use nonblocking sockets and `poll` with an absolute
+monotonic deadline, through a native library built automatically by the
+package prebuild. No query is forked and abandoned when its caller times out.
+A read timeout or transport/protocol failure closes and marks the `DB`
+unusable; subsequent operations reject that handle. `closeDB` is idempotent.
+Nested deadlines keep the earlier deadline. Both raw and TLS record IO use
+this transport.
+
+A deadline does not forcibly interrupt arbitrary CPU work or the platform's
+hostname resolver. Such work stays owned until it returns. Use numeric
+addresses when resolver latency must be avoided. Chez's blocking foreign
+calls permit collection; managed byte buffers are pinned until those calls
+return, as required by the [Chez foreign interface](https://cisco.github.io/ChezScheme/csug10.1.0/csug.pdf).
+
+### Exclusive connection pooling
+
+The optional `async/idris2-pg-async.ipkg` package exports `Data.PGPool` for
+`flux-async`. Defaults are 8 connections, 128 queued acquirers, and a 5-second
+acquisition deadline. Connections are opened lazily. Missing transport
+limits become 5 seconds for connection setup and 30 seconds per operation.
+Cold connection setup is serialized per pool to avoid concurrent SCRAM
+allocation contention; established connections execute independently.
+
+Use `withConnection pool callback` in a task, or `withConnectionIO` within
+an existing blocking worker. One callback owns its connection for its whole
+lifetime, including transactions. Cancellation joins the worker before
+returning the lease. Do not retain the supplied DB or fork work that uses it.
+Timed-out connections and connections left in a transaction are discarded.
+`closePool` rejects new leases and closes idle connections; active leases
+close when their callback finishes. `poolClosed` observes completion.
+
+`Nebula.Pool.pooledRepository` reuses this pattern for CRUD; use
+`withPooledTransactionRepos` when several repositories must share a single
+transactional lease.
 
 ### TLS
 
@@ -298,8 +317,8 @@ live testing as described here.
       meanwhile; that wait can be bounded with `readTimeoutMs` (see
       "Timeouts" above).
 - [x] Read/connect timeouts (`PGConfig.connectTimeoutMs`/`readTimeoutMs`) —
-      cooperative, thread-based (`Network.Timeout`), not OS-level socket
-      timeouts; see "Timeouts" above for exactly what that does and
+      deadline-aware native socket waits with no abandoned query threads;
+      see "Timeouts" above for exactly what that does and
       doesn't bound.
 - [x] TLS 1.3 (`PGConfig.useTLS`) — the full handshake and record layer,
       built entirely from scratch: X25519 *and* P-256 ECDHE

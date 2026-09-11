@@ -1,0 +1,5 @@
+package idris2-pg-tls-deadline-test
+depends = idris2-pg
+sourcedir = "src"
+main = TLSDeadlineTests
+executable = idris2-pg-tls-deadline-test

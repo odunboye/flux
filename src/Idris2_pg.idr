@@ -11,24 +11,30 @@ import Network.RawSocket
 import Network.Timeout
 import Derive.Prelude
 
--- Bounds a connect-shaped operation (connectDB's own TCP-connect-plus-auth,
--- or cancelQuery's fresh out-of-band connection) by cfg's connectTimeoutMs,
--- if set - see Network.Timeout for what "bounds" does and doesn't mean.
-withConnectTimeout : PGConfig -> IO (Either PGError a) -> IO (Either PGError a)
-withConnectTimeout cfg action = case connectTimeoutMs cfg of
-     Nothing => action
-     Just ms => do
-       res <- withTimeout ms action
-       pure (fromMaybe (Left (ConnectionError "connection timed out")) res)
+-- Deadlines execute on the calling worker, never in abandoned query threads.
+-- A connection is poisoned before returning a timed-out or transport failure.
+invalidate : DB -> IO ()
+invalidate db = do
+  closed <- readIORef db.unusable
+  unless closed $ do
+    writeIORef db.unusable True
+    ignore (close (MkConnected (socket (conn db))))
 
--- Bounds a single wire round-trip (a query, a COPY, a notification wait) by
--- db's readTimeoutMs, if set.
 withReadTimeout : DB -> IO (Either PGError a) -> IO (Either PGError a)
-withReadTimeout db action = case readTimeoutMs (cfg db) of
-     Nothing => action
-     Just ms => do
-       res <- withTimeout ms action
-       pure (fromMaybe (Left (ConnectionError "operation timed out waiting for the server")) res)
+withReadTimeout db action = do
+  closed <- readIORef db.unusable
+  if closed then pure (Left (ConnectionError "connection is closed or unusable")) else do
+    (expired, result) <- case readTimeoutMs (cfg db) of
+      Nothing => map (False,) action
+      Just ms => withDeadline ms action
+    if expired
+      then do
+        invalidate db
+        pure (Left (ConnectionError "operation timed out waiting for the server"))
+      else case result of
+        Left (ConnectionError err) => invalidate db $> Left (ConnectionError err)
+        Left (ProtocolError err) => invalidate db $> Left (ProtocolError err)
+        _ => pure result
 
 closeConn : PGConnection Connected -> IO ()
 closeConn c = do
@@ -36,8 +42,8 @@ closeConn c = do
   pure ()
 
 public export
-connectDB : PGConfig -> IO (Either PGError DB)
-connectDB cfg = withConnectTimeout cfg $ do
+connectDBImpl : PGConfig -> IO (Either PGError DB)
+connectDBImpl cfg = do
   conn <- connectPG (host cfg) (port cfg) (useTLS cfg)
   case conn of
        Left err => pure (Left (ConnectionError err))
@@ -64,7 +70,29 @@ connectDB cfg = withConnectTimeout cfg $ do
                                         cache <- newIORef []
                                         counter <- newIORef 0
                                         notifs <- newIORef []
-                                        pure (Right (MkDB conx (Just sr) cfg ref cache counter notifs))
+                                        unusable <- newIORef False
+                                        pure (Right (MkDB conx (Just sr) cfg ref cache counter notifs unusable))
+
+public export
+connectDB : PGConfig -> IO (Either PGError DB)
+connectDB cfg = do
+  (expired, result) <- case connectTimeoutMs cfg of
+    Nothing => map (False,) (connectDBImpl cfg)
+    Just ms => withDeadline ms (connectDBImpl cfg)
+  if expired
+    then do
+      case result of
+        Right db => invalidate db
+        Left _ => pure ()
+      pure (Left (ConnectionError "connection timed out"))
+    else pure result
+
+withConnectTimeout : PGConfig -> IO (Either PGError a) -> IO (Either PGError a)
+withConnectTimeout cfg action = case connectTimeoutMs cfg of
+  Nothing => action
+  Just ms => do
+    (expired, result) <- withDeadline ms action
+    pure (if expired then Left (ConnectionError "connection timed out") else result)
 
 -- Records the transaction status from a batch's final ReadyForQuery (the
 -- last result's, since a multi-statement batch shares one at the end) so
@@ -398,7 +426,4 @@ copyIn db sql payload = withReadTimeout db $ do
 
 public export
 closeDB : DB -> IO ()
-closeDB (MkDB pgConn _ _ _ _ _ _) = do
-  _ <- pgSend pgConn (encode Terminate)
-  _ <- close (MkConnected (socket pgConn))
-  pure ()
+closeDB db = invalidate db
