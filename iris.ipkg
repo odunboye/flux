@@ -54,6 +54,7 @@ modules =
 
   -- Router
   , Iris.Router.Types
+  , Iris.Router.Web
 
   -- GUI Backends
   , Iris.Backend.Canvas.Render

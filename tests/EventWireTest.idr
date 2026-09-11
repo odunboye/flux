@@ -39,6 +39,7 @@ roundTrips =
   , LifecycleEvt AppPaused
   , LifecycleEvt AppResumed
   , LifecycleEvt BackRequested
+  , LifecycleEvt (LocationChanged "/tasks?page=2#active")
   , CompositionEvt (MkCompositionEvent CompositionStart "")
   , CompositionEvt (MkCompositionEvent CompositionUpdate "に|ほん")
   , CompositionEvt (MkCompositionEvent CompositionEnd "日本")

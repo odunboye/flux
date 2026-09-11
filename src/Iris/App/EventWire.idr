@@ -200,6 +200,8 @@ encodeEvent (LifecycleEvt PageHidden) = "i1|L|hidden"
 encodeEvent (LifecycleEvt AppPaused) = "i1|L|pause"
 encodeEvent (LifecycleEvt AppResumed) = "i1|L|resume"
 encodeEvent (LifecycleEvt BackRequested) = "i1|L|back"
+encodeEvent (LifecycleEvt (LocationChanged url)) =
+  joinWith "|" [wireVersion, "L", "location", encodeText url]
 encodeEvent (CompositionEvt composition) = joinWith "|"
   [wireVersion, "M", compositionName composition.action, encodeText composition.text]
   where
@@ -285,6 +287,7 @@ decodeFields "L" ["hidden"] = Right (LifecycleEvt PageHidden)
 decodeFields "L" ["pause"] = Right (LifecycleEvt AppPaused)
 decodeFields "L" ["resume"] = Right (LifecycleEvt AppResumed)
 decodeFields "L" ["back"] = Right (LifecycleEvt BackRequested)
+decodeFields "L" ["location", url] = map (LifecycleEvt . LocationChanged) (decodeText url)
 decodeFields "L" [_] = Left (InvalidEnum "lifecycle event")
 decodeFields "L" _ = Left (WrongFieldCount "lifecycle event")
 decodeFields "M" [action, text] = do

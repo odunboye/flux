@@ -90,6 +90,7 @@ data LifecycleEvent
   | AppPaused
   | AppResumed
   | BackRequested
+  | LocationChanged String -- path, query, and fragment
 
 public export
 data CompositionAction
