@@ -1,0 +1,4 @@
+[custom.all.flux-async]
+type = "local"
+path = "."
+ipkg = "flux-async.ipkg"

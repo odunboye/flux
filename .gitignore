@@ -1,0 +1,6 @@
+build/
+test/build/
+lib/*.dylib
+lib/*.so
+__pycache__/
+*.dSYM/
