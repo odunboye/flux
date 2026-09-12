@@ -22,7 +22,7 @@ docker run --rm --init --network host \
   -ec '
     export PATH="/opt/flux-node/bin:$PATH"
     apt-get update
-    apt-get install -y --no-install-recommends python3 curl docker.io libssl-dev
+    apt-get install -y --no-install-recommends python3 curl docker.io libssl-dev pkg-config
     cd packages/ui
     npm ci
     npm audit --audit-level=high

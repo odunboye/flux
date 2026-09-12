@@ -18,7 +18,7 @@ invalidate db = do
   closed <- readIORef db.unusable
   unless closed $ do
     writeIORef db.unusable True
-    ignore (close (MkConnected (socket (conn db))))
+    closePGConnection (conn db)
 
 withReadTimeout : DB -> IO (Either PGError a) -> IO (Either PGError a)
 withReadTimeout db action = do
@@ -37,14 +37,12 @@ withReadTimeout db action = do
         _ => pure result
 
 closeConn : PGConnection Connected -> IO ()
-closeConn c = do
-  _ <- close (MkConnected (socket c))
-  pure ()
+closeConn = closePGConnection
 
 public export
 connectDBImpl : PGConfig -> IO (Either PGError DB)
 connectDBImpl cfg = do
-  conn <- connectPG (host cfg) (port cfg) (useTLS cfg)
+  conn <- connectPG (host cfg) (port cfg) (useTLS cfg) (tlsCAFile cfg)
   case conn of
        Left err => pure (Left (ConnectionError err))
        (Right pgConn) => do
@@ -358,12 +356,12 @@ public export
 cancelQuery : DB -> IO (Either PGError ())
 cancelQuery db = case map backendKey (result db) of
   Just (Just bk) => withConnectTimeout (cfg db) $ do
-    conn <- connectPG (host (cfg db)) (port (cfg db)) (useTLS (cfg db))
+    conn <- connectPG (host (cfg db)) (port (cfg db)) (useTLS (cfg db)) (tlsCAFile (cfg db))
     case conn of
          Left err => pure (Left (ConnectionError err))
          Right cancelConn => do
            sendRes <- pgSend cancelConn (encode (CancelRequest (pid bk) (secret bk)))
-           _ <- close (MkConnected (socket cancelConn))
+           closePGConnection cancelConn
            case sendRes of
                 Left err => pure (Left (ConnectionError err))
                 Right () => pure (Right ())

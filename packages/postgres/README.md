@@ -2,7 +2,11 @@
 
 A PostgreSQL client for Idris2, implemented from scratch against the
 [Postgres wire protocol](https://www.postgresql.org/docs/current/protocol.html)
-over raw TCP sockets — no `libpq`, no FFI.
+over TCP sockets — no `libpq`. Deadline-aware native transport uses a small C
+bridge; authenticated TLS uses OpenSSL 3 through that same bridge. Build prerequisites:
+a C11 compiler, `make`, `pkg-config`, and OpenSSL 3 headers/libraries
+(`brew install openssl@3 pkg-config` on macOS; `libssl-dev pkg-config` on Debian).
+Deployments must also provide OpenSSL 3 shared libraries and their intended CA trust.
 
 Package: `flux-postgres`; public modules such as `Idris2_pg` and `Data.PGTypes`
 remain unchanged. Pooling is provided by `flux-postgres-pool`. See the
@@ -174,41 +178,64 @@ transactional lease.
 
 ### TLS
 
-Set `PGConfig.useTLS = True` (via `MkPGConfig` or record update on a
-`mkPGConfig`-built config) to require Postgres's SSLRequest negotiation and
-a TLS 1.3 handshake before the startup message goes out; `connectDB` fails
-outright if the server doesn't support SSL (there's no "prefer" fallback
-to plaintext).
+`useTLS = True` now **requires authenticated TLS 1.3** before sending startup
+or authentication messages. OpenSSL 3 validates the certificate chain, validity,
+server purpose, SAN hostname/IP, CertificateVerify signature and Finished.
+There is no encrypted-but-unverified mode, TLS 1.2 fallback or plaintext fallback.
+The old hand-written handshake/record implementation is no longer a connection
+backend; retained crypto/vector modules do not authenticate network sessions.
 
-This is a from-scratch TLS 1.3 client (`Network.TLS`), the same philosophy
-as everything else here: X25519 and P-256 ECDHE, ChaCha20-Poly1305, and
-the RFC 8446 key schedule (HKDF-Extract/Expand-Label) are all hand-written
-and verified against IETF/reference-library test vectors — see the
-`Crypto.*`/`Network.TLS*` module comments for exactly which ones. Only
-`TLS_CHACHA20_POLY1305_SHA256` is offered, and P-256 is what actually gets
-negotiated in practice: Postgres's `ssl_ecdh_curve` setting defaults to
-`prime256v1` and, on current Postgres/OpenSSL, can't be pointed at X25519
-at all (a different OpenSSL key-machinery path) - offering only X25519
-gets a `handshake failure` alert from a stock server, confirmed by testing
-even bare `openssl s_client -groups x25519` against one. `Crypto.Curve25519`
-is kept as a complete, independently-tested module even though the
-handshake doesn't use it today.
+```idris
+let cfg : PGConfig
+    cfg = { useTLS := True,
+            tlsCAFile := Just "/run/secrets/postgres-ca.pem",
+            connectTimeoutMs := Just 5000, readTimeoutMs := Just 2000 } $
+      mkPGConfig "db.example.com" 5432 "app" password "tasks"
+```
 
-**The one significant gap: no certificate signature verification.**
-`CertificateVerify` is parsed and folded into the transcript hash (the
-handshake can't complete without it), but its signature is never checked,
-and `Certificate`'s contents are never inspected. That means the
-connection is genuinely encrypted - safe from passive eavesdropping - but
-the server's identity isn't authenticated, so an active
-machine-in-the-middle presenting its own certificate wouldn't be detected.
-Real X.509 parsing plus RSA/ECDSA signature verification is a large
-enough sub-project (ASN.1 DER, a trust store) that it's a documented
-follow-up rather than a blocker here. Everything else - the ECDHE key
-exchange (peer P-256 points are validated to lie on the curve before use),
-the key schedule, and the record encryption - is as strong as a
-certificate-verifying client's, with one caveat: the field arithmetic
-isn't constant-time (see `Crypto.P256`'s module comment), so it doesn't
-defend against a timing side-channel from a co-located attacker.
+`tlsCAFile = Nothing` uses OpenSSL's default trust paths, including deployment
+`SSL_CERT_FILE`/`SSL_CERT_DIR` overrides. `Just path` loads **only** that PEM CA
+file, with no system-trust fallback. A missing/invalid file fails closed; empty
+paths and NUL-containing paths/hosts are rejected. A CA file with `useTLS=False`
+is an error. `mkPGConfig` still defaults to plaintext for local development:
+**explicitly enable TLS for remote/production connections.** The driver does not
+itself read libpq environment variables.
+
+Identity always comes from `PGConfig.host`: DNS names use SAN dNSName and SNI;
+numeric addresses require SAN iPAddress and send no SNI. Common-name-only certs
+and partial-label wildcards are rejected. Provision SAN certificates and the
+proper trust bundle rather than bypassing verification. Chain depth is capped at
+8 intermediates and certificate-list size at 256 KiB. No client certificate/mTLS
+or automatic online revocation checking is provided.
+
+The same thread-owned monotonic deadline spans TCP, SSLRequest, TLS and startup;
+record I/O uses the existing nonblocking/poll transport. Cancellation connections
+independently revalidate identity. Timeouts poison the main connection and free
+TLS state before closing the fd; cleanup never waits for a peer close_notify.
+As with DNS/CPU work, trust-file access and cryptographic work are synchronous,
+not forcibly preempted: elapsed deadlines are checked rather than abandoning a
+worker. Configure finite connect/read deadlines for production.
+
+This is a security-breaking cutover: `MkPGConfig` has a new final
+`Maybe String` CA-file field; prefer `mkPGConfig` plus record updates.
+Low-level `connectPG`/`tlsClientHandshake` now require trust/identity arguments.
+Self-signed/CN-only servers accepted by the former implementation will fail.
+
+Authenticated integration (from the workspace root, owned disposable database):
+
+```sh
+touch packages/postgres/flux-postgres.ipkg  # pack tracks Idris/manifest timestamps, not C
+pack --no-prompt install flux-postgres
+pack --no-prompt build packages/postgres/test/tls-identity.ipkg
+python3 packages/postgres/test/tls_identity_test.py
+```
+
+This exercises trusted DNS/IP chains, SNI, untrusted/incomplete/expired/future/
+wrong-purpose/mismatched certificates, SAN rules, missing/exclusive CA files, downgrade
+refusal, deadlines, SCRAM, large payloads, cancellation and connection cleanup.
+The root workspace integration gate runs it too. `--native-only` runs just the
+C bridge peer matrix without an Idris compiler or database; it is not a substitute
+for the full integration suite.
 
 ### Errors
 

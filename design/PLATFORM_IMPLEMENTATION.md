@@ -121,12 +121,13 @@ as unowned background work merely to mark a checklist complete.
 
 ## Security decisions needing implementation
 
-The current pure-Idris PG TLS implementation does not verify server identity.
-Do not present encrypted-only transport as authenticated TLS. A mature TLS
-backend is preferable for a secure production path to inventing an X.509
-validator during platform assembly; preserve deadlines, IO ownership and
-explicit trust configuration. This needs a dedicated implementation and
-negative-path certificate tests, not just documentation or a flag.
+Authenticated PostgreSQL TLS is implemented using OpenSSL 3 with mandatory chain
+and SAN hostname/IP verification, explicit/system trust, and the existing owned
+deadline transport. The integration gate tests certificate rejection and real
+PostgreSQL TLS/SCRAM, cancellation and timeout cleanup. See the driver README.
+This does not implement durable accounts, sessions, endpoint authorization or row
+ownership; the demonstration application is still public and not production-ready.
+Hosted Linux CI confirmation remains separate from local macOS/Linux-container evidence.
 
 Never auto-apply destructive migration changes. Migration commands must target
 an explicit environment, and tests must use disposable databases. Never

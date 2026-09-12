@@ -149,7 +149,13 @@ def test(manifest, without_db):
         run('flux-regression', ['./test/build/exec/flux-test'])
         # Install native dependencies first; Flux UI's packaged demo is not JS.
         build('platform/example/client-native-test.ipkg')
+        # pack's dependency freshness checks do not track native C changes.
+        # Refresh the manifest timestamp (not contents) to force prebuild/install
+        # even in a warm pack cache; plain `pack install` can otherwise be a no-op.
+        (ROOT / 'packages/postgres/flux-postgres.ipkg').touch()
+        run('install-postgres-native', ['pack', '--no-prompt', 'install', 'flux-postgres'])
         build('packages/db/test/test.ipkg')
+        build('packages/postgres/test/tls-identity.ipkg')
         for file in ['platform/example/example.ipkg', 'platform/example/pg-example.ipkg',
                      'platform/example/migrations.ipkg', 'platform/crud/server.ipkg']:
             build(file)
@@ -159,6 +165,7 @@ def test(manifest, without_db):
         if without_db:
             outcomes.append({'name': 'database-integration', 'skipped': True})
         else:
+            run('postgres-tls-identity', [sys.executable, 'packages/postgres/test/tls_identity_test.py'])
             run('flux-ui-pg-migrations', [sys.executable, 'platform/test_pg_wire.py'])
             run('flux-ui-crud', [sys.executable, 'platform/test_crud.py'])
             run('flux-ui-app-cli', [sys.executable, 'platform/test_app.py'])

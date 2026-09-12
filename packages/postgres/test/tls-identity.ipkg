@@ -1,0 +1,6 @@
+package flux-postgres-tls-identity-test
+version = 0.1.0
+depends = flux-postgres, todo-api
+sourcedir = "src"
+main = TLSIdentityTests
+executable = flux-postgres-tls-identity-test

@@ -31,6 +31,17 @@ Connection details come from the standard libpq env vars -
 `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE` - defaulting to
 `127.0.0.1:5432` / `testuser` / `testpass` / `testdb`.
 
+For remote connections set `PGSSLMODE=verify-full`. `PGSSLROOTCERT=/path/to/ca.pem`
+selects an explicit PEM trust bundle; omit it to use OpenSSL system trust. TLS 1.3,
+chain validity and host/IP SAN identity are mandatory, including cancellation
+connections. There is no insecure verification override or plaintext fallback.
+Only `verify-full` and `disable` are accepted; unset mode retains the local-dev
+plaintext default. A CA file without verified TLS is a configuration error.
+Tests use separate `PG_TEST_SSLMODE`/`PG_TEST_SSLROOTCERT` variables, never app TLS
+configuration. See the [driver TLS guide](../../packages/postgres/README.md#tls)
+for native dependencies, deadlines and trust provisioning. This does **not** add
+accounts, authorization or task ownership: endpoints remain public.
+
 ### Automatic local Postgres
 
 `src/DevPostgres.idr`'s `ensureLocalPostgres` (used by both the app and

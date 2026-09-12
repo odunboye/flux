@@ -11,6 +11,22 @@ import DevPostgres
 getEnvDef : String -> String -> IO String
 getEnvDef name def = pure (fromMaybe def !(getEnv name))
 
+-- Only explicit verified TLS or explicit plaintext is supported. Never treat
+-- libpq's weaker prefer/allow/require modes as permission to skip identity.
+withTLSFromEnv : String -> String -> PGConfig -> IO PGConfig
+withTLSFromEnv modeName caName cfg = do
+  mode <- getEnv modeName
+  ca <- getEnv caName
+  case mode of
+    Just "verify-full" => pure ({ useTLS := True, tlsCAFile := ca } cfg)
+    Nothing => case ca of
+      Nothing => pure cfg
+      Just _ => putStrLn (caName ++ " requires " ++ modeName ++ "=verify-full") >> exitFailure
+    Just "disable" => case ca of
+      Nothing => pure cfg
+      Just _ => putStrLn (caName ++ " conflicts with disabled TLS") >> exitFailure
+    Just _ => putStrLn (modeName ++ " must be verify-full or disable") >> exitFailure
+
 ||| Reads the standard libpq env vars (`PGHOST`/`PGPORT`/`PGUSER`/
 ||| `PGPASSWORD`/`PGDATABASE`), defaulting to match the `docker run`
 ||| command in the README (`127.0.0.1:5432`/`testuser`/`testpass`/
@@ -27,7 +43,7 @@ loadConfig = do
   user   <- getEnvDef "PGUSER" "testuser"
   pass   <- getEnvDef "PGPASSWORD" "testpass"
   dbName <- getEnvDef "PGDATABASE" "testdb"
-  pure (mkPGConfig host (cast portS) user pass dbName)
+  withTLSFromEnv "PGSSLMODE" "PGSSLROOTCERT" (mkPGConfig host (cast portS) user pass dbName)
 
 ||| Reads dedicated TEST-only env vars (`PG_TEST_HOST`/`PG_TEST_PORT`/
 ||| `PG_TEST_USER`/`PG_TEST_PASSWORD`/`PG_TEST_DB` - matching flux-postgres's
@@ -54,7 +70,7 @@ loadTestConfig = do
   user   <- getEnvDef "PG_TEST_USER" "testuser"
   pass   <- getEnvDef "PG_TEST_PASSWORD" "testpass"
   dbName <- getEnvDef "PG_TEST_DB" "todo_api_test"
-  pure (mkPGConfig host (cast portS) user pass dbName)
+  withTLSFromEnv "PG_TEST_SSLMODE" "PG_TEST_SSLROOTCERT" (mkPGConfig host (cast portS) user pass dbName)
 
 ||| Postgres double-quoted-identifier escaping - doubles any embedded
 ||| `"` (the one character a quoted identifier needs escaped), so

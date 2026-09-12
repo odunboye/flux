@@ -31,9 +31,11 @@ fails or times out, the CLI exits unsuccessfully and reports the container name,
 Docker diagnostic and removal command; data may remain until cleanup succeeds.
 No existing database or application data is reset. To retain data, supply all of
 `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` for a dedicated database,
-then use `./flux dev --no-build` without the disposable flag. Use local/trusted
-test databases until authenticated PostgreSQL TLS is implemented. Do not put secrets
-in committed files or command examples.
+then use `./flux dev --no-build` without the disposable flag. For a remote test
+database set `PGSSLMODE=verify-full` and optionally `PGSSLROOTCERT=/path/to/ca.pem`
+(otherwise OpenSSL system trust is used). Host/IP SAN verification is mandatory;
+weaker libpq modes and CA/plaintext conflicts fail closed. The app still has public
+endpoints: do not deploy private/multi-user data yet. Do not commit secrets.
 
 The CLI serves only the HTML, stylesheet and compiled JS, proxying `/rpc/v1/`
 to the loopback API. Source, configuration and other repository files are not
@@ -78,8 +80,8 @@ waits and owned process-group cleanup; SIGINT/SIGTERM initiates clean shutdown.
 
 This CLI is repository-local (`./flux`), for macOS/Linux workspaces, not a
 published globally installed command or a standalone SDK project generator.
-Deployment, authenticated PostgreSQL TLS, user identity and row authorization
-remain separate milestones.
+Authenticated PostgreSQL TLS is available; deployment, user identity and row
+authorization remain separate milestones.
 
 ## Verification
 

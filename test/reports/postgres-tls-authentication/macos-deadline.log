@@ -1,0 +1,2 @@
+PASS TLS handshake and query over deadline-aware transport
+PASS TLS timeout poisons connection and rejects reuse
