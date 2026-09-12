@@ -163,8 +163,19 @@ def database(disposable):
         yield dict(os.environ, PGHOST='127.0.0.1', PGPORT=port, PGUSER='fluxdev',
                    PGPASSWORD=password, PGDATABASE='fluxdev')
     finally:
-        subprocess.run(['docker', 'rm', '-f', '-v', name], timeout=60,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            docker('rm', '-f', '-v', name)
+        except (OSError, subprocess.SubprocessError) as error:
+            diagnostic = getattr(error, 'stderr', None) or getattr(error, 'stdout', None) or str(error)
+            if isinstance(diagnostic, bytes):
+                diagnostic = diagnostic.decode(errors='replace')
+            # Use RuntimeError so main reports this diagnostic rather than
+            # redacting it as a generic subprocess error. Only removal output
+            # is included here, never the launch arguments containing a password.
+            raise RuntimeError(
+                f'Failed to remove disposable database container {name}; data may remain. '
+                f'Retry: docker rm -f -v {name}. Docker: {diagnostic.strip()}'
+            ) from error
 
 
 def server_command(project, config, env):

@@ -1,4 +1,6 @@
 import json
+import contextlib
+import io
 from pathlib import Path
 import shutil
 import subprocess
@@ -83,6 +85,77 @@ class FluxTests(unittest.TestCase):
     def test_subprocess_deadline(self):
         with self.assertRaises(subprocess.TimeoutExpired):
             flux.run([sys.executable, '-c', 'import time; time.sleep(30)'], timeout=.1)
+
+    def docker_stub(self, calls, removal_error=None):
+        def invoke(args, **kwargs):
+            calls.append(args)
+            if args[1] == 'rm' and removal_error is not None:
+                raise removal_error(args)
+            output = '127.0.0.1:54321' if args[1] == 'port' else ''
+            return subprocess.CompletedProcess(args, 0, output, '')
+        return invoke
+
+    def test_disposable_removal_success_and_body_failure(self):
+        for body_fails in [False, True]:
+            with self.subTest(body_fails=body_fails):
+                calls = []
+                with patch.object(flux, 'run', side_effect=self.docker_stub(calls)), \
+                     patch.object(subprocess, 'run', side_effect=AssertionError('Unchecked subprocess invoked')):
+                    def session():
+                        with flux.database(True):
+                            if body_fails:
+                                raise ValueError('session failed')
+                    if body_fails:
+                        with self.assertRaisesRegex(ValueError, 'session failed'):
+                            session()
+                    else:
+                        session()
+                name = calls[0][calls[0].index('--name') + 1]
+                self.assertEqual(calls[-1], ['docker', 'rm', '-f', '-v', name])
+
+    def test_disposable_removal_failure_is_reported(self):
+        failures = [
+            lambda args: subprocess.CalledProcessError(1, args, stderr='daemon refused removal'),
+            lambda args: subprocess.TimeoutExpired(args, 60, stderr=b'daemon timed out'),
+            lambda args: OSError('Docker unavailable'),
+        ]
+        for failure in failures:
+            for body_fails in [False, True]:
+                with self.subTest(failure=failure, body_fails=body_fails):
+                    calls = []
+                    with patch.object(flux, 'run', side_effect=self.docker_stub(calls, failure)), \
+                         patch.object(subprocess, 'run', side_effect=AssertionError('Unchecked subprocess invoked')):
+                        with self.assertRaises(RuntimeError) as caught:
+                            with flux.database(True) as env:
+                                if body_fails:
+                                    raise ValueError('session failed')
+                    name = calls[0][calls[0].index('--name') + 1]
+                    self.assertEqual(calls[-1], ['docker', 'rm', '-f', '-v', name])
+                    message = str(caught.exception)
+                    self.assertIn(name, message)
+                    self.assertIn('data may remain', message)
+                    self.assertIn('docker rm -f -v ' + name, message)
+                    cause = caught.exception.__cause__
+                    diagnostic = getattr(cause, 'stderr', None) or str(cause)
+                    if isinstance(diagnostic, bytes):
+                        diagnostic = diagnostic.decode()
+                    self.assertIn(diagnostic, message)
+                    self.assertNotIn(env['PGPASSWORD'], message)
+
+    def test_cli_fails_when_disposable_removal_fails(self):
+        calls = []
+        failure = lambda args: subprocess.CalledProcessError(1, args, stderr='daemon refused removal')
+        stderr = io.StringIO()
+        with patch.object(flux, 'run', side_effect=self.docker_stub(calls, failure)), \
+             patch.object(flux, 'dev'), patch.object(flux.signal, 'signal'), \
+             patch.object(subprocess, 'run', side_effect=AssertionError('Unchecked subprocess invoked')), \
+             patch.object(sys, 'argv', ['flux', 'dev', '--no-build', '--disposable-db']), \
+             contextlib.redirect_stderr(stderr):
+            with self.assertRaises(SystemExit) as caught:
+                flux.main()
+        self.assertEqual(caught.exception.code, 1)
+        self.assertIn(calls[-1][-1], stderr.getvalue())
+        self.assertIn('daemon refused removal', stderr.getvalue())
 
     def test_database_requires_explicit_configuration(self):
         with patch.dict('os.environ', {}, clear=True):

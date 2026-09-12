@@ -26,8 +26,10 @@ Requires pack, Node 20+, Python 3, curl and Docker for disposable PostgreSQL.
 # Open http://127.0.0.1:8090; Ctrl-C shuts down the API and removes this DB.
 ```
 
-**Disposable means all data in that new database is removed on exit.** No
-existing database or application data is reset. To retain data, supply all of
+**Disposable data is removed on normal, successful cleanup.** If Docker removal
+fails or times out, the CLI exits unsuccessfully and reports the container name,
+Docker diagnostic and removal command; data may remain until cleanup succeeds.
+No existing database or application data is reset. To retain data, supply all of
 `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` for a dedicated database,
 then use `./flux dev --no-build` without the disposable flag. Use local/trusted
 test databases until authenticated PostgreSQL TLS is implemented. Do not put secrets
