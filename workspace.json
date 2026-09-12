@@ -17,6 +17,7 @@
     "flux-postgres-pool": "packages/postgres/async/flux-postgres-pool.ipkg",
     "flux-docker": "packages/docker/flux-docker.ipkg",
     "flux-protocol": "platform/flux-protocol.ipkg",
+    "flux-auth": "packages/auth/flux-auth.ipkg",
     "flux-client": "platform/flux-client.ipkg",
     "platform-crud-ui": "platform/crud/ui.ipkg",
     "platform-crud-server": "platform/crud/server.ipkg",
@@ -39,5 +40,5 @@
     {"path": "packages/docker", "source": "idris2-docker", "note": "Source/ipkg/README/test snapshot; original directory had no Git history."}
   ],
   "browser_roots": ["flux-ui", "flux-client", "platform-crud-ui"],
-  "browser_forbidden": ["flux", "flux-runtime", "flux-db", "flux-db-flux", "flux-postgres", "flux-postgres-pool", "flux-protocol"]
+  "browser_forbidden": ["flux", "flux-runtime", "flux-db", "flux-db-flux", "flux-postgres", "flux-postgres-pool", "flux-protocol", "flux-auth"]
 }

@@ -184,7 +184,7 @@ exec docker-entrypoint.sh postgres -c ssl=on -c ssl_min_protocol_version=TLSv1.3
         created = True
         for _ in range(80):
             try:
-                run(['docker','exec',name,'pg_isready','-U','testuser','-d','testdb']); break
+                run(['docker','exec',name,'pg_isready','-h','127.0.0.1','-U','testuser','-d','testdb']); break
             except subprocess.CalledProcessError: time.sleep(.2)
         else: raise RuntimeError('TLS PostgreSQL startup timed out')
         port = run(['docker','port',name,'5432/tcp']).stdout.strip().rsplit(':',1)[1]

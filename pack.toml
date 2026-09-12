@@ -7,6 +7,11 @@ path = "."
 ipkg = "flux.ipkg"
 test = "test/test.ipkg"
 
+[custom.all.flux-auth]
+type = "local"
+path = "packages/auth"
+ipkg = "flux-auth.ipkg"
+
 [custom.all.flux-client]
 type = "local"
 path = "platform"

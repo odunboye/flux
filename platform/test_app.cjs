@@ -24,6 +24,27 @@ const [base, mode = 'lifecycle'] = process.argv.slice(2);
     release();
     await expect(page.getByText('Ready.', {exact:true})).toBeVisible();
     await page.unroute('**/rpc/v1/todos/list');
+    if (mode === 'lifecycle') {
+      const auth = await page.evaluate(async () => {
+        const credentials = {username:'cli_account',password:'CLI correct horse battery'};
+        const rpc = async (name,body,token) => {
+          const headers = {'Content-Type':'application/json'};
+          if(token) headers.Authorization='Bearer '+token;
+          const r=await fetch('/rpc/v1/auth/'+name,{method:'POST',headers,body:JSON.stringify(body)});
+          return {status:r.status,body:await r.json()};
+        };
+        const registered=await rpc('register',credentials);
+        const login=await rpc('login',credentials);
+        const me=await rpc('me',{},login.body.token);
+        const logout=await rpc('logout',{},login.body.token);
+        const revoked=await rpc('me',{},login.body.token);
+        return {statuses:[registered.status,login.status,me.status,logout.status,revoked.status],
+                same:registered.body.id===me.body.id, storage:[localStorage.length,sessionStorage.length]};
+      });
+      assert.deepEqual(auth.statuses,[200,200,200,200,401]);
+      assert.equal(auth.same,true); assert.deepEqual(auth.storage,[0,0]);
+      console.log('PASS fresh CLI app: real accounts, bearer forwarding, logout revocation through same-origin proxy');
+    }
     await page.setViewportSize({width:390, height:844});
     const rows = page.getByRole('group', {name: /^Todo /});
     if (mode === 'pagination') {

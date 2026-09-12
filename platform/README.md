@@ -83,9 +83,11 @@ and never decoded from request JSON. OpenAPI declares bearer security for protec
 routes; public routes retain an explicit empty security requirement. Duplicate
 Authorization headers are rejected at the HTTP parser boundary.
 
-This is an **enforcement contract**, not an account/session implementation. The
-application must supply a real credential validator and perform owner-scoped SQL;
-none of the existing public Todo schemas have been converted yet. The
+This adapter is an **enforcement contract**. The new server-only
+[`flux-auth`](../packages/auth/README.md) package supplies durable Argon2id accounts
+and revocable bearer sessions, and the CRUD app mounts its account routes.
+Owner-scoped SQL is still required; no existing public Todo schema has been
+converted yet. The
 `auth-boundary/` executable uses fixed **test-only** credentials to verify the
 contract over real HTTP. Never deploy that fixture. See
 [the identity implementation plan](../design/IDENTITY_IMPLEMENTATION.md).
@@ -118,8 +120,9 @@ between page requests can change what is observed.
 The CRUD server bootstraps through Flux DB's migration runner using **frozen,
 reviewed SQL**, not an evolving model-derived CREATE statement. Restarts verify
 history without resetting data. This does not supply automatic model-to-SQL
-migration planning or authentication. Both examples remain public development
-applications.
+migration planning. The CRUD server adds durable account/session APIs through
+Flux Auth as migration 2; its Todo methods still remain public. Do not enter
+private task data until the ownership/UI cutover.
 
 ## Build and generate
 
@@ -195,8 +198,9 @@ for this client implementation**.
 
 ## Remaining platform work
 
-- Authenticated PostgreSQL TLS: the underlying existing gap remains.
-- User identity/authorization, credential storage and row ownership.
+- Private task ownership, login UI and session-generation-safe client state.
+  Authenticated PostgreSQL TLS, durable password accounts and revocable sessions
+  are implemented; MFA, recovery and other identity-provider features are not.
 - Enums, optional/omittable fields and additional scalar types.
 - Migration planning and integration into the existing todo-api entry point.
   The new CRUD example uses versioned bootstrap; the older one-method PG smoke

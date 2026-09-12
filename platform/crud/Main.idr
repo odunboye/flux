@@ -1,6 +1,7 @@
 module Main
 
 import Protocol
+import Flux.Auth
 import Config
 import Models
 import TodoRepository
@@ -76,7 +77,16 @@ listTodos repo request = do
 -- Frozen reviewed SQL, not a mutable model-derived CREATE statement.
 migrations : List Migration
 migrations = [MkMigration 1 "create todos"
-  ["CREATE TABLE todos (id BIGSERIAL PRIMARY KEY, title TEXT NOT NULL, done BOOLEAN NOT NULL DEFAULT false)"]]
+  ["CREATE TABLE todos (id BIGSERIAL PRIMARY KEY, title TEXT NOT NULL, done BOOLEAN NOT NULL DEFAULT false)"],
+  MkMigration 2 "accounts and revocable sessions" authSchemaV1]
+
+-- These six legacy Todo methods remain PUBLIC until the ownership/UI cutover.
+-- Never apply their preview wildcard CORS policy to account/session routes.
+publicTodoCors : Middleware
+publicTodoCors ctx =
+  if elem ctx.request.uri ["/rpc/v1/todos/create", "/rpc/v1/todos/get", "/rpc/v1/todos/list",
+                          "/rpc/v1/todos/update", "/rpc/v1/todos/toggle", "/rpc/v1/todos/delete"]
+    then corsAllowAll ctx else pure ctx
 
 main : IO ()
 main = do
@@ -90,10 +100,14 @@ main = do
     else do
       Right pool <- newPool defaultPoolConfig cfg
         | Left err => putStrLn (displayError err) >> exitFailure
+      Right identity <- newAuthService pool 86400
+        | Left _ => closePool pool >> putStrLn "Authentication initialization failed" >> exitFailure
       let repo = pooledTodoRepository pool
       let api = MkApi (createTodo repo) (deleteTodo repo) (getTodo repo)
                       (listTodos repo) (toggleTodo repo) (updateTodo repo)
-      let application = app |> useAlways corsAllowAll |> withErrorRenderer rpcErrorRenderer
-                            |> withRoutes (routes api)
+      let todos = routes api
+      let accounts = authRoutes identity
+      let application = app |> useAlways publicTodoCors |> withErrorRenderer rpcErrorRenderer
+                            |> withRoutes (MkRouter (accounts.routes ++ todos.routes))
       runProg (runServerArgs (runApp application) (drop 1 args))
       closePool pool

@@ -1,6 +1,11 @@
 # Flux Todo — generated-client Flux UI application
 
 This is a complete **public todo demo**, not an authenticated production app.
+Durable account/session APIs are now mounted under `/rpc/v1/auth/` using
+[Flux Auth](../../packages/auth/README.md): register, login, me, logout,
+logout-all and password change. Migration 2 adds identity tables without changing
+migration 1 or anonymous tasks. Account routes do not inherit the public Todo
+routes' wildcard CORS. There is no login UI or task ownership yet.
 `TodoUI.idr` owns the model/update/view; `MainWeb.idr` runs Flux UI's DOM backend.
 Every API operation goes through generated `Client.idr` commands. There is no
 handwritten JavaScript business model or parallel fetch client in the app.
@@ -80,8 +85,10 @@ waits and owned process-group cleanup; SIGINT/SIGTERM initiates clean shutdown.
 
 This CLI is repository-local (`./flux`), for macOS/Linux workspaces, not a
 published globally installed command or a standalone SDK project generator.
-Authenticated PostgreSQL TLS is available; deployment, user identity and row
-authorization remain separate milestones.
+Authenticated PostgreSQL TLS and durable accounts/revocable sessions are
+available. Deployment, login UI and task ownership remain separate milestones.
+Native builds additionally require libsodium 1.0.18+ and pkg-config; `./flux doctor`
+checks these dependencies.
 
 ## Verification
 

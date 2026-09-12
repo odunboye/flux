@@ -154,6 +154,10 @@ def test(manifest, without_db):
         # even in a warm pack cache; plain `pack install` can otherwise be a no-op.
         (ROOT / 'packages/postgres/flux-postgres.ipkg').touch()
         run('install-postgres-native', ['pack', '--no-prompt', 'install', 'flux-postgres'])
+        (ROOT / 'packages/auth/flux-auth.ipkg').touch()
+        run('install-auth-native', ['pack', '--no-prompt', 'install', 'flux-auth'])
+        run('auth-native', ['bash', 'packages/auth/test/native.sh'])
+        build('packages/auth/test/test.ipkg')
         build('packages/db/test/test.ipkg')
         build('packages/postgres/test/tls-identity.ipkg')
         for file in ['platform/example/example.ipkg', 'platform/example/pg-example.ipkg',
@@ -167,6 +171,7 @@ def test(manifest, without_db):
         if without_db:
             outcomes.append({'name': 'database-integration', 'skipped': True})
         else:
+            run('durable-auth', [sys.executable, 'packages/auth/test/integration.py'])
             run('postgres-tls-identity', [sys.executable, 'packages/postgres/test/tls_identity_test.py'])
             run('flux-ui-pg-migrations', [sys.executable, 'platform/test_pg_wire.py'])
             run('flux-ui-crud', [sys.executable, 'platform/test_crud.py'])

@@ -1,6 +1,9 @@
 import json
 import contextlib
 import io
+import http.client
+import http.server
+import threading
 from pathlib import Path
 import shutil
 import subprocess
@@ -31,6 +34,49 @@ class FluxTests(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.before = (self.root / 'workspace.json').read_bytes()
+
+    def test_proxy_forwards_one_bounded_bearer_and_no_cookies(self):
+        received = []
+        class Backend(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args): pass
+            def do_POST(self):
+                self.rfile.read(int(self.headers['Content-Length']))
+                received.append(dict(self.headers))
+                self.send_response(200)
+                self.send_header('Content-Length', '2')
+                self.end_headers()
+                self.wfile.write(b'{}')
+        backend = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Backend)
+        proxy = http.server.ThreadingHTTPServer(('127.0.0.1', 0), flux.handler(
+            self.root / 'platform/crud', {'ui': 'ui.ipkg'}, backend.server_port))
+        threads = [threading.Thread(target=s.serve_forever) for s in [backend, proxy]]
+        for thread in threads: thread.start()
+        try:
+            def request(values, origin=None):
+                conn = http.client.HTTPConnection('127.0.0.1', proxy.server_port, timeout=2)
+                try:
+                    conn.putrequest('POST', '/rpc/v1/auth/me')
+                    conn.putheader('Content-Length', '2')
+                    conn.putheader('Cookie', 'not-forwarded')
+                    for value in values: conn.putheader('Authorization', value)
+                    if origin: conn.putheader('Origin', origin)
+                    conn.endheaders(b'{}')
+                    response = conn.getresponse(); response.read()
+                    return response.status
+                finally: conn.close()
+            token = 'Bearer ' + 'a'*43
+            self.assertEqual(request([token]), 200)
+            self.assertEqual(received[-1]['Authorization'], token)
+            self.assertNotIn('Cookie', received[-1])
+            for credentials in [[token, token], ['Bearer short'], ['Basic '+ 'a'*43], [token+',x']]:
+                self.assertEqual(request(credentials), 400)
+            self.assertEqual(request([token], 'https://untrusted.example'), 403)
+            self.assertEqual(len(received), 1)
+        finally:
+            for server in [proxy, backend]: server.shutdown(); server.server_close()
+            for thread in threads:
+                thread.join(timeout=3)
+                self.assertFalse(thread.is_alive())
 
     def test_create_and_register(self):
         flux.new_project('sample')

@@ -404,7 +404,10 @@ expired entries so a long-running server doesn't accumulate them
 forever. What's still explicitly out of scope: persistence across
 restarts and sharing sessions across more than one process — this
 remains in-memory and single-process; swap in a real backend (Redis,
-a DB) for either of those.
+a DB) for either of those. Separately, the platform now provides
+[`flux-auth`](packages/auth/README.md): PostgreSQL-backed password accounts and
+revocable bearer sessions that survive restarts. It does not change this cookie
+middleware or automatically make existing public endpoints private.
 
 ## Static files
 
@@ -715,10 +718,10 @@ whether this is production-ready for their use case:
   linking bug behind that. `memoryCheck` is real, but Linux-only.
   Database/cache/external-service checks were never something Flux
   could provide generically - write your own via `addCheck`.
-- **Sessions are not durable.** IDs are now real random tokens with
-  expiry and GC (see "Cookies & sessions") - what's left is
-  single-process-only: no persistence across restarts, no sharing across
-  a cluster.
+- **The cookie middleware remains in-memory.** Its IDs have expiry and GC,
+  but no restart persistence. Use the separate `flux-auth` platform package for
+  durable PostgreSQL-backed password accounts and revocable bearer sessions.
+  Task ownership/login UI and broader identity-provider features remain future work.
 - **No TLS.** Terminate TLS in a reverse proxy; this project speaks
   plain HTTP only.
 - **CI covers unit tests, both builds, and one live smoke test - not

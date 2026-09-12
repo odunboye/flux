@@ -152,7 +152,7 @@ def database(disposable):
                '-e', 'POSTGRES_DB=fluxdev', 'postgres:16')
         for _ in range(150):
             try:
-                docker('exec', name, 'pg_isready', '-U', 'fluxdev', '-d', 'fluxdev')
+                docker('exec', name, 'pg_isready', '-h', '127.0.0.1', '-U', 'fluxdev', '-d', 'fluxdev')
                 break
             except subprocess.CalledProcessError:
                 time.sleep(.2)
@@ -230,13 +230,20 @@ def handler(project, config, backend):
             if not 0 <= length <= 65536 or self.headers.get('Transfer-Encoding'):
                 self.reply(413, b'Invalid body size', 'text/plain')
                 return
+            credentials = self.headers.get_all('Authorization', [])
+            if len(credentials) > 1 or (credentials and not re.fullmatch(r'(?i:Bearer) [A-Za-z0-9_-]{43}', credentials[0])):
+                self.reply(400, b'Invalid authorization header', 'text/plain')
+                return
+            forwarded = {'Content-Type': 'application/json'}
+            if credentials:
+                forwarded['Authorization'] = credentials[0]
             conn = http.client.HTTPConnection('127.0.0.1', backend, timeout=12)
             try:
                 data = self.rfile.read(length)
                 if len(data) != length:
                     self.reply(400, b'Truncated body', 'text/plain')
                     return
-                conn.request('POST', self.path, data, {'Content-Type': 'application/json'})
+                conn.request('POST', self.path, data, forwarded)
                 response = conn.getresponse()
                 body = response.read(65537)
                 if len(body) > 65536:
@@ -320,9 +327,11 @@ def main():
             return
         if args.command == 'doctor':
             workspace.check(workspace.load())
-            for tool in ['pack', 'node', 'npm', 'docker', 'curl']:
+            for tool in ['pack', 'node', 'npm', 'docker', 'curl', 'cc', 'make', 'pkg-config']:
                 if not shutil.which(tool):
                     raise ValueError('Missing tool: ' + tool)
+            run(['pkg-config', '--atleast-version=3.0.0', 'openssl'], timeout=10)
+            run(['pkg-config', '--atleast-version=1.0.18', 'libsodium'], timeout=10)
             run(['docker', 'info', '--format', '{{.ServerVersion}}'], timeout=20)
             run(['node', '-e', 'if(Number(process.versions.node.split(".")[0])<20) process.exit(1)'])
             print('PASS development prerequisites (pack collection: ' + workspace.load()['collection'] + ')')

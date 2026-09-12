@@ -1,8 +1,8 @@
 # Identity and private tasks: staged implementation
 
-Status: **endpoint enforcement contract implemented; durable identity and private
-Todo application not implemented yet.** Do not deploy the public demonstration
-with private data. Authenticated PostgreSQL TLS is available and must be enabled
+Status: **endpoint enforcement, durable accounts and revocable sessions are
+implemented. Private task ownership and login UI are still pending.** Do not
+deploy the public task demonstration with private data. Authenticated PostgreSQL TLS is available and must be enabled
 for remote databases; it does not secure the HTTP connection or authorize users.
 
 ## Implemented boundary
@@ -26,23 +26,24 @@ missing/invalid credentials, authentication before malformed-body decoding,
 principal isolation from a claimed owner, resolver failure redaction, duplicate
 credentials, mixed public/protected routes and bounded clean shutdown.
 
-## Next implementation slices
+## Implementation slices
 
-1. **Password and token primitives.** Use a mature Argon2id implementation, OS
-   cryptographic randomness and constant-time verification; no new hand-written
-   password crypto. Store versioned salted password hashes, never passwords.
-   Bound password bytes, supported hash costs, concurrent hashing work and queue
-   depth. Run expensive hashing through owned workers, not the HTTP owner loop.
-   Unknown accounts must follow a dummy verification path and generic login
-   failure response. Limit authentication attempts without disclosing accounts.
-2. **Durable accounts and sessions.** Use reviewed SQL migrations, unique
-   canonical account names and random 256-bit opaque bearer tokens. Store only
-   token digests, user ID, database-clock creation/expiry and revocation state.
-   Validate expiry/revocation on every protected request. Logout revokes the
-   current session; password changes revoke all sessions. Never log credentials,
-   digests, password hashes or raw authentication bodies. Database failures must
-   fail closed. Token lookup must remain indexed and bounded.
-3. **Private repository and migration.** Keep migration 1's SQL/checksum frozen.
+1. **Password and token primitives — implemented in `flux-auth`.** libsodium
+   Argon2id uses 64 MiB, three passes, random salts and bounded work-factor
+   validation. Two admitted hash jobs, no extra hash queue, 60 starts/minute/process;
+   owned blocking workers join on cancellation and wipe native buffers. Passwords
+   are 15–256 characters. Unknown/locked accounts use a random dummy verifier.
+2. **Durable accounts and sessions — implemented.** Reviewed identity migration 2
+   leaves original task migration/history/data unchanged. Canonical unique handles,
+   random 256-bit tokens stored only as digests, DB-clock expiry, indexed lookup,
+   current/all-session logout and atomic password-change revocation. Issuance
+   locks/rechecks its password/version snapshot to prevent stale-login races.
+   Ten attempts/minute/account survive restart; at most 32 sessions/account.
+   Auth storage errors are redacted without logging raw PG detail. Real HTTP,
+   PostgreSQL/TLS, two Chromium contexts, restart, revocation, expiry, concurrency,
+   rate/cost limits and fail-closed outage tests are implemented. The real CRUD
+   app and fresh-copy CLI expose these APIs; see `packages/auth/README.md`.
+3. **Private repository and migration — pending.** Keep migration 1's SQL/checksum frozen.
    Preserve existing anonymous rows in an explicitly named legacy archive, not
    under the first account to register. A reviewed transactional migration will
    create the ownership-constrained task table and its `(owner_id, id)` index.
@@ -53,15 +54,15 @@ credentials, mixed public/protected routes and bounded clean shutdown.
    statement, not a separate check-then-write. Pagination always includes owner
    scope, including lookahead and direct forged cursors. A foreign owner's ID
    has the same response as a nonexistent ID.
-4. **Client/UI cutover.** Add registration/login/logout and session expiry UX,
+4. **Client/UI cutover — pending.** Add registration/login/logout and session expiry UX,
    then switch every Todo endpoint to authenticated access together with its
    owner-scoped handler. Do not temporarily protect only the UI. Bearer tokens
    remain out of URLs and persistent browser storage; browser reload may require
    login again in the first slice. Clear all task state on identity changes.
    Tag callbacks with a session generation so late responses from user A cannot
    enter user B's model. Preserve lifecycle cancellation and never replay writes
-   automatically. The same-origin dev proxy must forward exactly one valid
-   credential without weakening its origin/host/body checks. Native transports
+   automatically. The same-origin dev proxy now forwards exactly one bounded
+   bearer credential without weakening its origin/host/body checks. Native transports
    must not expose credentials in subprocess arguments or diagnostic output.
 
 ## Required acceptance before calling the application multi-user

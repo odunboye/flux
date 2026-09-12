@@ -46,7 +46,7 @@ def main():
                    '-e', 'POSTGRES_DB=testdb', 'postgres:16')
             for _ in range(150):
                 try:
-                    docker('exec', name, 'pg_isready', '-U', 'testuser', '-d', 'testdb')
+                    docker('exec', name, 'pg_isready', '-h', '127.0.0.1', '-U', 'testuser', '-d', 'testdb')
                     break
                 except subprocess.CalledProcessError:
                     time.sleep(.2)
@@ -56,7 +56,7 @@ def main():
                        PGUSER='testuser', PGPASSWORD='testpass', PGDATABASE='testdb')
             for _ in range(2):
                 run(project_cli + ['migrate'], env=env, cwd=export)
-            assert sql('SELECT count(*) FROM flux_db_meta.migrations') == '1'
+            assert sql('SELECT count(*) FROM flux_db_meta.migrations') == '2'
             sql('ALTER SEQUENCE todos_id_seq RESTART WITH 9223372036854775000')
             for mode in ['lifecycle', 'pagination']:
                 with tempfile.TemporaryFile(mode='w+') as log:
@@ -89,7 +89,7 @@ def main():
                             raise
                         server = None
                 assert sql("SELECT count(*) FROM todos WHERE title = 'Persisted UI 🚀' AND done = true") == '1'
-                assert sql('SELECT count(*) FROM flux_db_meta.migrations') == '1'
+                assert sql('SELECT count(*) FROM flux_db_meta.migrations') == '2'
                 if mode == 'lifecycle':
                     assert sql('SELECT count(*) FROM todos') == '1'
                     sql("INSERT INTO todos(title) SELECT 'seed-' || n::text FROM generate_series(1,55) AS n")

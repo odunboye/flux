@@ -1,0 +1,11 @@
+PASS additive migration preserves anonymous data and full v1 history
+PASS salted Argon2id, opaque digest-only sessions, real protected resolver and generic failures
+PASS two Chromium contexts: register/login, real principal, scoped logout, no credential storage/cookies, no wildcard CORS
+PASS account and session persistence across server and PostgreSQL restarts
+PASS expiry, current/all-session logout, scoped revocation and atomic password-change revocation
+PASS durable attempt window, concurrent session cap and unique-registration race
+PASS bounded hashing admission and responsive owner loop under contention
+PASS actual database-clock short session expiry without extending test deadlines
+PASS concurrent old-password login cannot survive password-change revocation
+PASS corrupt hash costs bounded, store outage fails closed, credentials absent from server logs
+PASS durable account/session PostgreSQL TLS integration

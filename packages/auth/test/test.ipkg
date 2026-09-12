@@ -1,0 +1,6 @@
+package flux-auth-integration-test
+version = 0.1.0
+depends = flux-auth, todo-api
+sourcedir = "."
+main = Main
+executable = flux-auth-integration-test

@@ -32,7 +32,7 @@ exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/tmp/tls/server.cr
                        check=True, timeout=30, stdout=subprocess.DEVNULL)
         created = True
         for _ in range(60):
-            ready = subprocess.run(['docker', 'exec', name, 'pg_isready', '-U', 'testuser', '-d', 'testdb'],
+            ready = subprocess.run(['docker', 'exec', name, 'pg_isready', '-h', '127.0.0.1', '-U', 'testuser', '-d', 'testdb'],
                                    timeout=5, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             if ready.returncode == 0:
                 break

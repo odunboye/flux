@@ -111,7 +111,7 @@ row busy todo = WVStack (styled [sTitle ("Todo " ++ todo.id), sBorder RoundedBor
 public export
 view : Model -> Widget Msg
 view m = WVStack (styled [sPad 16])
-  ([WText (styled [sBold]) "Flux Todo", wrappedText "A Flux UI application using generated Idris RPC commands.",
+  ([WText (styled [sBold]) "Flux Todo", wrappedText "Public task preview: account APIs are available, but task ownership is not enabled. Do not enter private data.",
     wrappedText m.notice] ++
    (if m.suspended then [text "Paused."] else if m.busy then [text "Working..."] else if isJust m.confirmDelete then [] else
      [WInput (styled [sTitle (case m.editing of Nothing => "New todo title"; Just _ => "Edit todo title")]) m.draft Draft] ++

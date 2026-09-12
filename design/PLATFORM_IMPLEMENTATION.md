@@ -40,8 +40,8 @@ Errors use a stable `error.code` plus a safe `error.message`. Internal database
 or transport details must not become public responses. Initial endpoints are
 explicitly public. Authenticated generation now requires a server authenticator
 and passes only its resolved principal into protected callbacks. There is no
-public fallback. Durable identity/session storage and owner-scoped repositories
-remain pending; see `IDENTITY_IMPLEMENTATION.md`.
+public fallback. Durable password accounts and revocable sessions are now supplied
+by `flux-auth`; owner-scoped repositories remain pending. See `IDENTITY_IMPLEMENTATION.md`.
 
 ## Implemented first increment
 
@@ -82,10 +82,11 @@ commit above.
 This is not completion of the platform. Endpoints remain public POST methods,
 with no recursive models or omittable fields. The complete todo Flux UI and
 repository-local project CLI are now implemented (see below). There is still no
-identity system or production deployment workflow. Client transport behavior
-and limits are inherited from Flux UI, not strengthened by these adapters.
-Existing todo-api entry points are unchanged; a separate PG example exercises
-its repositories. The underlying PG TLS authentication gap remains unresolved.
+production deployment workflow. Durable accounts and revocable sessions are now
+implemented separately in `flux-auth`; Todo ownership/UI conversion remains next.
+Client transport behavior and limits are inherited from Flux UI, not strengthened
+by these adapters. Existing todo-api entry points are unchanged; a separate PG
+example exercises its repositories. Authenticated PG TLS uses OpenSSL 3.
 
 ## Flux UI application and project CLI checkpoint
 
@@ -127,8 +128,9 @@ Authenticated PostgreSQL TLS is implemented using OpenSSL 3 with mandatory chain
 and SAN hostname/IP verification, explicit/system trust, and the existing owned
 deadline transport. The integration gate tests certificate rejection and real
 PostgreSQL TLS/SCRAM, cancellation and timeout cleanup. See the driver README.
-This does not implement durable accounts, sessions, endpoint authorization or row
-ownership; the demonstration application is still public and not production-ready.
+Durable accounts, revocable sessions and protected endpoint enforcement are now
+implemented separately in `flux-auth`. Row ownership and login UI remain pending;
+the demonstration's task methods are still public and not production-ready.
 Hosted Linux CI confirmation remains separate from local macOS/Linux-container evidence.
 
 Never auto-apply destructive migration changes. Migration commands must target
