@@ -1,0 +1,6 @@
+package todo-api-pooled-test
+depends = todo-api
+modules = TestHarness, RepositoryBehavior, PooledMain
+main = PooledMain
+executable = "todo-api-pooled-test"
+sourcedir = "src"
