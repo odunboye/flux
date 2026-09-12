@@ -170,6 +170,16 @@ renderHTML (WText s str) _ _ _ = do
       "<span class='iris-box-title'>" ++ escapeHTML t ++ "</span>" ++
       escapeHTML str ++ "</div>"
 
+renderHTML (WWrapText s str) _ _ _ = do
+  let css = "white-space:normal;overflow-wrap:anywhere;" ++ styleToCSS s ++ flexStyle s
+  pure $ "<span style='" ++ css ++ "'>" ++ escapeHTML str ++ "</span>"
+
+renderHTML (WScroll s scrollX scrollY child) st idMap inputMap = do
+  inner <- renderHTML child st idMap inputMap
+  let css = "overflow:auto;position:relative;" ++ styleToCSS s ++ flexStyle s
+      offset = "transform:translate(-" ++ show scrollX ++ "ch,-" ++ show scrollY ++ "lh);"
+  pure $ "<div style='" ++ css ++ "'><div style='" ++ offset ++ "'>" ++ inner ++ "</div></div>"
+
 renderHTML (WVStack s children) st idMap inputMap = do
   let brd   = case s.border of
                 NoBorder => ""

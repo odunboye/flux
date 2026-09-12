@@ -119,6 +119,9 @@ prim_clearRect : Double -> Double -> Double -> Double -> AnyPtr -> PrimIO ()
 %foreign "javascript:lambda: (x,y,w,h,ctx,_w) => { ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip(); }"
 prim_clip : Double -> Double -> Double -> Double -> AnyPtr -> PrimIO ()
 
+%foreign "javascript:lambda: (x,y,ctx,_w) => { ctx.translate(x,y); }"
+prim_translate : Double -> Double -> AnyPtr -> PrimIO ()
+
 -- ─── IO wrappers ─────────────────────────────────────────────────────────────
 
 cSave    : AnyPtr -> IO () ; cSave    ctx = primIO (prim_save ctx)
@@ -151,6 +154,9 @@ cClear x y w h ctx = primIO (prim_clearRect x y w h ctx)
 
 cClip : Double -> Double -> Double -> Double -> AnyPtr -> IO ()
 cClip x y w h ctx = primIO (prim_clip x y w h ctx)
+
+cTranslate : Double -> Double -> AnyPtr -> IO ()
+cTranslate x y ctx = primIO (prim_translate x y ctx)
 
 -- ─── Coordinate helpers ──────────────────────────────────────────────────────
 
@@ -221,6 +227,26 @@ listTakeC Z     _        = []
 listTakeC _     []       = []
 listTakeC (S n) (x :: xs)= x :: listTakeC n xs
 
+wrapChars : Nat -> List Char -> List String
+wrapChars Z chars = [pack chars]
+wrapChars _ [] = []
+wrapChars width chars =
+  let (line, rest) = takeChunk width chars
+  in pack line :: wrapChars width rest
+  where
+    takeChunk : Nat -> List Char -> (List Char, List Char)
+    takeChunk Z remaining = ([], remaining)
+    takeChunk _ [] = ([], [])
+    takeChunk (S count) (char :: remaining) =
+      let (line, rest) = takeChunk count remaining in (char :: line, rest)
+
+renderWrappedLines : CanvasMetric -> List String -> Double -> Double
+                  -> Double -> AnyPtr -> IO ()
+renderWrappedLines _ [] _ _ _ _ = pure ()
+renderWrappedLines metric (line :: rest) x y width ctx = do
+  cText line x y width ctx
+  renderWrappedLines metric rest x (y + metric.cellH) width ctx
+
 -- ─── Main widget renderer ────────────────────────────────────────────────────
 
 mutual
@@ -262,6 +288,28 @@ mutual
   cFill fgCol ctx
   cFont m.fontSz s.bold s.italic m.font ctx
   cText str x y fw ctx
+
+ renderOnCanvas m (WWrapText s str) r ctx = do
+  let ir = innerRect s r
+      fgCol = case s.fg of Nothing => "#c9d1d9"; Just color => irisToCSS color
+      lines = wrapChars (max 1 ir.w) (unpack str)
+  cFill fgCol ctx
+  cFont m.fontSz s.bold s.italic m.font ctx
+  cSave ctx
+  cClip (cx m ir.col) (cy m ir.row) (cw m ir.w) (ch m ir.h) ctx
+  renderWrappedLines m lines (cx m ir.col) (cy m ir.row + m.cellH * 0.75)
+    (cw m ir.w) ctx
+  cRestore ctx
+
+ renderOnCanvas m (WScroll s scrollX scrollY child) r ctx = do
+  renderBox m s r ctx
+  let ir = innerRect s r
+      contentSize = measure child 10000 10000
+  cSave ctx
+  cClip (cx m ir.col) (cy m ir.row) (cw m ir.w) (ch m ir.h) ctx
+  cTranslate (-(cx m scrollX)) (-(cy m scrollY)) ctx
+  renderOnCanvas m child (MkWRect ir.col ir.row contentSize.w contentSize.h) ctx
+  cRestore ctx
 
  renderOnCanvas m (WVStack s children) r ctx = do
   renderBox m s r ctx

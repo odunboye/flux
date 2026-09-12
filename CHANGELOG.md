@@ -5,7 +5,20 @@ Versioning within the normal compatibility limits of a pre-1.0 release.
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+- General-purpose clipped scroll view and wrapped-text widgets across DOM,
+  Canvas, and terminal renderers, including transformed Canvas hit testing.
+- Cancellable browser HTTP retries with bounded exponential backoff.
+
+### Changed
+
+- Canvas no longer emits Todo-specific keyboard messages for touch gestures.
+
+### Deprecated
+
+- `Iris.Core.Widget` compatibility model and `Iris.Core.Runtime.run`; use
+  `Iris.Widget`, `Iris.App.IrisApp`, and a specialized backend runner.
 
 ## 0.2.0-preview.1 — 2026-09-11
 
@@ -20,11 +33,6 @@ No changes yet.
   not-found results, base paths, and navigation guards.
 - Browser HTTP cancellation, timeout, and response-size limits.
 - Playwright integration tests and portable release validation.
-
-### Deprecated
-
-- `Iris.Core.Widget` compatibility model and `Iris.Core.Runtime.run`; use
-  `Iris.Widget`, `Iris.App.IrisApp`, and a specialized backend runner.
 
 ### Changed
 

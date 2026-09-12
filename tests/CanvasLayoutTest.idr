@@ -3,6 +3,7 @@ module Main
 import System
 import Iris.Widget
 import Iris.Backend.Canvas.Layout
+import Iris.Backend.Terminal.WidgetRender
 
 widget : Widget Nat
 widget = vstack
@@ -32,6 +33,14 @@ main = do
   assert "input hit" (messageAt 1 2 == Just 5)
   assert "right boundary is exclusive" (messageAt 40 0 == Nothing)
   assert "outside vertical bounds" (messageAt 1 9 == Nothing)
+  let wrappedSize = measure (the (Widget Nat) (wrappedText "abcdefghij")) 5 10
+  assert "wrapped text uses available rows" (wrappedSize.w == 5 && wrappedSize.h == 2)
+  let scrollSize = measure (scrollView 0 2 widget) 20 6
+  assert "scroll viewport uses available bounds" (scrollSize.w == 20 && scrollSize.h == 6)
+  assert "scroll offset transforms and clips hit targets"
+    (case hitAt 1 0 (layoutTargets (scrollView 0 1 widget) 20 2) of
+       Just (CheckboxTarget _ _ _ 20) => True
+       _ => False)
   let enlarged = minimumHitTargets 5 2 (layoutTargets (button "tap" 7) 40 10)
   assert "minimum touch width" (case hitAt 4 0 enlarged of
                                   Just (ButtonTarget _ _ _ 7) => True

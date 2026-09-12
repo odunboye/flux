@@ -150,6 +150,8 @@ widgetFillH : Widget msg -> Bool
 widgetFillH (WVStack s _)   = s.fillH
 widgetFillH (WHStack s _)   = s.fillH
 widgetFillH (WText s _)     = s.fillH
+widgetFillH (WWrapText s _) = s.fillH
+widgetFillH (WScroll s _ _ _) = s.fillH
 widgetFillH (WInput s _ _)  = s.fillH
 widgetFillH (WButton s _ _) = s.fillH
 widgetFillH WSpacer         = True
@@ -160,9 +162,17 @@ widgetFillV : Widget msg -> Bool
 widgetFillV (WVStack s _)   = s.fillV
 widgetFillV (WHStack s _)   = s.fillV
 widgetFillV (WText s _)     = s.fillV
+widgetFillV (WWrapText s _) = s.fillV
+widgetFillV (WScroll s _ _ _) = s.fillV
 widgetFillV (WButton s _ _) = s.fillV
 widgetFillV WSpacer         = True
 widgetFillV _               = False
+
+covering
+ceilDiv : Nat -> Nat -> Nat
+ceilDiv _ Z = 0
+ceilDiv Z _ = 0
+ceilDiv value divisor = S (ceilDiv (value `minus` divisor) divisor)
 
 -- ─── Pass 1: measure (mutual recursion) ──────────────────────────────────────
 
@@ -177,6 +187,15 @@ mutual
   natSize (WText s str) maxW _ =
     MkWSize (fromMaybeN (min (length str + hInset s) maxW) s.fixedW)
             (fromMaybeN (1 + vInset s) s.fixedH)
+
+  natSize (WWrapText s str) maxW _ =
+    let contentW = max 1 (maxW `minus` hInset s)
+        lineCount = max 1 (ceilDiv (length str) contentW)
+    in MkWSize (fromMaybeN maxW s.fixedW)
+               (fromMaybeN (lineCount + vInset s) s.fixedH)
+
+  natSize (WScroll s _ _ child) maxW maxH =
+    MkWSize (fromMaybeN maxW s.fixedW) (fromMaybeN maxH s.fixedH)
 
   natSize (WInput s val _) maxW _ =
     MkWSize (fromMaybeN maxW s.fixedW)
@@ -323,6 +342,15 @@ mutual
         bg  = case s.bg of Nothing => ""; Just _ => fillRows s r
         brd = drawBorder s.border s.label r
     in bg ++ brd ++ moveCursor ir.col ir.row ++ styleAttrs s ++ padRight ir.w (sanitizeText str) ++ resetAttrs
+
+  renderWidget (WWrapText s str) r =
+    let ir  = innerRect s r
+        bg  = case s.bg of Nothing => ""; Just _ => fillRows s r
+        brd = drawBorder s.border s.label r
+    in bg ++ brd ++ moveCursor ir.col ir.row ++ styleAttrs s ++ padRight ir.w (sanitizeText str) ++ resetAttrs
+
+  renderWidget (WScroll s _ _ child) r =
+    renderWidget child (innerRect s r)
 
   renderWidget (WInput s val _) r =
     let ir  = innerRect s r

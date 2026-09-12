@@ -93,6 +93,9 @@ data Widget : (msg : Type) -> Type where
   ||| Plain text (one line).
   WText     : Style -> String -> Widget msg
 
+  ||| Text that wraps to the available width.
+  WWrapText : Style -> String -> Widget msg
+
   ||| Editable single-line text field.  `value` is the current string.
   WInput    : Style -> (value : String) -> (onChange : String -> msg) -> Widget msg
 
@@ -125,11 +128,15 @@ data Widget : (msg : Type) -> Type where
   ||| Full-width horizontal rule / divider.
   WDivider  : Style -> Widget msg
 
+  ||| Clipped scroll viewport with logical cell offsets.
+  WScroll   : Style -> (scrollX : Nat) -> (scrollY : Nat) -> Widget msg -> Widget msg
+
 -- ─── Functor ─────────────────────────────────────────────────────────────────
 
 public export
 Functor Widget where
   map f (WText   s t)           = WText   s t
+  map f (WWrapText s t)         = WWrapText s t
   map f (WInput  s v h)         = WInput  s v (f . h)
   map f (WButton s t m)         = WButton s t (f m)
   map f (WCheckbox s c m)       = WCheckbox s c (f m)
@@ -140,10 +147,12 @@ Functor Widget where
   map f (WHStack s cs)          = WHStack s (map (map f) cs)
   map f WSpacer                 = WSpacer
   map f (WDivider s)            = WDivider s
+  map f (WScroll s x y child)   = WScroll s x y (map f child)
 
 -- ─── Smart constructors (no-style variants) ──────────────────────────────────
 
 public export text     : String -> Widget msg ; text     = WText defaultStyle
+public export wrappedText : String -> Widget msg ; wrappedText = WWrapText defaultStyle
 public export spacer   : Widget msg           ; spacer   = WSpacer
 public export divider  : Widget msg           ; divider  = WDivider defaultStyle
 
@@ -178,3 +187,7 @@ button = WButton defaultStyle
 public export
 input : String -> (String -> msg) -> Widget msg
 input = WInput defaultStyle
+
+public export
+scrollView : Nat -> Nat -> Widget msg -> Widget msg
+scrollView = WScroll defaultStyle

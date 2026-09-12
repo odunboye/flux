@@ -44,6 +44,32 @@ targetRect (ButtonTarget _ rect _ _) = rect
 targetRect (CheckboxTarget _ rect _ _) = rect
 targetRect (InputTarget _ rect _ _) = rect
 
+shiftRectInto : WRect -> Nat -> Nat -> WRect -> Maybe WRect
+shiftRectInto viewport scrollX scrollY rect =
+  let originX = viewport.col + scrollX
+      originY = viewport.row + scrollY
+      cutX = originX `minus` rect.col
+      cutY = originY `minus` rect.row
+      shiftedCol = viewport.col + (rect.col `minus` originX)
+      shiftedRow = viewport.row + (rect.row `minus` originY)
+      visibleW = min (rect.w `minus` cutX) ((viewport.col + viewport.w) `minus` shiftedCol)
+      visibleH = min (rect.h `minus` cutY) ((viewport.row + viewport.h) `minus` shiftedRow)
+  in if visibleW == 0 || visibleH == 0 then Nothing
+     else Just (MkWRect shiftedCol shiftedRow visibleW visibleH)
+
+shiftTargetInto : WRect -> Nat -> Nat -> HitTarget msg -> Maybe (HitTarget msg)
+shiftTargetInto viewport x y (ButtonTarget id rect label message) =
+  map (\visible => ButtonTarget id visible label message) (shiftRectInto viewport x y rect)
+shiftTargetInto viewport x y (CheckboxTarget id rect checked message) =
+  map (\visible => CheckboxTarget id visible checked message) (shiftRectInto viewport x y rect)
+shiftTargetInto viewport x y (InputTarget id rect value handler) =
+  map (\visible => InputTarget id visible value handler) (shiftRectInto viewport x y rect)
+
+keepJust : List (Maybe a) -> List a
+keepJust [] = []
+keepJust (Nothing :: rest) = keepJust rest
+keepJust (Just value :: rest) = value :: keepJust rest
+
 inside : Nat -> Nat -> WRect -> Bool
 inside col row rect =
   col >= rect.col && row >= rect.row &&
@@ -71,6 +97,12 @@ mutual
     let inner = innerRect style rect
         sizes = distributeV children inner.w inner.h
     in collectV next children sizes inner.col inner.row inner.w inner.h
+  collect next (WScroll style scrollX scrollY child) rect =
+    let viewport = innerRect style rect
+        contentSize = measure child 10000 10000
+        (afterChild, targets) = collect next child
+          (MkWRect viewport.col viewport.row contentSize.w contentSize.h)
+    in (afterChild, keepJust (map (shiftTargetInto viewport scrollX scrollY) targets))
   collect next (WHStack style children) rect =
     let inner = innerRect style rect
         sizes = distributeH children inner.w inner.h
