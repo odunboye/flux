@@ -62,10 +62,11 @@ npx cap sync ios       # macOS + Xcode
 npx cap sync android   # Android SDK/Studio
 ```
 
-Then build and smoke-test the generated projects. Confirm startup, rotation,
-background/resume, hardware back behavior, multi-touch pointer IDs, safe-area
-appearance, and offline loading. Signing and store packaging remain deployment
-responsibilities.
+The `v0.2.0-preview.1` release candidate was successfully compiled as an iOS
+simulator Debug app and Android Debug APK on 2026-09-12. Device-level behavior
+must still be smoke-tested for startup, rotation, background/resume, hardware
+back behavior, multi-touch pointer IDs, safe-area appearance, and offline
+loading. Signing and store packaging remain deployment responsibilities.
 
 ## Known limitations
 

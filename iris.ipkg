@@ -1,7 +1,7 @@
 package iris
 
 authors    = "Odun Adeboye"
-version    = 0.1.0
+version    = 0.2.0
 brief      = "Iris — cross-platform declarative UI framework (Web, Desktop, Mobile, Embedded, TUI)"
 
 depends    = contrib

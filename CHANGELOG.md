@@ -5,6 +5,10 @@ Versioning within the normal compatibility limits of a pre-1.0 release.
 
 ## Unreleased
 
+No changes yet.
+
+## 0.2.0-preview.1 — 2026-09-11
+
 ### Added
 
 - Complete versioned platform-event wire protocol and validation.

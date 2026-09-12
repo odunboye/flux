@@ -22,6 +22,9 @@ sync_android() {
   [[ -n ${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}} ]] || { echo 'skip Android: SDK is unavailable'; return; }
   [[ -d android ]] || npx cap add android
   npx cap sync android
+  if [[ $(uname -s) == Darwin ]] && /usr/libexec/java_home -v 17 >/dev/null 2>&1; then
+    export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+  fi
   (cd android && ./gradlew assembleDebug)
 }
 
