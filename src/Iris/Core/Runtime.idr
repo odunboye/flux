@@ -90,6 +90,8 @@ runFrame app plat stateRef = do
 
 ||| Launch an Iris application.
 ||| The platform is responsible for calling `runFrame` every tick.
+||| @deprecated Use a specialized runner with `Iris.App.IrisApp`.
+%deprecate
 public export
 run : App mdl msg -> Iris.Platform.Interface.Platform -> IO ()
 run app plat = do

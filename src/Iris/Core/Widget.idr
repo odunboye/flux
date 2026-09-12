@@ -29,6 +29,7 @@ defaultMeta = MkWidgetMeta Nothing Nothing
 ||| A Widget is a *pure description* — it carries no mutable state.
 ||| The Iris runtime wraps each widget in an Element (stateful identity)
 ||| and eventually a RenderObject (layout + paint).
+||| Deprecated compatibility type; use `Iris.Widget.Widget` for supported applications.
 public export
 data Widget : (msg : Type) -> Type where
 

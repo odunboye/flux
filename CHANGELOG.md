@@ -21,6 +21,11 @@ No changes yet.
 - Browser HTTP cancellation, timeout, and response-size limits.
 - Playwright integration tests and portable release validation.
 
+### Deprecated
+
+- `Iris.Core.Widget` compatibility model and `Iris.Core.Runtime.run`; use
+  `Iris.Widget`, `Iris.App.IrisApp`, and a specialized backend runner.
+
 ### Changed
 
 - DOM controls use delegated events instead of inline handlers.
