@@ -1,6 +1,6 @@
 package platform-pg-example
 version = 0.1.0
-depends = flux-platform, todo-api
+depends = flux-protocol, todo-api
 sourcedir = "."
 modules = ProtocolTypes, Protocol, PGMain
 main = PGMain

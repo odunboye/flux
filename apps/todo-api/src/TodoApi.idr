@@ -1,5 +1,5 @@
 ||| A small Todo CRUD API demonstrating Flux (HTTP framework) wired up to
-||| a real Postgres database via idris2-pg.
+||| a real Postgres database via flux-postgres.
 |||
 ||| Main uses an exclusive connection pool. Flux.DB.PG.dbIO runs repository
 ||| operations on bounded workers, leaving Flux's event loops responsive.

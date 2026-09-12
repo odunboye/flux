@@ -1,5 +1,9 @@
 # Flux UI 0.3: breaking rename
 
+The later [coordinated package rename](../../design/PACKAGE_MIGRATION.md)
+changes the supporting client/server/transport package IDs. The Flux UI source
+and runtime migration below is unchanged.
+
 This is an **outright rename** of Iris, not an alias package or compatibility
 namespace. The implementation lives under `src/Flux/UI/`. There is no `iris`
 package, `Iris.*` implementation tree, legacy re-export shim or old-name fallback.

@@ -2,13 +2,13 @@ package flux-db-flux
 version = 0.3.0
 authors = "Odun Adeboye"
 license = "MIT"
-brief   = "Glue lifting idris2-pg/flux-db's IO (Either PGError a) calls into Flux's AppProg/Handler pipeline"
+brief   = "Glue lifting flux-postgres/flux-db's IO (Either PGError a) calls into Flux's AppProg/Handler pipeline"
 readme  = "README.md"
 
 depends = flux
         , flux-db
-        , idris2-pg
-        , idris2-pg-async
+        , flux-postgres
+        , flux-postgres-pool
 
 modules = Flux.DB.PG
         , Flux.DB.Pool

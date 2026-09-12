@@ -1,4 +1,4 @@
-# flux-async
+# flux-runtime
 
 Flux's owned-task runtime for Idris2 on Chez, targeting macOS and Linux. It
 uses `elin` for typed errors and a small C shim for nonblocking sockets,
@@ -7,7 +7,8 @@ It does not depend on `async`, `async-posix`, `streams`, or `streams-posix`.
 
 ## Build
 
-Install Pack and a C compiler, then run `pack build flux-async.ipkg`. The
+From the Flux root, install Pack and a C compiler, then run
+`pack build packages/runtime/flux-runtime.ipkg`. The
 package prebuild compiles the native library; Pack installs it alongside the
 Idris package so downstream executables can copy it into their app directory.
 
@@ -78,9 +79,9 @@ pack build test/test.ipkg
 pack build test/service.ipkg
 pack build test/stream.ipkg
 pack build test/socket.ipkg
-./test/build/exec/flux-async-test
-./test/build/exec/flux-async-service-test
-./test/build/exec/flux-async-stream-test
+./test/build/exec/flux-runtime-test
+./test/build/exec/flux-runtime-service-test
+./test/build/exec/flux-runtime-stream-test
 python3 test/socket_test.py
 ```
 

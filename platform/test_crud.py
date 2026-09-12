@@ -8,7 +8,7 @@ import time
 import uuid
 
 ROOT = Path(__file__).resolve().parent
-name = 'flux-platform-crud-' + uuid.uuid4().hex[:12]
+name = 'flux-protocol-crud-' + uuid.uuid4().hex[:12]
 app = ROOT / 'crud/build/exec/platform-crud-server_app'
 created = False
 server = None

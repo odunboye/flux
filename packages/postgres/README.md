@@ -1,10 +1,17 @@
-# idris2-pg
+# flux-postgres
 
 A PostgreSQL client for Idris2, implemented from scratch against the
 [Postgres wire protocol](https://www.postgresql.org/docs/current/protocol.html)
 over raw TCP sockets — no `libpq`, no FFI.
 
+Package: `flux-postgres`; public modules such as `Idris2_pg` and `Data.PGTypes`
+remain unchanged. Pooling is provided by `flux-postgres-pool`. See the
+[package migration](../../design/PACKAGE_MIGRATION.md).
+
 ## Project goals
+
+The following proof-branch discussion is historical context from the original
+transport repository, not a verification claim about this Flux checkout.
 
 The main goal of this project is a **fully verified** Postgres client: one
 where Idris2's dependent types are used to *prove* protocol-level
@@ -31,13 +38,13 @@ work progresses.
 Requires [pack](https://github.com/stefan-hoeck/idris2-pack).
 
 ```sh
-pack install idris2-pg
+pack install flux-postgres
 ```
 
-Or, from a checkout of this repo:
+Or, from the Flux repository root:
 
 ```sh
-pack build idris2-pg.ipkg
+pack build packages/postgres/flux-postgres.ipkg
 ```
 
 ## Usage
@@ -93,7 +100,7 @@ TLS - nothing that maps a `Row` onto an application record type. That
 layer - `Row`<->record derivation, generated CRUD, a typed query builder -
 lives in [Flux DB](../db), built on top of
 this client (and meant to grow support for other DB clients later, not
-stay idris2-pg-specific forever).
+stay flux-postgres-specific forever).
 
 ### Value decoding
 
@@ -146,8 +153,8 @@ return, as required by the [Chez foreign interface](https://cisco.github.io/Chez
 
 ### Exclusive connection pooling
 
-The optional `async/idris2-pg-async.ipkg` package exports `Data.PGPool` for
-`flux-async`. Defaults are 8 connections, 128 queued acquirers, and a 5-second
+The optional `async/flux-postgres-pool.ipkg` package exports `Data.PGPool` for
+`flux-runtime`. Defaults are 8 connections, 128 queued acquirers, and a 5-second
 acquisition deadline. Connections are opened lazily. Missing transport
 limits become 5 seconds for connection setup and 30 seconds per operation.
 Cold connection setup is serialized per pool to avoid concurrent SCRAM
@@ -218,7 +225,7 @@ Unit tests (codec + value parsers, no database needed):
 ```sh
 cd test
 pack build unit-test.ipkg
-./build/exec/idris2-pg-unit-test
+./build/exec/flux-postgres-unit-test
 ```
 
 Property-based tests ([idris2-hedgehog](https://github.com/stefan-hoeck/idris2-hedgehog),
@@ -231,7 +238,7 @@ what's deliberately out of scope.
 ```sh
 cd test
 pack build prop-test.ipkg
-./build/exec/idris2-pg-prop-test
+./build/exec/flux-postgres-prop-test
 ```
 
 CRUD smoke test (needs a real Postgres — connection details come from
@@ -241,20 +248,20 @@ default Postgres container already works, since SCRAM-SHA-256 (the
 out-of-the-box default) is supported:
 
 ```sh
-docker run -d --name idris2-pg-test \
+docker run -d --name flux-postgres-test \
   -e POSTGRES_USER=testuser -e POSTGRES_PASSWORD=testpass -e POSTGRES_DB=testdb \
   -p 5432:5432 postgres:16
 
 cd test
 pack build test.ipkg
-./build/exec/idris2-pg-test
+./build/exec/flux-postgres-test
 ```
 
 To exercise the MD5 path instead (also supported, but not the default since
 Postgres 14), force `md5` password storage first:
 
 ```sh
-docker run -d --name idris2-pg-test-md5 \
+docker run -d --name flux-postgres-test-md5 \
   -e POSTGRES_USER=testuser -e POSTGRES_PASSWORD=testpass -e POSTGRES_DB=testdb \
   -e POSTGRES_HOST_AUTH_METHOD=md5 -p 5432:5432 postgres:16
 
@@ -273,14 +280,14 @@ configuration needed, since that's what this client negotiates by
 default - see "TLS" above):
 
 ```sh
-docker exec idris2-pg-test bash -c '
+docker exec flux-postgres-test bash -c '
   cd "$(psql -U testuser -d testdb -tAc "show data_directory;")"
   openssl req -new -x509 -days 365 -nodes -out server.crt -keyout server.key -subj "/CN=localhost"
   chmod 600 server.key
   chown postgres:postgres server.key server.crt
 '
 psql -h 127.0.0.1 -U testuser -d testdb -c "ALTER SYSTEM SET ssl = on;"
-docker restart idris2-pg-test
+docker restart flux-postgres-test
 ```
 
 CI (`.github/workflows/ci.yml`) runs the unit tests, the property-based

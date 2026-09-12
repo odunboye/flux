@@ -13,7 +13,7 @@ current package IDs and the combined verification command. Flux UI now uses
 ## Boundaries
 
 - Flux: transport, request lifecycle, routing, middleware, supervision.
-- idris2-pg: PostgreSQL protocol, connection safety, transport security, pool.
+- flux-postgres: PostgreSQL protocol, connection safety, transport security, pool.
 - Flux DB: persistence models, queries, repositories, migrations.
 - Platform package: protocol contracts, typed adapters, generated clients,
   configuration, CLI and integration. Initially incubated in `platform/` as
@@ -43,7 +43,7 @@ until identity/authorization enforcement is implemented, not silently exposed.
 
 ## Implemented first increment
 
-- `platform/flux-platform.ipkg`: independent package with bounded typed public
+- `platform/flux-protocol.ipkg`: independent package with bounded typed public
   endpoint adapters and stable, redacted RPC error envelopes.
 - Deterministic schema generator: shared Idris object codecs, Flux API/routes,
   Flux UI client and OpenAPI 3.1; drift checks and fail-closed unsupported features.

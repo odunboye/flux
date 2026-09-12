@@ -1,7 +1,9 @@
 # Flux DB 0.3: complete breaking rename
 
 Nebula is now **Flux DB**. This is an implementation move, not a compatibility
-package or namespace facade. The transport package `idris2-pg` keeps its name.
+package or namespace facade. The subsequent coordinated package rename calls
+the transport `flux-postgres`; its `Idris2_pg` module remains unchanged. See
+[the package migration](../../design/PACKAGE_MIGRATION.md).
 
 | Before | Now |
 | --- | --- |
@@ -65,7 +67,7 @@ between old and new runners during maintenance.
 Testing the cutover exposed an existing zero-parameter SQL-batch hazard:
 `execCommand` can use the simple protocol and report multiple results only
 after execution. A batch containing `COMMIT` could therefore escape rollback.
-Migration commands now use the additive `idris2-pg.execCommandPrepared` API,
+Migration commands now use the additive `Idris2_pg.execCommandPrepared` API,
 which always uses Parse/Bind/Execute. PostgreSQL rejects multiple statements
 before executing any of them. Quoted semicolons and a single trailing semicolon
 remain valid, and checksums are unchanged. Other `execCommand` callers retain

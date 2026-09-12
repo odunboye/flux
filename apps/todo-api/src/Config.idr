@@ -30,7 +30,7 @@ loadConfig = do
   pure (mkPGConfig host (cast portS) user pass dbName)
 
 ||| Reads dedicated TEST-only env vars (`PG_TEST_HOST`/`PG_TEST_PORT`/
-||| `PG_TEST_USER`/`PG_TEST_PASSWORD`/`PG_TEST_DB` - matching idris2-pg's
+||| `PG_TEST_USER`/`PG_TEST_PASSWORD`/`PG_TEST_DB` - matching flux-postgres's
 ||| and flux-db's own test suites' convention), completely independent of
 ||| `loadConfig`'s `PGHOST`/etc. `test/src/Main.idr` drops and recreates
 ||| the `todos` table against whatever this resolves to, so this

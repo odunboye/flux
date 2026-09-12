@@ -7,17 +7,17 @@
     "flux-test": "test/test.ipkg",
     "flux-examples": "examples/examples.ipkg",
     "flux-landing": "apps/landing/landing.ipkg",
-    "flux-async": "packages/runtime/flux-async.ipkg",
+    "flux-runtime": "packages/runtime/flux-runtime.ipkg",
     "flux-ui": "packages/ui/flux-ui.ipkg",
     "flux-db": "packages/db/flux-db.ipkg",
     "flux-db-test": "packages/db/test/test.ipkg",
     "flux-db-flux": "packages/db-flux/flux-db-flux.ipkg",
-    "idris2-pg": "packages/postgres/idris2-pg.ipkg",
-    "idris2-pg-test": "packages/postgres/test/test.ipkg",
-    "idris2-pg-async": "packages/postgres/async/idris2-pg-async.ipkg",
-    "idris2-docker": "packages/docker/idris2-docker.ipkg",
-    "flux-platform": "platform/flux-platform.ipkg",
-    "flux-platform-client": "platform/flux-platform-client.ipkg",
+    "flux-postgres": "packages/postgres/flux-postgres.ipkg",
+    "flux-postgres-test": "packages/postgres/test/test.ipkg",
+    "flux-postgres-pool": "packages/postgres/async/flux-postgres-pool.ipkg",
+    "flux-docker": "packages/docker/flux-docker.ipkg",
+    "flux-protocol": "platform/flux-protocol.ipkg",
+    "flux-client": "platform/flux-client.ipkg",
     "platform-crud-ui": "platform/crud/ui.ipkg",
     "platform-crud-server": "platform/crud/server.ipkg",
     "todo-api": "apps/todo-api/todo-api.ipkg",
@@ -26,7 +26,7 @@
     "todo-api-pooled-test": "apps/todo-api/test/pooled-test.ipkg",
     "flux-ui-todo": "packages/ui/examples/todo/flux-ui-todo.ipkg"
   },
-  "tests": {"flux": "test/test.ipkg", "flux-db": "test/test.ipkg", "idris2-pg": "test/test.ipkg", "todo-api": "test/test.ipkg"},
+  "tests": {"flux": "test/test.ipkg", "flux-db": "test/test.ipkg", "flux-postgres": "test/test.ipkg", "todo-api": "test/test.ipkg"},
   "imports": [
     {"path": "packages/runtime", "source": "idris2-flux-async", "commit": "bfc3ff67c3d4dd85462ba7063d6d81ad7328ccf5"},
     {"path": "packages/postgres", "source": "idris2-pg", "commit": "2e22c85078578d8128fecf1a489d700f7675fb15"},
@@ -38,6 +38,6 @@
   "unversioned_imports": [
     {"path": "packages/docker", "source": "idris2-docker", "note": "Source/ipkg/README/test snapshot; original directory had no Git history."}
   ],
-  "browser_roots": ["flux-ui", "flux-platform-client", "platform-crud-ui"],
-  "browser_forbidden": ["flux", "flux-async", "flux-db", "flux-db-flux", "idris2-pg", "idris2-pg-async", "flux-platform"]
+  "browser_roots": ["flux-ui", "flux-client", "platform-crud-ui"],
+  "browser_forbidden": ["flux", "flux-runtime", "flux-db", "flux-db-flux", "flux-postgres", "flux-postgres-pool", "flux-protocol"]
 }

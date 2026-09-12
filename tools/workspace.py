@@ -139,6 +139,7 @@ def test(manifest, without_db):
         run('cli-unit', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_flux.py'])
         run('ui-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_ui_names.py'])
         run('db-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_db_names.py'])
+        run('package-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_package_names.py'])
         run('generator', [sys.executable, '-m', 'unittest', 'discover', '-s', 'platform', '-p', 'test_generator.py'])
         for example in ['example', 'crud']:
             run('generated-' + example, [sys.executable, 'platform/generate.py', f'platform/{example}/schema.json', '--out', f'platform/{example}', '--check'])

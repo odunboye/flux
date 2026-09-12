@@ -1,4 +1,4 @@
-package flux-platform
+package flux-protocol
 version = 0.1.0
 brief = "Experimental typed application platform for Flux"
 depends = flux

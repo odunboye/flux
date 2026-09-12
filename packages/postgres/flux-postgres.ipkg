@@ -1,13 +1,13 @@
-package idris2-pg
+package flux-postgres
 version = 0.1.0
 authors = "Odun Adeboye"
 -- maintainers =
 license = "MIT"
 brief = "A from-scratch PostgreSQL wire-protocol client (no libpq)"
 readme = "README.md"
-homepage = "https://github.com/odunboye/idris2-pg"
-sourceloc = "https://github.com/odunboye/idris2-pg"
-bugtracker = "https://github.com/odunboye/idris2-pg/issues"
+homepage = "https://github.com/odunboye/flux/tree/main/packages/postgres"
+sourceloc = "https://github.com/odunboye/flux"
+bugtracker = "https://github.com/odunboye/flux/issues"
 
 -- the Idris2 version required (e.g. langversion >= 0.5.1)
 -- langversion

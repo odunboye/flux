@@ -1,5 +1,5 @@
-||| Tests for idris2-docker, against a real local Docker daemon (no
-||| mock - matches this whole ecosystem's convention, see idris2-pg's
+||| Tests for flux-docker, against a real local Docker daemon (no
+||| mock - matches this whole ecosystem's convention, see flux-postgres's
 ||| own test suite). Uses a small, fast image (busybox), not Postgres -
 ||| this library's own tests are deliberately decoupled from any
 ||| particular consumer's use case.
@@ -12,7 +12,7 @@ import System
 %default covering
 
 testContainerName : String
-testContainerName = "idris2-docker-test-container"
+testContainerName = "flux-docker-test-container"
 
 testSpec : ContainerSpec
 testSpec = MkContainerSpec

@@ -9,15 +9,15 @@ every public API, or establish production readiness.
 | Platform area / intended public name | Source | Current package ID |
 | --- | --- | --- |
 | flux-server | repository root `src/` | `flux` |
-| flux-runtime | `packages/runtime/` | `flux-async` |
+| flux-runtime | `packages/runtime/` | `flux-runtime` |
 | flux-ui | `packages/ui/` | `flux-ui` |
 | flux-db | `packages/db/` | `flux-db` |
-| flux-db-postgres | `packages/postgres/`, including `async/` | `idris2-pg`, `idris2-pg-async` |
+| flux-postgres / flux-postgres-pool | `packages/postgres/`, including `async/` | `flux-postgres`, `flux-postgres-pool` |
 | Server/database integration | `packages/db-flux/` | `flux-db-flux` |
-| flux-client | `platform/client/` | `flux-platform-client` |
-| flux-platform | `platform/` | `flux-platform` |
+| flux-client | `platform/client/` | `flux-client` |
+| flux-protocol | `platform/` | `flux-protocol` |
 | Example application | `apps/todo-api/` | `todo-api` |
-| Local container helper | `packages/docker/` | `idris2-docker` |
+| Local container helper | `packages/docker/` | `flux-docker` |
 | Application CLI | repository-local `./flux` | no published package yet |
 
 The UI has now been renamed outright to `flux-ui` and `Flux.UI.*`, with no
@@ -25,8 +25,10 @@ legacy package or namespace shim. See the [breaking migration guide](../packages
 Persistence is also renamed outright to `flux-db` / `flux-db-flux` and
 `Flux.DB.*`. Existing databases require the explicit
 [metadata cutover](../packages/db/MIGRATION.md); old history must not be replayed.
-Other package names remain as listed; the remaining proposed names are not
-additional published packages. Server source remains at the root.
+The runtime, protocol/client, PostgreSQL/pool and Docker packages also use
+the current names above, without old-name package aliases. See the
+[coordinated package migration](PACKAGE_MIGRATION.md). These are workspace-local
+packages, not additional published registry entries. Server source stays at the root.
 
 `workspace.json` is the canonical map. `pack.toml` is generated from it; nested
 package configs were removed to prevent stale sibling/absolute paths from
@@ -46,7 +48,7 @@ the imports; they remain historical references. New platform development should
 use the copies in this repository, not maintain two competing authoritative
 working trees.
 
-`idris2-docker` had no Git repository. Its source, package, README and tests were
+`flux-docker` had no Git repository. Its source, package, README and tests were
 copied explicitly, excluding build outputs. No nonexistent history is claimed.
 The repository records its first version as part of this consolidation.
 
@@ -127,8 +129,8 @@ incompatible system `idris2`.
 ## Dependency boundary
 
 The Flux UI client uses Flux UI lifecycle/effects, not the Chez owned server runtime.
-`flux-platform-client` depends on Flux/UI/json-simple and generated shared wire
-types. UI/client packages must not transitively depend on `flux`, `flux-async`,
+`flux-client` depends on Flux/UI/json-simple and generated shared wire
+types. UI/client packages must not transitively depend on `flux`, `flux-runtime`,
 Flux DB, PostgreSQL, or the server endpoint package. The workspace check enforces
 this across local `.ipkg` dependency declarations. Version bounds are stripped
 before graph traversal, including multiline bounds and compact comparisons

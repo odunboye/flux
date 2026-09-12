@@ -1,6 +1,6 @@
 package platform-example
 version = 0.1.0
-depends = flux-platform
+depends = flux-protocol
 sourcedir = "."
 modules = ProtocolTypes, Protocol, Main
 main = Main

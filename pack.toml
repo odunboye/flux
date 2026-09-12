@@ -7,10 +7,10 @@ path = "."
 ipkg = "flux.ipkg"
 test = "test/test.ipkg"
 
-[custom.all.flux-async]
+[custom.all.flux-client]
 type = "local"
-path = "packages/runtime"
-ipkg = "flux-async.ipkg"
+path = "platform"
+ipkg = "flux-client.ipkg"
 
 [custom.all.flux-db]
 type = "local"
@@ -28,6 +28,11 @@ type = "local"
 path = "packages/db/test"
 ipkg = "test.ipkg"
 
+[custom.all.flux-docker]
+type = "local"
+path = "packages/docker"
+ipkg = "flux-docker.ipkg"
+
 [custom.all.flux-examples]
 type = "local"
 path = "examples"
@@ -38,15 +43,31 @@ type = "local"
 path = "apps/landing"
 ipkg = "landing.ipkg"
 
-[custom.all.flux-platform]
+[custom.all.flux-postgres]
 type = "local"
-path = "platform"
-ipkg = "flux-platform.ipkg"
+path = "packages/postgres"
+ipkg = "flux-postgres.ipkg"
+test = "test/test.ipkg"
 
-[custom.all.flux-platform-client]
+[custom.all.flux-postgres-pool]
+type = "local"
+path = "packages/postgres/async"
+ipkg = "flux-postgres-pool.ipkg"
+
+[custom.all.flux-postgres-test]
+type = "local"
+path = "packages/postgres/test"
+ipkg = "test.ipkg"
+
+[custom.all.flux-protocol]
 type = "local"
 path = "platform"
-ipkg = "flux-platform-client.ipkg"
+ipkg = "flux-protocol.ipkg"
+
+[custom.all.flux-runtime]
+type = "local"
+path = "packages/runtime"
+ipkg = "flux-runtime.ipkg"
 
 [custom.all.flux-test]
 type = "local"
@@ -62,27 +83,6 @@ ipkg = "flux-ui.ipkg"
 type = "local"
 path = "packages/ui/examples/todo"
 ipkg = "flux-ui-todo.ipkg"
-
-[custom.all.idris2-docker]
-type = "local"
-path = "packages/docker"
-ipkg = "idris2-docker.ipkg"
-
-[custom.all.idris2-pg]
-type = "local"
-path = "packages/postgres"
-ipkg = "idris2-pg.ipkg"
-test = "test/test.ipkg"
-
-[custom.all.idris2-pg-async]
-type = "local"
-path = "packages/postgres/async"
-ipkg = "idris2-pg-async.ipkg"
-
-[custom.all.idris2-pg-test]
-type = "local"
-path = "packages/postgres/test"
-ipkg = "test.ipkg"
 
 [custom.all.platform-crud-server]
 type = "local"

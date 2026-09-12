@@ -1,4 +1,4 @@
-package flux-async
+package flux-runtime
 version = 0.1.0
 brief = "Flux's owned-task runtime (under development)"
 depends = elin, bytestring, elab-util, posix

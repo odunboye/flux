@@ -2,12 +2,12 @@
 
 A small Todo CRUD API demonstrating [Flux](../..) (an
 Idris2 HTTP framework) wired up to a real Postgres database via
-[idris2-pg](../../packages/postgres) (a from-scratch, primitive Postgres
+[flux-postgres](../../packages/postgres) (a from-scratch, primitive Postgres
 wire-protocol client, no `libpq`), through [flux-db](../../packages/db)
-(the derivable active-record layer built on top of idris2-pg - `Row`<->
+(the derivable active-record layer built on top of flux-postgres - `Row`<->
 record mapping, generated CRUD, a typed query builder, and a generic
 repository pattern - see "Repository pattern" below) and
-[flux-db-flux](../../packages/db-flux) (the glue lifting idris2-pg's own
+[flux-db-flux](../../packages/db-flux) (the glue lifting flux-postgres's own
 error type into Flux's `AppProg` - split into its own package so
 `flux-db` itself has no Flux dependency).
 
@@ -35,7 +35,7 @@ Connection details come from the standard libpq env vars -
 
 `src/DevPostgres.idr`'s `ensureLocalPostgres` (used by both the app and
 its test suite, in place of a plain `connectDB`) wraps
-[idris2-docker](../../packages/docker), a general-purpose
+[flux-docker](../../packages/docker), a general-purpose
 container-management library, with Postgres-specific glue: on startup, if
 `PGHOST` is local (`127.0.0.1`/`localhost`) and `docker` is installed and
 reachable, it creates the `todo-api-pg` container if it doesn't exist yet,
@@ -310,7 +310,7 @@ ids are deterministic (`SERIAL` always starts at 1 against a fresh
 table) regardless of what the app itself, or a previous test run, left
 behind. Connection details come from their own, separate env vars -
 `PG_TEST_HOST`/`PG_TEST_PORT`/`PG_TEST_USER`/`PG_TEST_PASSWORD`/
-`PG_TEST_DB` (`Config.loadTestConfig`), matching idris2-pg's and
+`PG_TEST_DB` (`Config.loadTestConfig`), matching flux-postgres's and
 flux-db's own test suites' convention - deliberately **not**
 `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE` (what `Main` itself
 reads via `Config.loadConfig`). The default *database name* is also

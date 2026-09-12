@@ -1,0 +1,7 @@
+[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Installing libraries:
+         - flux-protocol
+[ info ] Installing library (with sources): flux-protocol
+[ info ] Building: platform-example
+[ build ] Now compiling the executable: platform-example

@@ -1,6 +1,6 @@
 package platform-crud-server
 version = 0.1.0
-depends = flux-platform, todo-api
+depends = flux-protocol, todo-api
 sourcedir = "."
 modules = ProtocolTypes, Protocol, Main
 main = Main

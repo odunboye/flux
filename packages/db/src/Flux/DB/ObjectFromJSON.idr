@@ -14,10 +14,10 @@
 ||| switching to sum-type-shaped tagging (`{"tag":...,"contents":...}`),
 ||| which isn't what a single-field API body wants either.
 |||
-||| This derivation is deliberately independent of `idris2-pg`'s
+||| This derivation is deliberately independent of `flux-postgres`'s
 ||| `Flux.DB.Derive.ActiveRecord` - it's plain JSON, with no DB coupling at
 ||| all - but is written the same way and is meant to compose with
-||| `idris2-pg`'s `deriveSubset` the same way `FromRow`/`ToRow`/
+||| `flux-postgres`'s `deriveSubset` the same way `FromRow`/`ToRow`/
 ||| `elab-util`'s `Show`/`Eq` do: pass `[ObjectFromJSON]` as `deriveSubset`'s
 ||| `derives` argument to get a companion type's JSON body decoded this
 ||| way instead of through `json-simple`'s own `FromJSON`.

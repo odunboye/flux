@@ -17,6 +17,7 @@ jobs:
           python3 -m unittest discover -s tools -p test_flux.py -v
           python3 -m unittest discover -s tools -p test_ui_names.py -v
           python3 -m unittest discover -s tools -p test_db_names.py -v
+          python3 -m unittest discover -s tools -p test_package_names.py -v
           bash -n tools/ci-linux.sh tools/ci-suite.sh flux
           shellcheck tools/ci-linux.sh tools/ci-suite.sh flux
 

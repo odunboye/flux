@@ -9,11 +9,11 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
 def main():
-    app = ROOT / 'test/build/exec/flux-async-socket-test_app'
+    app = ROOT / 'test/build/exec/flux-runtime-socket-test_app'
     env = dict(os.environ, IDRIS2_INC_SRC=str(app),
                LD_LIBRARY_PATH=str(app), DYLD_LIBRARY_PATH=str(app))
     server = subprocess.Popen(
-        [str(app / 'flux-async-socket-test.so')], env=env,
+        [str(app / 'flux-runtime-socket-test.so')], env=env,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
     )
     try:

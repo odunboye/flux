@@ -1,0 +1,100 @@
+[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: flux-runtime-test
+[ build ] mkdir -p build/native lib
+[ build ] cc -O2 -Wall -Wextra -Werror -std=c11 -pthread -dynamiclib c/flux_native.c -o build/native/libflux_async.dylib
+[ build ] cp build/native/libflux_async.dylib lib/
+[ build ] mkdir -p test/build/exec/flux-runtime-stream-test_app
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-stream-test_app/
+[ build ] mkdir -p test/build/exec/flux-runtime-test_app test/build/exec/flux-runtime-service-test_app test/build/exec/flux-runtime-socket-test_app
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-test_app/
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-service-test_app/
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-socket-test_app/
+[ build ] 1/5: Building Flux.Async.Core (../src/Flux/Async/Core.idr)
+[ build ] 2/5: Building Flux.Async.Native (../src/Flux/Async/Native.idr)
+[ build ] 3/5: Building Flux.Async.Runner (../src/Flux/Async/Runner.idr)
+[ build ] 4/5: Building TestSupport (../src/TestSupport.idr)
+[ build ] 5/5: Building TestMain (../src/TestMain.idr)
+[ build ] Now compiling the executable: flux-runtime-test
+[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: flux-runtime-service-test
+[ build ] mkdir -p build/native lib
+[ build ] cc -O2 -Wall -Wextra -Werror -std=c11 -pthread -dynamiclib c/flux_native.c -o build/native/libflux_async.dylib
+[ build ] cp build/native/libflux_async.dylib lib/
+[ build ] mkdir -p test/build/exec/flux-runtime-stream-test_app
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-stream-test_app/
+[ build ] mkdir -p test/build/exec/flux-runtime-test_app test/build/exec/flux-runtime-service-test_app test/build/exec/flux-runtime-socket-test_app
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-test_app/
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-service-test_app/
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-socket-test_app/
+[ build ] 5/5: Building TestService (../src/TestService.idr)
+[ build ] Now compiling the executable: flux-runtime-service-test
+[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: flux-runtime-stream-test
+[ build ] mkdir -p build/native lib
+[ build ] cc -O2 -Wall -Wextra -Werror -std=c11 -pthread -dynamiclib c/flux_native.c -o build/native/libflux_async.dylib
+[ build ] cp build/native/libflux_async.dylib lib/
+[ build ] mkdir -p test/build/exec/flux-runtime-stream-test_app
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-stream-test_app/
+[ build ] mkdir -p test/build/exec/flux-runtime-test_app test/build/exec/flux-runtime-service-test_app test/build/exec/flux-runtime-socket-test_app
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-test_app/
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-service-test_app/
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-socket-test_app/
+[ build ] 5/8: Building Flux.Stream.Core (../src/Flux/Stream/Core.idr)
+[ build ] 6/8: Building Flux.Stream.Pull (../src/Flux/Stream/Pull.idr)
+[ build ] 7/8: Building Flux.Stream.Resource (../src/Flux/Stream/Resource.idr)
+[ build ] 8/8: Building TestStream (../src/TestStream.idr)
+[ build ] Now compiling the executable: flux-runtime-stream-test
+[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: flux-runtime-socket-test
+[ build ] mkdir -p build/native lib
+[ build ] cc -O2 -Wall -Wextra -Werror -std=c11 -pthread -dynamiclib c/flux_native.c -o build/native/libflux_async.dylib
+[ build ] cp build/native/libflux_async.dylib lib/
+[ build ] mkdir -p test/build/exec/flux-runtime-stream-test_app
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-stream-test_app/
+[ build ] mkdir -p test/build/exec/flux-runtime-test_app test/build/exec/flux-runtime-service-test_app test/build/exec/flux-runtime-socket-test_app
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-test_app/
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-service-test_app/
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-runtime-socket-test_app/
+[ build ] 5/6: Building Flux.Async.Socket (../src/Flux/Async/Socket.idr)
+[ build ] 6/6: Building TestSocket (../src/TestSocket.idr)
+[ build ] Now compiling the executable: flux-runtime-socket-test
+PASS pure result
+PASS deep bind without interpreter stack recursion
+PASS typed failure caught across error lists
+PASS cancel joins and cleanup runs once
+PASS scope exit cancels and joins child
+PASS cancel during acquire releases resource without use
+PASS race waits for loser finalization
+PASS cleanup on typed failure
+All runtime checks passed
+PASS zero event loops rejected
+PASS roots run on distinct event-loop threads
+PASS continuations and children retain their owner
+PASS blocking work offloads and resumes on original owner
+PASS blocking worker starts
+PASS cancel waits for worker before resource finalizer
+PASS bracket joins acquisition children before release
+PASS all event loops and workers stop
+PASS submission after shutdown rejected
+PASS drain closes admission
+PASS drain preserves in-flight work
+PASS drained runtime stops its owners and workers
+PASS drain can escalate to cancellation
+PASS escalated runtime stops
+PASS pre-start cancellation runs transferred resource cleanup
+PASS ownership-transfer runtime stops
+All runtime service checks passed
+PASS stream fold preserves values
+PASS normal completion releases once
+PASS early termination releases before continuation
+PASS caught failure releases before handler continues
+PASS nested finalizers run inside out
+PASS cancellation finalizes suspended stream once
+PASS early stream close joins spawned children before resource release
+All stream checks passed
+PASS socket echo, EOF, accept cancellation
+PASS byte-exact binary transfer and large payload backpressure

@@ -4,7 +4,7 @@ From the package root:
 
 ```sh
 pack build test/service.ipkg
-./test/build/exec/flux-async-service-test
+./test/build/exec/flux-runtime-service-test
 ```
 
 The executable exits nonzero on an assertion failure. Run it with an external

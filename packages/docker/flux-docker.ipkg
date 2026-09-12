@@ -1,4 +1,4 @@
-package idris2-docker
+package flux-docker
 version = 0.1.0
 authors = "Odun Adeboye"
 license = "MIT"

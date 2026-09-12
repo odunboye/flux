@@ -1,7 +1,7 @@
 # Flux application platform — Idris clients for Flux UI
 
 A **separate package** on top of Flux, not a replacement for Flux, Flux DB, or
-idris2-pg. The client target is **Idris 2 / Flux UI**, not Dart or Flutter.
+flux-postgres. The client target is **Idris 2 / Flux UI**, not Dart or Flutter.
 This remains an experimental protocol/client integration milestone, not a
 complete application platform or a production-ready release.
 
@@ -16,10 +16,10 @@ complete application platform or a production-ready release.
 | `Client.idr` | Flux UI application | Typed endpoint functions returning `Cmd msg` |
 | `openapi.json` | API tooling | OpenAPI 3.1 description |
 
-The client package `flux-platform-client` depends on **flux-ui and json-simple**,
+The client package `flux-client` depends on **flux-ui and json-simple**,
 not Flux's server runtime, Flux DB or PostgreSQL. Browser builds do not pull
 server sockets, worker threads or database bindings into their generated JS.
-The distinct server package `flux-platform` supplies typed endpoint adapters.
+The distinct server package `flux-protocol` supplies typed endpoint adapters.
 
 ### Flux UI consumption
 

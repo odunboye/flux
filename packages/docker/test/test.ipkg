@@ -1,13 +1,13 @@
-package idris2-docker-test
+package flux-docker-test
 version = 0.1.0
 authors = "Odun Adeboye"
-brief   = "Tests for idris2-docker, against a real local Docker daemon"
+brief   = "Tests for flux-docker, against a real local Docker daemon"
 
-depends = idris2-docker
+depends = flux-docker
 
 modules = Main
 
 main = Main
 
-executable = "idris2-docker-test"
+executable = "flux-docker-test"
 sourcedir = "src"

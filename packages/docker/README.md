@@ -1,4 +1,4 @@
-# idris2-docker
+# flux-docker
 
 A small library for managing Docker containers from Idris2 - the common
 dev-workflow need of "make sure this one dependency container (a
@@ -16,13 +16,13 @@ Requires [pack](https://github.com/stefan-hoeck/idris2-pack) and a local
 Docker daemon.
 
 ```sh
-pack install idris2-docker
+pack install flux-docker
 ```
 
-Or, from a checkout of this repo:
+Or, from the Flux repository root:
 
 ```sh
-pack build idris2-docker.ipkg
+pack build packages/docker/flux-docker.ipkg
 ```
 
 ## Usage
@@ -105,7 +105,7 @@ Needs a real local Docker daemon (tests are skipped, not failed, if
 ```sh
 cd test
 pack build test.ipkg
-./build/exec/idris2-docker-test
+./build/exec/flux-docker-test
 ```
 
 Uses a small, fast image (`busybox`), not Postgres or anything specific

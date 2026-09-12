@@ -8,7 +8,7 @@ import time
 import uuid
 
 ROOT = Path(__file__).resolve().parent
-name = 'flux-platform-pg-' + uuid.uuid4().hex[:12]
+name = 'flux-protocol-pg-' + uuid.uuid4().hex[:12]
 app = ROOT / 'example/build/exec/platform-pg-example_app'
 created = False
 server = None

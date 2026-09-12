@@ -6,7 +6,11 @@ clients into one modular repository. The UI now uses the `flux-ui` package and
 `Flux.UI.*` modules. Persistence is now `flux-db` / `flux-db-flux` with
 `Flux.DB.*` modules. Both are breaking renames without compatibility aliases.
 Existing databases must follow the [Flux DB metadata cutover guide](packages/db/MIGRATION.md).
-This is not a production-readiness declaration.
+Runtime, protocol/client, PostgreSQL/pooling and Docker packages are now
+`flux-runtime`, `flux-protocol`, `flux-client`, `flux-postgres`,
+`flux-postgres-pool` and `flux-docker`. See the
+[coordinated package migration](design/PACKAGE_MIGRATION.md); suitable module
+namespaces remain unchanged. This is not a production-readiness declaration.
 
 - `packages/runtime/`: owned tasks, sockets, streams and supervision.
 - `packages/ui/`: Flux UI widgets, application lifecycle and platform backends.
@@ -54,7 +58,7 @@ This is a public development demo, not an authenticated production application.
 
 ## HTTP server reference
 
-The existing `flux` package remains an HTTP/1.1 framework using `flux-async`.
+The existing `flux` package remains an HTTP/1.1 framework using `flux-runtime`.
 Request parsing, persistent connections, streaming responses, routing and
 middleware are implemented in Idris; a small native shim provides readiness
 and standalone shutdown supervision. The sections below document this server
@@ -470,7 +474,7 @@ exist, so every static request 404s. See "Install / build" above.
 
 ## Concurrency and ownership
 
-Flux now uses `flux-async`; its dependency graph no longer includes
+Flux now uses `flux-runtime`; its dependency graph no longer includes
 `async`, `async-posix`, `streams`, or `streams-posix`. `FLUX_EVENT_LOOPS`
 selects the number of connection owner threads and defaults to 2. Accepted
 connections are assigned round robin. A connection's tasks and continuations

@@ -4,7 +4,7 @@ Package: `flux-db-flux` 0.3. Modules: `Flux.DB.PG`, `Flux.DB.Pool`.
 This is a breaking rename with no old package or namespace aliases; see
 [the migration guide](../db/MIGRATION.md).
 
-Glue lifting [flux-db](../db)/[idris2-pg](../postgres)'s
+Glue lifting [flux-db](../db)/[flux-postgres](../postgres)'s
 `IO (Either PGError a)` calls into [Flux](../..) (an
 Idris2 HTTP framework)'s `AppProg`/`Handler` pipeline. `Flux.DB.PG` is the module
 (`Flux.DB.PG`) that used to live in `flux-db` itself, split out into its
@@ -16,7 +16,7 @@ in Flux and its own dependency tree just to get them.
 
 An app using `flux-db`'s active-record/query-builder layer through Flux
 would otherwise hand-write, per project, the handful of lines that turn
-idris2-pg's own `IO (Either PGError a)` return shape into a Flux
+flux-postgres's own `IO (Either PGError a)` return shape into a Flux
 handler's `AppProg a` - run it, `throw` a `500 AppError` on `Left`. None
 of that is app-specific - no schema, no routes, no handlers - so it
 belongs in a shared library instead of being re-derived per project.
@@ -43,7 +43,7 @@ listUsers db ctx = do
   pure (sendJSON users ctx)
 ```
 
-- **`dbIO : IO (Either PGError a) -> AppProg a`** - lifts any idris2-pg
+- **`dbIO : IO (Either PGError a) -> AppProg a`** - lifts any flux-postgres
   call into a Flux handler on the runtime's bounded blocking workers,
   throwing on `Left`. Queue rejection becomes a generic 503. Fully polymorphic, so it
   covers every `IO (Either PGError a)`-shaped call in `flux-db`,
@@ -56,7 +56,7 @@ listUsers db ctx = do
   stderr instead of handed to the client. Exported directly for a
   handler that needs to run something outside `dbIO` (e.g. a manual
   `Either` match) but still wants the same failure behavior.
-- **`query`/`command`** - thin `dbIO`-based wrappers over idris2-pg's
+- **`query`/`command`** - thin `dbIO`-based wrappers over flux-postgres's
   `queryRows`/`execCommand`, for raw SQL that doesn't fit `flux-db`'s
   active-record layer's generic helpers (a join, custom aggregation, a
   non-replace mutation, DDL).
@@ -93,21 +93,21 @@ Do not retain or fork work using a callback's borrowed DB.
 The default pool has eight connections, 128 waiters, and a five-second
 acquisition timeout. `closePool` stops admission; active callbacks finish
 before their connections close. `poolClosed` observes completed reclamation.
-Transport timeouts discard connections. See [idris2-pg](../idris2-pg/README.md)
-for timeout limits and the separate `idris2-pg-async` package.
+Transport timeouts discard connections. See [flux-postgres](../flux-postgres/README.md)
+for timeout limits and the separate `flux-postgres-pool` package.
 
 ## Error policy and scope
 
 - **Database errors become a flat `500` from `dbIO`/`dbFail`.** Every
   `PGError` - a connection failure, a protocol error, or a genuine SQL
   error - becomes the same 500. An app that wants to turn e.g. a
-  unique-constraint violation into a `400` can inspect idris2-pg's
+  unique-constraint violation into a `400` can inspect flux-postgres's
   `SqlError`'s raw Postgres error fields (`Data.PGTypes` - `code`,
   `constraintName`, etc.) itself and throw a more specific `AppError`
   instead of going through `dbFail`/`dbIO`.
 - A full or closed blocking worker queue becomes a 503 before any database
   callback starts. Pool acquisition errors currently follow the PGError 500 policy.
-- **Postgres-only, via `flux-db`/idris2-pg.** If `flux-db` grows a second
+- **Postgres-only, via `flux-db`/flux-postgres.** If `flux-db` grows a second
   backend (see its own README's "Backends" section), this package would
   need to grow alongside it, or split further - not designed for yet.
 

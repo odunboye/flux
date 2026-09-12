@@ -1,4 +1,4 @@
-||| Thin, Postgres-specific glue over `idris2-docker`'s general
+||| Thin, Postgres-specific glue over `flux-docker`'s general
 ||| container-management API: makes sure a local Postgres container is
 ||| up before connecting, rather than requiring a manual `docker run`
 ||| step.
@@ -80,13 +80,13 @@ manageContainer cfg = do
 
 -- Bounded retry against the real thing that matters (a real connectDB),
 -- not pg_isready/log-scraping - this is exactly the readiness check
--- idris2-docker's own README says stays out of its scope. Returns the
+-- flux-docker's own README says stays out of its scope. Returns the
 -- successful connection directly rather than a separate probe-then-
 -- reconnect dance, since there's no separate "probe config" involved -
 -- see below for why.
 --
 -- Deliberately does NOT use `connectTimeoutMs` to bound each attempt -
--- confirmed directly (not assumed) that idris2-pg's timeout-racing
+-- confirmed directly (not assumed) that flux-postgres's timeout-racing
 -- mechanism (`Network.Timeout`, `withConnectTimeout`) does not
 -- correctly recognize a connection that completes successfully within
 -- the window: setting `connectTimeoutMs` to 2000 *or* 5000 against a
@@ -107,7 +107,7 @@ manageContainer cfg = do
 -- server) would hang this call indefinitely - there is no bound on that
 -- once the racing mechanism above can't be trusted. Fixing this
 -- properly means fixing `Network.Timeout`'s racing bug itself, in
--- idris2-pg - out of scope for this app-level retry loop; not attempted
+-- flux-postgres - out of scope for this app-level retry loop; not attempted
 -- here.
 waitUntilReady : PGConfig -> IO (Either PGError DB)
 waitUntilReady cfg = go 10

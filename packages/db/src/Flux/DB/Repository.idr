@@ -70,7 +70,7 @@ pgRepository db = MkRepository
   , query      = selectQuery {a} db
   }
 
-||| Runs `action` inside a Postgres transaction (idris2-pg's own
+||| Runs `action` inside a Postgres transaction (flux-postgres's own
 ||| `withTransaction` - BEGIN, then COMMIT on `Right`/ROLLBACK on `Left`,
 ||| no nesting), handing it repositories built via `mkRepos` from the
 ||| SAME transactional `db` - the one connection the whole transaction

@@ -7,7 +7,7 @@ A derivable active-record layer, typed query builder, and repository
 pattern for Idris2 apps - `Row`<->record mapping, generated CRUD, a
 typed `SELECT` builder, and a generic `Repository` every app can extend
 with its own domain-specific operations. Built
-on [idris2-pg](../idris2-pg) today; idris2-pg itself stays a primitive
+on [flux-postgres](../flux-postgres) today; flux-postgres itself stays a primitive
 Postgres wire-protocol client only - everything that maps a `Row` onto
 an application record type lives here instead, so it isn't tied to one
 backend forever (see "Backends" below). Deliberately has no dependency
@@ -19,7 +19,7 @@ forced to pull in Flux and its own dependency tree too.
 
 ## Why this exists
 
-An app using idris2-pg directly would otherwise hand-write, per project:
+An app using flux-postgres directly would otherwise hand-write, per project:
 the `Row`<->record decode/encode boilerplate for every table, the basic
 CRUD calls, and a `CREATE TABLE` for each type. None of that is
 app-specific - no schema, no routes, no handlers - so it belongs in a
@@ -66,12 +66,12 @@ main = do
   via a `FromField`/`ToField` typeclass (`Flux.DB.Field`) with instances
   for `String`/`Int`/`Integer`/`Double`/`Bool`, plus a blanket
   `FromField a => FromField (Maybe a)`/`ToField a => ToField (Maybe a)`
-  that maps SQL `NULL` to `Nothing` (something none of idris2-pg's raw
+  that maps SQL `NULL` to `Nothing` (something none of flux-postgres's raw
   `Data.PGValue` getters do on their own).
 - **`Table`** (`Flux.DB.Table`) generates static per-type metadata - table
   name, column list, primary-key column - plus the four fixed SQL
   strings the CRUD calls below run, computed once at compile time so
-  they're literal, byte-identical every call (this matters: idris2-pg's
+  they're literal, byte-identical every call (this matters: flux-postgres's
   `DB` prepared-statement cache is keyed by exact SQL text). Table name
   defaults to the exact-lowercase type name (`User` → `"user"`) - no
   pluralization guessing - and the primary key defaults to a field
@@ -168,10 +168,10 @@ main = do
 
 Deliberately out of scope: no relations/joins, no migrations, no
 partial-update/PATCH, and no dedicated error case for constraint
-violations (inspect idris2-pg's `SqlError`'s `code`/`constraintName`
+violations (inspect flux-postgres's `SqlError`'s `code`/`constraintName`
 yourself, same as always). This is meant for the common "one record, one
 table, basic CRUD plus simple filtering" case - anything more exotic
-still goes through idris2-pg's own `queryRows`/`execCommand` directly.
+still goes through flux-postgres's own `queryRows`/`execCommand` directly.
 
 ## Repository pattern: `Flux.DB.Repository`
 
@@ -253,10 +253,10 @@ already participate in whatever Postgres transaction is active on that
 connection (transactions are connection-scoped, not value-scoped), so
 nothing *new* was needed for that part. What was missing was a
 contract-level way to say "these operations run in one transaction",
-instead of a caller manually threading `db`/idris2-pg's own
+instead of a caller manually threading `db`/flux-postgres's own
 `withTransaction` around raw repository calls and hoping they never mix
 in a repository built from a different connection.
-`withTransactionRepos` wraps idris2-pg's `withTransaction` (BEGIN, then
+`withTransactionRepos` wraps flux-postgres's `withTransaction` (BEGIN, then
 COMMIT on `Right`/ROLLBACK on `Left`, no nesting) and hands the callback
 repositories built via `mkRepos` from the SAME transactional connection
 - a single repository, a tuple of several, or a record grouping many;
@@ -295,13 +295,13 @@ with `txStatus` back to `Idle` afterward either way.
 
 ## Backends
 
-Built against [idris2-pg](../idris2-pg) today - `Table`/`Flux.DB.Crud`/
+Built against [flux-postgres](../flux-postgres) today - `Table`/`Flux.DB.Crud`/
 `Flux.DB.Query`'s `selectQuery`/`Flux.DB.Repository`'s `Repository` are all
-typed against idris2-pg's `DB`/`PGError`/`Row`. SQLite support is planned
+typed against flux-postgres's `DB`/`PGError`/`Row`. SQLite support is planned
 next; the active-record/
 query-builder design above (typeclass-driven `FromRow`/`ToRow`/`Table`/
 `PGColumnType`, a hand-written condition/query AST rather than anything
-idris2-pg-specific baked into the elaborator reflection) was kept
+flux-postgres-specific baked into the elaborator reflection) was kept
 deliberately backend-agnostic in shape for exactly this, but the actual
 multi-backend split (what stays shared vs. what becomes a
 `Flux.DB.SQLite`-style per-backend module) hasn't been designed yet - not

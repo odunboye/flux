@@ -1,4 +1,4 @@
-package flux-platform-client
+package flux-client
 version = 0.1.0
 brief = "Generated RPC client support for Flux UI applications"
 depends = flux-ui, json-simple

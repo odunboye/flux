@@ -1,14 +1,14 @@
 ||| Active-record/query-builder smoke test against a real Postgres
 ||| server. Connection details come from environment variables so this
-||| isn't hardcoded to one local setup - see idris2-pg's own README for
+||| isn't hardcoded to one local setup - see flux-postgres's own README for
 ||| how to point it at a disposable Postgres (this suite uses the same
 ||| `PG_TEST_HOST`/`PG_TEST_PORT`/`PG_TEST_USER`/`PG_TEST_PASSWORD`/
 ||| `PG_TEST_DB` env vars, defaulting the same way).
 |||
 ||| This is the active-record/query-builder half of what used to be
-||| idris2-pg's own test suite before `FromRow`/`ToRow`/`Table`/
+||| flux-postgres's own test suite before `FromRow`/`ToRow`/`Table`/
 ||| `Flux.DB.Crud`/`Flux.DB.Query`/`Flux.DB.Derive.ActiveRecord` moved here -
-||| idris2-pg's own suite covers the primitive wire-protocol client only
+||| flux-postgres's own suite covers the primitive wire-protocol client only
 ||| (raw `queryRows`/`execCommand`, transactions, LISTEN/NOTIFY, COPY,
 ||| binary format, TLS, timeouts).
 module Main
@@ -134,7 +134,7 @@ record Category where
 %runElab deriveInsertable (Just "slug") "Category"
 
 -- Connection details come from environment variables so this isn't
--- hardcoded to one local setup; see idris2-pg's own README for how to
+-- hardcoded to one local setup; see flux-postgres's own README for how to
 -- point it at a disposable Postgres.
 testConfig : IO PGConfig
 testConfig = do
@@ -309,7 +309,7 @@ testQueryBuilder failCount db = do
                then "OK limit/offset paginate correctly"
                else "FAIL limit/offset: " ++ show (map (\w => w.id) page1, map (\w => w.id) page2))
 
-  -- White-box check mirroring idris2-pg's own testPreparedCache: two
+  -- White-box check mirroring flux-postgres's own testPreparedCache: two
   -- selectQuery calls with the same WHERE/ORDER BY shape but different
   -- limit VALUES should hit the SAME stmtCache entry (LIMIT is a $N
   -- placeholder, not a literal spliced into the SQL text) - the direct

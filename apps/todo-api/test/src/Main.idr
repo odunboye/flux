@@ -1,5 +1,5 @@
 ||| Handler-level tests for todo-api, run against a real Postgres (no
-||| mock DB - idris2-pg's `DB` is a concrete connection, not an
+||| mock DB - flux-postgres's `DB` is a concrete connection, not an
 ||| interface, and this project's own README already explains why that's
 ||| an acceptable tradeoff for a demo). Uses the same `ensureLocalPostgres`
 ||| (see `DevPostgres`) the app itself does, so no manual Docker step is
@@ -17,7 +17,7 @@
 ||| suite runs so ids are deterministic (Postgres `SERIAL` always starts
 ||| at 1 against a fresh table) - tests are written as one ordered
 ||| scenario, not independent cases, since each one's expected state
-||| depends on the ones before it (the same shape as idris2-pg's own CRUD
+||| depends on the ones before it (the same shape as flux-postgres's own CRUD
 ||| smoke test).
 |||
 ||| The zero-Postgres in-memory-repository suite is a SEPARATE executable

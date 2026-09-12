@@ -1,0 +1,6 @@
+[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: flux-postgres-pool-test
+[ build ] 2/2: Building PoolTests (src/PoolTests.idr)
+[ build ] Now compiling the executable: flux-postgres-pool-test
+[ build ] Warning: compiling hole Helper.unimplementedEncode

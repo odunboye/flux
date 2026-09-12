@@ -16,12 +16,12 @@ native:
 	cp build/native/libflux_async.$(SUFFIX) lib/
 
 test-libs: native
-	mkdir -p test/build/exec/flux-async-stream-test_app
-	cp lib/libflux_async.$(SUFFIX) test/build/exec/flux-async-stream-test_app/
-	mkdir -p test/build/exec/flux-async-test_app test/build/exec/flux-async-service-test_app test/build/exec/flux-async-socket-test_app
-	cp lib/libflux_async.$(SUFFIX) test/build/exec/flux-async-test_app/
-	cp lib/libflux_async.$(SUFFIX) test/build/exec/flux-async-service-test_app/
-	cp lib/libflux_async.$(SUFFIX) test/build/exec/flux-async-socket-test_app/
+	mkdir -p test/build/exec/flux-runtime-stream-test_app
+	cp lib/libflux_async.$(SUFFIX) test/build/exec/flux-runtime-stream-test_app/
+	mkdir -p test/build/exec/flux-runtime-test_app test/build/exec/flux-runtime-service-test_app test/build/exec/flux-runtime-socket-test_app
+	cp lib/libflux_async.$(SUFFIX) test/build/exec/flux-runtime-test_app/
+	cp lib/libflux_async.$(SUFFIX) test/build/exec/flux-runtime-service-test_app/
+	cp lib/libflux_async.$(SUFFIX) test/build/exec/flux-runtime-socket-test_app/
 
 test-native:
 	mkdir -p build/native
@@ -30,4 +30,4 @@ test-native:
 
 test: test-native
 	pack --no-prompt build test/test.ipkg
-	./test/build/exec/flux-async-test
+	./test/build/exec/flux-runtime-test

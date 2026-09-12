@@ -1,13 +1,13 @@
-||| Glue between Flux's `AppProg`/`AppError` and idris2-pg's `PGError` -
+||| Glue between Flux's `AppProg`/`AppError` and flux-postgres's `PGError` -
 ||| lifts any `IO (Either PGError a)` call (a raw `queryRows`/
-||| `execCommand`, or any of idris2-pg's `Flux.DB.Crud` generic CRUD
+||| `execCommand`, or any of flux-postgres's `Flux.DB.Crud` generic CRUD
 ||| calls - `insert`/`findById`/`update`/`deleteById` - they all share
 ||| this exact shape) into a Flux handler, throwing a `500 AppError` on
 ||| failure.
 |||
 ||| This has nothing app-specific in it - no schema, no routes, no
 ||| handlers - it's the same handful of lines every Flux app backed by
-||| idris2-pg would otherwise hand-write itself. `todo-api`
+||| flux-postgres would otherwise hand-write itself. `todo-api`
 ||| (`apps/todo-api` in this workspace) is `flux-db`'s first real
 ||| consumer; this module exists so the second one doesn't have to
 ||| re-derive it.
@@ -38,16 +38,16 @@ logAndFail500 msg = do
 ||| the failed query, e.g. a unique-constraint violation) is logged to
 ||| stderr instead of handed to the client. An app that wants to
 ||| distinguish e.g. a unique-constraint violation (400) from a genuine
-||| connection loss (500) can inspect idris2-pg's `SqlError`'s raw
+||| connection loss (500) can inspect flux-postgres's `SqlError`'s raw
 ||| Postgres error fields (`Data.PGTypes`) itself and throw a more
 ||| specific `AppError` instead of using this.
 export
 dbFail : PGError -> AppProg a
 dbFail err = logAndFail500 "db error: \{displayError err}"
 
-||| Lifts any idris2-pg call into a Flux handler: runs it on the bounded blocking worker pool,
+||| Lifts any flux-postgres call into a Flux handler: runs it on the bounded blocking worker pool,
 ||| throwing `dbFail err` on `Left err`, returning the value on `Right`.
-||| Every idris2-pg call - `queryRows`, `execCommand`, and all of
+||| Every flux-postgres call - `queryRows`, `execCommand`, and all of
 ||| `Flux.DB.Crud`'s generic CRUD helpers - shares this exact
 ||| `IO (Either PGError a)` shape, so this one combinator covers all of
 ||| them; a handler writes `todo <- dbIO (insert {a=Todo} db newTodo)`
