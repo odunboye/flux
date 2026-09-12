@@ -30,6 +30,7 @@
 ||| whenever the underlying `fetch()` promise actually settles.
 module Iris.Effect.Http.Web
 
+import Data.IORef
 import Iris.State.TEA
 import Iris.Effect.Http
 
@@ -95,6 +96,31 @@ public export
 defaultFetchOptions : FetchOptions
 defaultFetchOptions = MkFetchOptions 30000 10485760
 
+public export
+record RetryPolicy where
+  constructor MkRetryPolicy
+  retries        : Nat
+  initialDelayMs : Nat
+  maximumDelayMs : Nat
+
+public export
+defaultRetryPolicy : RetryPolicy
+defaultRetryPolicy = MkRetryPolicy 3 250 4000
+
+public export
+retryDelays : RetryPolicy -> List Nat
+retryDelays policy = go policy.retries policy.initialDelayMs
+  where
+    go : Nat -> Nat -> List Nat
+    go Z _ = []
+    go (S remaining) delay = delay :: go remaining (min policy.maximumDelayMs (delay * 2))
+
+%foreign "javascript:lambda: (delay,action,_w) => setTimeout(()=>action(0),delay)"
+prim_scheduleRetry : Int -> IO () -> PrimIO AnyPtr
+
+%foreign "javascript:lambda: (timer,_w) => clearTimeout(timer)"
+prim_cancelRetry : AnyPtr -> PrimIO ()
+
 runFetch : FetchOptions -> HttpRequest -> (Either HttpError HttpResponse -> IO ()) -> IO (IO ())
 runFetch options req deliver =
   let headersJson       = headersToJson req.headers
@@ -117,6 +143,41 @@ runFetch options req deliver =
       (cast options.timeoutMs) (cast options.maxResponseBytes) onDone)
     pure (primIO (prim_abort controller))
 
+retryable : Either HttpError HttpResponse -> Bool
+retryable (Left (NetworkError _)) = True
+retryable (Left Timeout) = True
+retryable (Left (BadStatus status _)) = status == 429 || status >= 500
+retryable _ = False
+
+covering
+runFetchWithRetry : FetchOptions -> RetryPolicy -> HttpRequest
+                 -> (Either HttpError HttpResponse -> IO ()) -> IO (IO ())
+runFetchWithRetry options policy request deliver = do
+  stoppedRef <- newIORef False
+  cancelRef <- newIORef (pure ())
+  let covering attempt : Nat -> Nat -> IO ()
+      attempt remaining delay = do
+        stopped <- readIORef stoppedRef
+        when (not stopped) $ do
+          cancel <- runFetch options request (\result => do
+            stoppedNow <- readIORef stoppedRef
+            case stoppedNow of
+              True => pure ()
+              False =>
+                if retryable result && remaining > 0
+                   then do
+                     timer <- primIO (prim_scheduleRetry (cast delay)
+                       (attempt (remaining `minus` 1)
+                         (min policy.maximumDelayMs (delay * 2))))
+                     writeIORef cancelRef (primIO (prim_cancelRetry timer))
+                   else deliver result)
+          writeIORef cancelRef cancel
+  attempt policy.retries policy.initialDelayMs
+  pure $ do
+    writeIORef stoppedRef True
+    cancel <- readIORef cancelRef
+    cancel
+
 -- ─── Public Cmd constructors ─────────────────────────────────────────────────
 
 ||| Send an HTTP request via the browser's `fetch()`; result delivered
@@ -127,6 +188,12 @@ requestWith : FetchOptions -> HttpRequest
            -> (Either HttpError HttpResponse -> msg) -> Cmd msg
 requestWith options req toMsg =
   CancellableTask (\send => runFetch options req (send . toMsg))
+
+public export
+requestWithRetry : FetchOptions -> RetryPolicy -> HttpRequest
+                -> (Either HttpError HttpResponse -> msg) -> Cmd msg
+requestWithRetry options policy req toMsg =
+  CancellableTask (\send => runFetchWithRetry options policy req (send . toMsg))
 
 public export
 request : HttpRequest -> (Either HttpError HttpResponse -> msg) -> Cmd msg
