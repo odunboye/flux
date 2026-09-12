@@ -14,6 +14,43 @@ jobs:
         run: |
           python3 tools/workspace.py check
           python3 -m unittest discover -s tools -p test_workspace.py -v
+          bash -n tools/ci-linux.sh tools/ci-suite.sh
+          shellcheck tools/ci-linux.sh tools/ci-suite.sh
+
+  # Imported nested workflows are not executed by GitHub. These independent
+  # root jobs protect both Iris itself and its full-stack generated clients.
+  platform-verification:
+    name: ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: ui
+            label: iris-ui-browser
+          - suite: platform
+            label: generated-client-db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run UI or complete generated-client/database verification
+        # Explicit docker run (rather than a job container) is necessary for
+        # host networking and access to disposable PostgreSQL containers.
+        run: bash tools/ci-linux.sh "${{ matrix.suite }}"
+      - name: Retain integration logs and browser failure traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}-reports
+          include-hidden-files: true
+          if-no-files-found: warn
+          path: |
+            .workspace/
+            packages/ui/test-results/
+            packages/ui/playwright-report/
 
   # Compile the library and run the unit test suite (router, HTTP wire
   # parsing, JSON, middleware/readBody, logging, config, cookies,

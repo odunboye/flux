@@ -89,13 +89,44 @@ After changing package locations or IDs, edit `workspace.json`, run
 `python3 tools/workspace.py sync`, and rerun the checks. The workspace utility
 is developer tooling, **not** the future `flux new/dev/migrate` application CLI.
 
+## Root CI coverage
+
+The root `.github/workflows/ci.yml` now runs two independent platform jobs on
+pull requests and main pushes, in addition to the existing boundary/HTTP jobs:
+
+- **iris-ui-browser**: Iris unit tests, web/mobile bundle builds and release-asset
+  validation (`make check`), then all Playwright browser integration tests.
+- **generated-client-db**: the complete `workspace.py test` gate, including
+  generated-output freshness, native/JS clients, Chromium, disposable PostgreSQL,
+  migrations and full CRUD. Database checks are not skipped.
+
+The old nested Iris workflow was removed; GitHub never executed it from inside
+`packages/ui`. Both root jobs install locked browser dependencies, audit them,
+retain logs/failure traces even on failure, and have a 45-minute job timeout.
+Configure branch protection to require these named checks as well as the
+existing checks; workflow code does not change repository protection settings.
+
+`bash tools/ci-linux.sh ui` and `bash tools/ci-linux.sh platform` reproduce the
+CI setup on an Ubuntu Docker host with Node 20+. The launcher uses the pack
+compiler image, the root pinned collection, a Docker socket and explicit host
+networking so disposable PostgreSQL ports remain accessible inside the test
+container. Use this launcher only on a trusted, disposable Docker host, as in
+GitHub-hosted CI. With prerequisites already installed, the portable test-only
+commands are `bash tools/ci-suite.sh ui` and `bash tools/ci-suite.sh platform`.
+The UI lane explicitly selects pack's compiler rather than a possibly
+incompatible system `idris2`.
+
 ## Dependency boundary
 
 The Iris client uses Iris lifecycle/effects, not the Chez owned server runtime.
 `flux-platform-client` depends on Iris/json-simple and generated shared wire
 types. UI/client packages must not transitively depend on `flux`, `flux-async`,
 Nebula, PostgreSQL, or the server endpoint package. The workspace check enforces
-this across local `.ipkg` dependency declarations.
+this across local `.ipkg` dependency declarations. Version bounds are stripped
+before graph traversal, including multiline bounds and compact comparisons
+such as `server>=0.1.0`. Direct and transitive version-qualified forbidden edges
+are regression-tested; unsupported name syntax and duplicate `depends`
+declarations fail closed.
 
 Nebula is currently PostgreSQL-backed; the `flux-db` umbrella label does not
 claim that it already abstracts every database backend. Keep SQL protocol and

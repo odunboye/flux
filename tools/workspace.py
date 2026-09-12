@@ -38,8 +38,23 @@ def pack_config(manifest):
 
 def dependencies(text):
     text = re.sub(r'--[^\n]*', '', text)
-    match = re.search(r'^\s*depends\s*=\s*([^\n]*(?:\n\s*,[^\n]*)*)', text, re.M)
-    return set(part.strip() for part in match[1].split(',')) if match else set()
+    # Bounds may span lines. Stop at the next package property, not at the
+    # first newline; the graph is keyed by package name, never by its bounds.
+    blocks = list(re.finditer(r'^\s*depends\s*=(.*?)(?=^\s*[A-Za-z][A-Za-z0-9_-]*\s*=(?!=)|\Z)',
+                              text, re.M | re.S))
+    if len(blocks) > 1:
+        raise ValueError('multiple depends declarations are not supported by the workspace guard')
+    names = set()
+    if blocks:
+        for clause in blocks[0][1].split(','):
+            clause = clause.strip()
+            if not clause:
+                continue
+            name = re.match(r'([A-Za-z0-9_][A-Za-z0-9_-]*)(?=\s|[<>=]|$)', clause)
+            if not name:
+                raise ValueError(f'cannot parse dependency name: {clause!r}')
+            names.add(name[1])
+    return names
 
 
 def check(manifest):
