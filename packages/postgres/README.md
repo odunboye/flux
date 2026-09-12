@@ -76,6 +76,13 @@ main = do
   closeDB db
 ```
 
+For commands that must reject SQL batches **before any side effect**, use
+`execCommandPrepared db sql params`. It always uses Parse/Bind/Execute, including
+when `params` is empty. `execCommand`/`queryRows` retain their simple-protocol
+fast path for zero-parameter calls; their result-count check is not a
+pre-execution SQL safety boundary. Flux DB migrations use the strict prepared
+command API.
+
 See `test/src/Main.idr` for a fuller worked example (CRUD, transactions,
 `execMulti`, `cancelQuery`, array/date/timestamp/numeric values, NULL
 handling).
@@ -84,7 +91,7 @@ This library is deliberately just the wire-protocol client: connect/query/
 execute, the value getters below, transactions, LISTEN/NOTIFY, COPY, and
 TLS - nothing that maps a `Row` onto an application record type. That
 layer - `Row`<->record derivation, generated CRUD, a typed query builder -
-lives in [nebula](https://github.com/odunboye/nebula), built on top of
+lives in [Flux DB](../db), built on top of
 this client (and meant to grow support for other DB clients later, not
 stay idris2-pg-specific forever).
 
@@ -154,7 +161,7 @@ Timed-out connections and connections left in a transaction are discarded.
 `closePool` rejects new leases and closes idle connections; active leases
 close when their callback finishes. `poolClosed` observes completion.
 
-`Nebula.Pool.pooledRepository` reuses this pattern for CRUD; use
+`Flux.DB.Pool.pooledRepository` reuses this pattern for CRUD; use
 `withPooledTransactionRepos` when several repositories must share a single
 transactional lease.
 

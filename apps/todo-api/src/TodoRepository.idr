@@ -1,14 +1,14 @@
-||| The generic CRUD/query operations (`Data.PGRepository.Repository`,
-||| from nebula) plus this app's one domain-specific extension
-||| `Data.PGCrud` has no primitive for: a partial update
-||| (`SET done = NOT done`, not a whole-record replace). Nebula supplies
+||| The generic CRUD/query operations (`Flux.DB.Repository.Repository`,
+||| from flux-db) plus this app's one domain-specific extension
+||| `Flux.DB.Crud` has no primitive for: a partial update
+||| (`SET done = NOT done`, not a whole-record replace). Flux DB supplies
 ||| the generic piece and the `decodeFirst` extension point; the
-||| domain-specific operation itself is this app's own, not nebula's -
-||| matching the split: nebula gives every app the same integration
+||| domain-specific operation itself is this app's own, not flux-db's -
+||| matching the split: flux-db gives every app the same integration
 ||| pattern, apps define what operations their own domain actually
 ||| needs.
 |||
-||| Deliberately no `Flux`/`Nebula.PG` import here - nothing in this
+||| Deliberately no `Flux`/`Flux.DB.PG` import here - nothing in this
 ||| module needs `Context`/`AppProg`/`Handler`, and importing them would
 ||| undermine the whole point (a repository handlers can be tested
 ||| against with zero HTTP framework involved at all - see
@@ -18,13 +18,13 @@ module TodoRepository
 import Idris2_pg
 import Data.PGTypes
 import Data.PGValue
-import Data.PGField
-import Data.PGRow
-import Data.PGTable
-import Data.PGRepository
-import Data.PGCrud as Crud
+import Flux.DB.Field
+import Flux.DB.Row
+import Flux.DB.Table
+import Flux.DB.Repository
+import Flux.DB.Crud as Crud
 import Models
-import Nebula.Pool
+import Flux.DB.Pool
 
 %default covering
 
@@ -35,9 +35,9 @@ record TodoRepository where
   toggle : Integer -> IO (Either PGError (Maybe Todo))
 
 ||| The real, Postgres-backed implementation - `crud` delegates straight
-||| to nebula's `pgRepository`; `toggle` is hand-written SQL (the same
+||| to flux-db's `pgRepository`; `toggle` is hand-written SQL (the same
 ||| shape `Handlers.ActiveRecord.toggleTodo` used to run directly),
-||| decoded via nebula's exported `Data.PGCrud.decodeFirst` - the same
+||| decoded via flux-db's exported `Flux.DB.Crud.decodeFirst` - the same
 ||| "single optional row" decode `findById`/`update` use internally,
 ||| reused here instead of duplicated.
 export

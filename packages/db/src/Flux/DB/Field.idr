@@ -3,7 +3,7 @@
 ||| record field. Deliberately separate from `Data.PGValue`'s `getText`/
 ||| `getInt`/etc: those stay the low-level, no-typeclass-dispatch API;
 ||| this module is the new, opt-in layer built on top of them.
-module Data.PGField
+module Flux.DB.Field
 
 import Data.PGValue
 

@@ -3,10 +3,10 @@
 ||| these) for the same reason `Prelude.Show` and `Derive.Show`'s own
 ||| `Show` alias function live in different modules: a module can't
 ||| declare an interface and a same-named top-level function together.
-module Data.PGRow
+module Flux.DB.Row
 
 import Data.PGValue
-import Data.PGTable
+import Flux.DB.Table
 
 %default total
 

@@ -1,5 +1,5 @@
-||| Todo handlers built on `TodoRepository` (nebula's generic
-||| `Data.PGRepository.Repository`, plus this app's own `toggle`
+||| Todo handlers built on `TodoRepository` (flux-db's generic
+||| `Flux.DB.Repository.Repository`, plus this app's own `toggle`
 ||| extension) instead of a raw `DB` - the version wired into
 ||| `TodoApi.appRouter`. Every handler here is HTTP-glue only: read a
 ||| path param/body, call the repository, decide what a `Nothing`/
@@ -9,7 +9,7 @@
 ||| `TodoRepository` there too.
 |||
 ||| See `Handlers.TypedQuery` for `listTodos`/`getTodo` reimplemented via
-||| nebula's typed query builder instead (`Data.PGQuery`'s
+||| flux-db's typed query builder instead (`Flux.DB.Query`'s
 ||| `selectQuery`/`where_`/`orderByAsc`, called directly against a raw
 ||| `DB` - deliberately NOT migrated to `TodoRepository` in this pass,
 ||| since it's already a side-by-side comparison kept separate from the
@@ -23,9 +23,9 @@ import Flux.Middleware.JSON
 import JSON.Simple
 import public Idris2_pg
 import public Data.PGTypes
-import Nebula.PG
-import Data.PGQuery
-import Data.PGRepository
+import Flux.DB.PG
+import Flux.DB.Query
+import Flux.DB.Repository
 import TodoRepository
 import Models
 

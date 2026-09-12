@@ -10,9 +10,9 @@
 ||| for why (Idris2 has no functional-dependency syntax to infer it from
 ||| the insert-shape argument alone): `insert {a=Todo} db newTodo`.
 |||
-||| A typed `SELECT` query builder now exists (`Data.PGQuery`'s
+||| A typed `SELECT` query builder now exists (`Flux.DB.Query`'s
 ||| `selectQuery`/`Condition`/`Query`, with per-table column references
-||| from `Derive.PGActiveRecord.deriveColumns`) for filtering/ordering/
+||| from `Flux.DB.Derive.ActiveRecord.deriveColumns`) for filtering/ordering/
 ||| paging beyond "by id" - `insert`/`update`/`deleteById` here stay
 ||| by-pk only. Still explicitly out of scope: no relations/joins, no
 ||| migrations, no partial-update/PATCH (`update` always replaces every
@@ -21,16 +21,16 @@
 ||| distinguish e.g. a unique-violation inspect `SqlError`'s `code`/
 ||| `constraintName` (`Data.PGTypes`) themselves, same as today; no bulk
 ||| `updateWhere`/`deleteWhere` by an arbitrary condition (as opposed to
-||| by pk) - would reuse `Data.PGQuery.compileCondition` cheaply as a
+||| by pk) - would reuse `Flux.DB.Query.compileCondition` cheaply as a
 ||| later addition, not built yet.
-module Data.PGCrud
+module Flux.DB.Crud
 
 import Idris2_pg
 import Data.PGTypes
 import Data.PGValue
-import Data.PGField
-import Data.PGRow
-import Data.PGTable
+import Flux.DB.Field
+import Flux.DB.Row
+import Flux.DB.Table
 
 %default total
 
@@ -58,7 +58,7 @@ updateParams {a} rec =
 ||| decode failure), the same "single optional row" shape `findById`/
 ||| `update` use internally. Exported as a reusable extension point for
 ||| a caller's own hand-written SQL outside the fixed CRUD shape (e.g. a
-||| partial update `Data.PGCrud` itself has no primitive for) that still
+||| partial update `Flux.DB.Crud` itself has no primitive for) that still
 ||| wants this exact decode behavior instead of duplicating it.
 export
 decodeFirst : FromRow a => List Row -> Either PGError (Maybe a)

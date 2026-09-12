@@ -6,7 +6,7 @@ import System
 import Config
 import Models
 
-import Nebula.Pool
+import Flux.DB.Pool
 
 covering
 main : IO ()

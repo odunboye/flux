@@ -138,6 +138,7 @@ def test(manifest, without_db):
         run('workspace-unit', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_workspace.py'])
         run('cli-unit', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_flux.py'])
         run('ui-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_ui_names.py'])
+        run('db-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_db_names.py'])
         run('generator', [sys.executable, '-m', 'unittest', 'discover', '-s', 'platform', '-p', 'test_generator.py'])
         for example in ['example', 'crud']:
             run('generated-' + example, [sys.executable, 'platform/generate.py', f'platform/{example}/schema.json', '--out', f'platform/{example}', '--check'])
@@ -147,6 +148,7 @@ def test(manifest, without_db):
         run('flux-regression', ['./test/build/exec/flux-test'])
         # Install native dependencies first; Flux UI's packaged demo is not JS.
         build('platform/example/client-native-test.ipkg')
+        build('packages/db/test/test.ipkg')
         for file in ['platform/example/example.ipkg', 'platform/example/pg-example.ipkg',
                      'platform/example/migrations.ipkg', 'platform/crud/server.ipkg']:
             build(file)

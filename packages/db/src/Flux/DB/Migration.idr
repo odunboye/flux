@@ -1,6 +1,6 @@
 ||| Explicit, forward-only SQL migrations on a dedicated connection.
 ||| No automatic schema diffing and no destructive-change inference.
-module Data.PGMigration
+module Flux.DB.Migration
 
 import Idris2_pg
 import public Data.PGTypes
@@ -64,14 +64,14 @@ pending (m :: rest) (row :: rows) =
 commands : DB -> List String -> IO (Either PGError ())
 commands _ [] = pure (Right ())
 commands db (sql :: rest) = do
-  Right _ <- execCommand db sql [] | Left err => pure (Left err)
+  Right _ <- execCommandPrepared db sql [] | Left err => pure (Left err)
   commands db rest
 
 applyOne : DB -> Migration -> IO (Either PGError ())
 applyOne db m = withTransaction db $ do
   Right _ <- commands db m.statements | Left err => pure (Left err)
   Right _ <- execCommand db
-    "INSERT INTO nebula_meta.migrations(version, name, checksum) VALUES ($1::bigint, $2, $3)"
+    "INSERT INTO flux_db_meta.migrations(version, name, checksum) VALUES ($1::bigint, $2, $3)"
     [Just (show m.version), Just m.name, Just (checksum m)]
     | Left err => pure (Left err)
   pure (Right ())
@@ -82,6 +82,21 @@ applyAll db count (m :: rest) = do
   Right _ <- applyOne db m | Left err => pure (Left err)
   applyAll db (S count) rest
 
+-- A renamed runner must never create an empty history beside an existing
+-- pre-rename database. Require an explicit, reviewed metadata cutover instead.
+prepareMetadata : DB -> IO (Either PGError ())
+prepareMetadata db = do
+  Right [row] <- queryRows db
+    "SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'nebula_meta') AS legacy" []
+    | Left err => pure (Left err)
+    | Right _ => pure (Left (ProtocolError "unexpected migration metadata response"))
+  if columnByName row "legacy" /= Just (Just "f")
+    then pure (Left (ProtocolError "Legacy nebula_meta schema detected; stop migration runners and follow the Flux DB metadata cutover guide before retrying. No migrations were applied."))
+    else commands db
+      [ "CREATE SCHEMA IF NOT EXISTS flux_db_meta"
+      , "CREATE TABLE IF NOT EXISTS flux_db_meta.migrations (version bigint PRIMARY KEY, name text NOT NULL, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())"
+      ]
+
 runOn : DB -> List Migration -> IO (Either PGError Nat)
 runOn db migrations = do
   Right [row] <- queryRows db "SELECT pg_try_advisory_lock(723946218534101) AS acquired" []
@@ -90,11 +105,8 @@ runOn db migrations = do
   if columnByName row "acquired" /= Just (Just "t")
     then pure (Left (ProtocolError "another migration runner holds the database lock"))
     else do
-      Right _ <- commands db
-        [ "CREATE SCHEMA IF NOT EXISTS nebula_meta"
-        , "CREATE TABLE IF NOT EXISTS nebula_meta.migrations (version bigint PRIMARY KEY, name text NOT NULL, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())"
-        ] | Left err => pure (Left err)
-      Right rows <- queryRows db "SELECT version, name, checksum FROM nebula_meta.migrations ORDER BY version" []
+      Right _ <- prepareMetadata db | Left err => pure (Left err)
+      Right rows <- queryRows db "SELECT version, name, checksum FROM flux_db_meta.migrations ORDER BY version" []
         | Left err => pure (Left err)
       case pending migrations rows of
         Left err => pure (Left err)
@@ -106,7 +118,7 @@ runOn db migrations = do
 ||| history row commit together. Earlier successful migrations remain committed
 ||| if a later migration fails. Supply explicit transport deadlines in config.
 ||| Only the documented transactional SQL subset is supported. SQL must be
-||| reviewed trusted code and must not mutate nebula_meta or release its lock.
+||| reviewed trusted code and must not mutate flux_db_meta or release its lock.
 export
 runMigrations : PGConfig -> List Migration -> IO (Either PGError Nat)
 runMigrations config migrations = case validate 0 migrations of

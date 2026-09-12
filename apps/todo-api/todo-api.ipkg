@@ -6,8 +6,8 @@ brief   = "A small Todo CRUD API built on Flux and idris2-pg"
 depends = flux
         , idris2-pg
         , idris2-docker
-        , nebula
-        , nebula-flux
+        , flux-db
+        , flux-db-flux
         , json-simple
 
 modules = Models

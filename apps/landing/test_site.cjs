@@ -56,6 +56,7 @@ const output = path.resolve(__dirname, "../../.workspace/landing");
     await page.goto(base);
     await expect(page).toHaveTitle("Flux — One language. Both sides.");
     await expect(page.locator(".feature-label").filter({ hasText: /^FLUX UI$/ })).toHaveCount(1);
+    await expect(page.locator(".feature-label").filter({ hasText: /^FLUX DB \+ POSTGRESQL$/ })).toHaveCount(1);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
       "Full possibility.",
     );

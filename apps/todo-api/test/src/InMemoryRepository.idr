@@ -10,7 +10,7 @@
 ||| does). Any other `Query` shape (a `WHERE` condition, `LIMIT`/
 ||| `OFFSET`, ordering by a different column) fails loudly (`Left
 ||| (ProtocolError ...)`) rather than silently returning the wrong data
-||| - a real `Data.PGQuery.Condition`/general-order evaluator against
+||| - a real `Flux.DB.Query.Condition`/general-order evaluator against
 ||| plain Idris values is real, currently-unneeded work; failing loud
 ||| instead of guessing wrong is the safe default until something
 ||| actually needs it.
@@ -20,8 +20,8 @@ import Data.IORef
 import Data.List
 import Idris2_pg
 import Data.PGTypes
-import Data.PGRepository
-import Data.PGQuery
+import Flux.DB.Repository
+import Flux.DB.Query
 import TodoRepository
 import Models
 

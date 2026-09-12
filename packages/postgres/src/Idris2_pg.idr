@@ -203,6 +203,15 @@ execCommand db stmt params = do
   result <- runQuery db stmt params False
   pure (result >>= singleResult >>= collectErrors >>= \qr => Right (fromMaybe "" (commandTag qr)))
 
+||| Execute exactly one command through Parse/Bind/Execute, even without
+||| parameters. PostgreSQL rejects SQL batches at Parse, before any statement
+||| executes. Use this when rejection must precede side effects (migrations).
+public export
+execCommandPrepared : DB -> String -> List (Maybe String) -> IO (Either PGError String)
+execCommandPrepared db stmt params = do
+  result <- execParams db stmt params False
+  pure (result >>= singleResult >>= collectErrors >>= \qr => Right (fromMaybe "" (commandTag qr)))
+
 ||| Run a SELECT and return the decoded rows, in text format (the default -
 ||| see "Value decoding" for what this covers).
 public export

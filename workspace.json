@@ -9,9 +9,9 @@
     "flux-landing": "apps/landing/landing.ipkg",
     "flux-async": "packages/runtime/flux-async.ipkg",
     "flux-ui": "packages/ui/flux-ui.ipkg",
-    "nebula": "packages/db/nebula.ipkg",
-    "nebula-test": "packages/db/test/test.ipkg",
-    "nebula-flux": "packages/db-flux/nebula-flux.ipkg",
+    "flux-db": "packages/db/flux-db.ipkg",
+    "flux-db-test": "packages/db/test/test.ipkg",
+    "flux-db-flux": "packages/db-flux/flux-db-flux.ipkg",
     "idris2-pg": "packages/postgres/idris2-pg.ipkg",
     "idris2-pg-test": "packages/postgres/test/test.ipkg",
     "idris2-pg-async": "packages/postgres/async/idris2-pg-async.ipkg",
@@ -26,7 +26,7 @@
     "todo-api-pooled-test": "apps/todo-api/test/pooled-test.ipkg",
     "flux-ui-todo": "packages/ui/examples/todo/flux-ui-todo.ipkg"
   },
-  "tests": {"flux": "test/test.ipkg", "nebula": "test/test.ipkg", "idris2-pg": "test/test.ipkg", "todo-api": "test/test.ipkg"},
+  "tests": {"flux": "test/test.ipkg", "flux-db": "test/test.ipkg", "idris2-pg": "test/test.ipkg", "todo-api": "test/test.ipkg"},
   "imports": [
     {"path": "packages/runtime", "source": "idris2-flux-async", "commit": "bfc3ff67c3d4dd85462ba7063d6d81ad7328ccf5"},
     {"path": "packages/postgres", "source": "idris2-pg", "commit": "2e22c85078578d8128fecf1a489d700f7675fb15"},
@@ -39,5 +39,5 @@
     {"path": "packages/docker", "source": "idris2-docker", "note": "Source/ipkg/README/test snapshot; original directory had no Git history."}
   ],
   "browser_roots": ["flux-ui", "flux-platform-client", "platform-crud-ui"],
-  "browser_forbidden": ["flux", "flux-async", "nebula", "nebula-flux", "idris2-pg", "idris2-pg-async", "flux-platform"]
+  "browser_forbidden": ["flux", "flux-async", "flux-db", "flux-db-flux", "idris2-pg", "idris2-pg-async", "flux-platform"]
 }

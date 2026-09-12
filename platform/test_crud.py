@@ -82,7 +82,7 @@ try:
     with tempfile.TemporaryFile() as log:
         try:
             server, port = start(env, log)
-            assert sql('SELECT count(*) FROM nebula_meta.migrations') == '1'
+            assert sql('SELECT count(*) FROM flux_db_meta.migrations') == '1'
             print('PASS server bootstraps schema through versioned migration')
             sql('ALTER SEQUENCE todos_id_seq RESTART WITH 9223372036854775000')
             sql("INSERT INTO todos(title) SELECT 'seed-' || n::text FROM generate_series(1,55) AS n")
@@ -97,7 +97,7 @@ try:
             server = None
             server, port = start(env, log)
             assert sql('SELECT count(*) FROM todos') == '55'
-            assert sql('SELECT count(*) FROM nebula_meta.migrations') == '1'
+            assert sql('SELECT count(*) FROM flux_db_meta.migrations') == '1'
             print('PASS restart replays migration safely without resetting application data')
             stop(server)
             server = None

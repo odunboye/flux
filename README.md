@@ -1,9 +1,11 @@
 # Flux — full-stack Idris applications
 
 **Platform preview.** Flux brings its HTTP server and owned runtime, Flux UI,
-Nebula persistence/migrations, PostgreSQL transport/pooling, and generated Flux UI
+Flux DB persistence/migrations, PostgreSQL transport/pooling, and generated Flux UI
 clients into one modular repository. The UI now uses the `flux-ui` package and
-`Flux.UI.*` modules in a breaking rename; other package IDs remain unchanged.
+`Flux.UI.*` modules. Persistence is now `flux-db` / `flux-db-flux` with
+`Flux.DB.*` modules. Both are breaking renames without compatibility aliases.
+Existing databases must follow the [Flux DB metadata cutover guide](packages/db/MIGRATION.md).
 This is not a production-readiness declaration.
 
 - `packages/runtime/`: owned tasks, sockets, streams and supervision.
@@ -476,7 +478,7 @@ remain on its owner; unrelated connections can run on other owners.
 
 The `workers` server setting is the maximum number of active connections,
 not the number of OS threads. Blocking operations belong on the runtime's
-bounded worker pool. `Nebula.PG.dbIO` uses that pool, and `Nebula.Pool` supplies
+bounded worker pool. `Flux.DB.PG.dbIO` uses that pool, and `Flux.DB.Pool` supplies
 exclusive database leases. Sharing one raw `DB` across requests is unsafe.
 
 Handler signatures such as `Async Poll es a` remain compatibility aliases

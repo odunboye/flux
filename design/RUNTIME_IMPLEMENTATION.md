@@ -24,8 +24,8 @@ This supersedes the historical proposal in `RUNTIME_ABSTRACTION.md`.
 - `idris2-pg-async` exclusive pool: defaults of eight connections, 128 waiters,
   and a five-second acquisition deadline. Cold authentication is serialized
   while other borrowers remain eligible to reuse returned connections.
-- `Nebula.Pool` pooled repositories and a whole-transaction lease helper;
-  `Nebula.PG.dbIO` offloads operations. Todo-api uses the pool.
+- `Flux.DB.Pool` pooled repositories and a whole-transaction lease helper;
+  `Flux.DB.PG.dbIO` offloads operations. Todo-api uses the pool.
 
 ## Verified at this checkpoint
 
@@ -39,7 +39,7 @@ This supersedes the historical proposal in `RUNTIME_ABSTRACTION.md`.
 | PG unit and real-database integration suites | Pass |
 | Isolated TLS transport test | Encrypted query, timeout poisoning, and reuse rejection pass |
 | PG pool suite | 15 checks pass, including queue overflow and acquisition timeout recovery |
-| Nebula integration suite | Pass, including cross-repository commit and rollback |
+| Flux DB integration suite | Pass, including cross-repository commit and rollback |
 | Todo-api raw PG / in-memory / pooled suites | 26 / 20 / 24 checks pass |
 | Live pooled todo-api, four owners | 24 clients, 480 CRUD lifecycles, 3,360 checked requests; clean exit |
 
@@ -75,7 +75,7 @@ verification work ran on the same machine during the soak.
   protocol probes, 24 pooled todo-api checks, and live 1/2/4-owner workloads
   (3,360 checked HTTP requests per owner configuration; clean shutdown).
   macOS additionally passes the 15-check pool suite, isolated TLS transport
-  tests, and Nebula integration. Linux native sanitizers disable leak detection
+  tests, and Flux DB integration. Linux native sanitizers disable leak detection
   under emulation; the ordinary Linux PG integration TLS case skips because
   that test database has SSL disabled. See `../test/reports/runtime-completion/final/`.
 - The recorded two-hour soak predates the SHA-256 optimization; it has not

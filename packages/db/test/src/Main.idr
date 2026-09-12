@@ -7,7 +7,7 @@
 |||
 ||| This is the active-record/query-builder half of what used to be
 ||| idris2-pg's own test suite before `FromRow`/`ToRow`/`Table`/
-||| `Data.PGCrud`/`Data.PGQuery`/`Derive.PGActiveRecord` moved here -
+||| `Flux.DB.Crud`/`Flux.DB.Query`/`Flux.DB.Derive.ActiveRecord` moved here -
 ||| idris2-pg's own suite covers the primitive wire-protocol client only
 ||| (raw `queryRows`/`execCommand`, transactions, LISTEN/NOTIFY, COPY,
 ||| binary format, TLS, timeouts).
@@ -21,12 +21,12 @@ import System
 import Idris2_pg
 import Data.PGTypes
 import Data.PGValue
-import Data.PGField
-import Data.PGRow
-import Data.PGTable
-import Derive.PGActiveRecord
-import Data.PGCrud
-import Data.PGRepository as Repo
+import Flux.DB.Field
+import Flux.DB.Row
+import Flux.DB.Table
+import Flux.DB.Derive.ActiveRecord
+import Flux.DB.Crud
+import Flux.DB.Repository as Repo
 import Derive.Show
 import Derive.Eq
 
@@ -44,7 +44,7 @@ report failCount line = do
   when (isPrefixOf "FAIL" line) (modifyIORef failCount (+1))
 
 --------------------------------------------------------------------------------
--- Active-record layer (FromRow/ToRow/Table/Insertable + Data.PGCrud)
+-- Active-record layer (FromRow/ToRow/Table/Insertable + Flux.DB.Crud)
 --------------------------------------------------------------------------------
 
 record Widget where
@@ -71,7 +71,7 @@ record Widget where
 
 -- `deriveColumns` auto-generates `WidgetColumns`/`MkWidgetColumns`/
 -- `widgetColumns` (fields `id`/`label`/`qty`, each `Column Widget _`) -
--- the typed column references `Data.PGQuery`'s `Condition`/`Query`
+-- the typed column references `Flux.DB.Query`'s `Condition`/`Query`
 -- builder (`testQueryBuilder` below) runs on.
 %runElab deriveColumns "Widget"
 
@@ -97,14 +97,14 @@ record Gadget where
 
 -- A STRING-keyed fixture (a slug, not a SERIAL/BIGSERIAL id) -
 -- Widget/Gadget above are both Integer-keyed, so on their own they'd
--- never actually exercise `Data.PGRepository.Repository`'s `pk` type
+-- never actually exercise `Flux.DB.Repository.Repository`'s `pk` type
 -- param as anything other than `Integer` - this is the fixture that
 -- proves `Repository String Category NewCategory` genuinely works end to end
 -- against real Postgres (`testStringKeyRepository`, below), not just
 -- that `pk` typechecks as a free variable.
 --
 -- Confirmed directly (not assumed): `Table`'s generated `insertSql`
--- (`Derive.PGActiveRecord.buildInsertSql`) unconditionally excludes the
+-- (`Flux.DB.Derive.ActiveRecord.buildInsertSql`) unconditionally excludes the
 -- pk column from the INSERT's own column/placeholder list, on the
 -- assumption that Postgres - not the caller - always assigns it
 -- (`deriveInsertable`'s own doc comment says so explicitly). A first
@@ -160,7 +160,7 @@ testActiveRecord failCount db = do
                then "OK deriveSubset generates a working include-list companion type"
                else "FAIL deriveSubset: " ++ show (wl1, wl2, wl3))
 
-  -- `createTableSql` is generated (via Data.PGColumnType), not
+  -- `createTableSql` is generated (via Flux.DB.ColumnType), not
   -- hand-written - use it directly, rather than a parallel hand-written
   -- CREATE TABLE, so a regression in the generator would actually be
   -- caught here instead of silently untested.
@@ -334,10 +334,10 @@ testQueryBuilder failCount db = do
   _ <- execCommand db "DROP TABLE widget" []
   pure ()
 
--- Exercises `Data.PGRepository.pgRepository` - the generic CRUD+query
+-- Exercises `Flux.DB.Repository.pgRepository` - the generic CRUD+query
 -- repository - against the same `widget` table `testActiveRecord`/
 -- `testQueryBuilder` already use, confirming its five fields really do
--- delegate correctly to `Data.PGCrud`/`Data.PGQuery` (not just
+-- delegate correctly to `Flux.DB.Crud`/`Flux.DB.Query` (not just
 -- typecheck). Uses `Repo.Repository`/`Repo.pgRepository` (the qualified
 -- import) for the type/constructor; dot-notation on the resulting value
 -- (`repo.insert`/`repo.findById`/etc) needs no qualification - it
@@ -400,7 +400,7 @@ testRepository failCount db = do
   _ <- execCommand db "DROP TABLE widget" []
   pure ()
 
--- Exercises `Data.PGRepository.withTransactionRepos` against TWO
+-- Exercises `Flux.DB.Repository.withTransactionRepos` against TWO
 -- distinct tables (Widget/Gadget) on real Postgres - both the commit
 -- path (a genuine cross-table atomic write) and the rollback path (an
 -- error inside the callback, AFTER a successful write, must undo

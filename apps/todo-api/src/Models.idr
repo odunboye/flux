@@ -2,8 +2,8 @@ module Models
 
 
 import Data.PGValue
-import Derive.PGActiveRecord
-import ObjectFromJSON
+import Flux.DB.Derive.ActiveRecord
+import Flux.DB.ObjectFromJSON
 
 import JSON.Simple.Derive
 
@@ -26,9 +26,9 @@ record Todo where
 -- The real Postgres table is `todos` (plural), but the Idris type is
 -- `Todo` (singular) - Table's default naming (exact-lowercase of the
 -- type name) would get this wrong, so the override is required here,
--- not optional; this is also the concrete case nebula's
+-- not optional; this is also the concrete case flux-db's
 -- table-naming override mechanism exists to prove actually works, not
--- just typecheck. `[("done", "false")]` is nebula's take on Drift's
+-- just typecheck. `[("done", "false")]` is flux-db's take on Drift's
 -- `withDefault()` - a real DB-level `DEFAULT false` on the generated
 -- `createTableSql` (used by `Main.idr`/`test/src/Main.idr` below,
 -- replacing what used to be a hand-written DDL string here). This
@@ -74,6 +74,6 @@ TodoTable = customTable Export (Just "todos") Nothing [("done", "false")]
 -- `deriveColumns` auto-generates `TodoColumns`/`MkTodoColumns`/
 -- `todoColumns` (fields `id`/`title`/`done`, each `Column Todo _`) - the
 -- typed column references `Handlers.TypedQuery`'s handlers build
--- `Data.PGQuery` conditions/orderings from (`todoColumns.id ==. tid`,
+-- `Flux.DB.Query` conditions/orderings from (`todoColumns.id ==. tid`,
 -- `orderByAsc todoColumns.id`).
 %runElab deriveColumns "Todo"

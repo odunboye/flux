@@ -1,11 +1,11 @@
 ||| Static, per-type table metadata plus the four fixed SQL strings
-||| `Data.PGCrud`'s generic CRUD helpers run - declared here, hand-
+||| `Flux.DB.Crud`'s generic CRUD helpers run - declared here, hand-
 ||| written, and kept separate from `Derive.PGTable` (which derives
 ||| implementations of it) for the same reason `Prelude.Show` and
 ||| `Derive.Show`'s own `Show` alias function live in different modules:
 ||| a module can't declare an interface and a same-named top-level
 ||| function together.
-module Data.PGTable
+module Flux.DB.Table
 
 public export
 interface Table a where
@@ -28,10 +28,10 @@ interface Table a where
   updateSql     : String
   deleteByIdSql : String
   ||| `CREATE TABLE IF NOT EXISTS <table> (...)`, generated from each
-  ||| field's `Data.PGColumnType` instance (`NOT NULL` unless the
+  ||| field's `Flux.DB.ColumnType` instance (`NOT NULL` unless the
   ||| field's Idris type is `Maybe _`; the pk column uses
   ||| `SERIAL`/`BIGSERIAL` when its type has one). Unlike the SQL
   ||| strings above, this is a genuine runtime-dispatched value, not a
-  ||| compile-time literal - see `Data.PGColumnType`'s own doc comment
+  ||| compile-time literal - see `Flux.DB.ColumnType`'s own doc comment
   ||| for why that's fine specifically for DDL.
   createTableSql : String

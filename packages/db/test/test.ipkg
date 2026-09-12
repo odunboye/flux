@@ -1,9 +1,9 @@
-package nebula-test
+package flux-db-test
 version = 0.1.0
 authors = "Odun Adeboye"
 
 -- packages to add to search path
-depends = nebula
+depends = flux-db
         , idris2-pg
         , elab-util
 
@@ -11,5 +11,5 @@ depends = nebula
 main = Main
 
 -- name of executable
-executable = "nebula-test"
+executable = "flux-db-test"
 sourcedir = "src"

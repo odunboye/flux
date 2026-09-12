@@ -4,12 +4,12 @@ import Protocol
 import Config
 import Models
 import TodoRepository
-import Data.PGRepository
-import Data.PGQuery
-import Data.PGField
-import Data.PGMigration
-import Nebula.PG
-import Nebula.Pool
+import Flux.DB.Repository
+import Flux.DB.Query
+import Flux.DB.Field
+import Flux.DB.Migration
+import Flux.DB.PG
+import Flux.DB.Pool
 import System
 
 %default covering

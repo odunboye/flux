@@ -14,7 +14,7 @@ current package IDs and the combined verification command. Flux UI now uses
 
 - Flux: transport, request lifecycle, routing, middleware, supervision.
 - idris2-pg: PostgreSQL protocol, connection safety, transport security, pool.
-- Nebula: persistence models, queries, repositories, migrations.
+- Flux DB: persistence models, queries, repositories, migrations.
 - Platform package: protocol contracts, typed adapters, generated clients,
   configuration, CLI and integration. Initially incubated in `platform/` as
   a separate package depending on Flux; Flux must not depend on it.
@@ -53,13 +53,15 @@ until identity/authorization enforcement is implemented, not silently exposed.
 - Real pooled todo repository integration: Node and Chromium each execute a
   24-command concurrent batch plus one round-trip call; 50 persisted rows
   independently confirmed in PostgreSQL, followed by clean shutdown.
-- Nebula `Data.PGMigration`: reviewed forward-only SQL subset, dedicated
+- Flux DB `Flux.DB.Migration`: reviewed forward-only SQL subset, dedicated
   connection/session advisory lock, version/name/checksum history verification,
   and per-migration transactional application/history insertion.
-- 14 migration integration checks pass in a disposable PostgreSQL container.
-  Companion Nebula commit: `a177aee8d3370fd970ff262e549a3611ae3778d2`.
+- The original checkpoint passed 14 migration integration checks. The Flux DB
+  rename expands this to 21, including metadata cutover and pre-execution SQL
+  batch rejection. See [the migration guide](../packages/db/MIGRATION.md).
+  Companion Flux DB commit: `a177aee8d3370fd970ff262e549a3611ae3778d2`.
 
-The first Flux/UI/client checkpoint is Flux `f64aef7`, paired with the Nebula
+The first Flux/UI/client checkpoint is Flux `f64aef7`, paired with the Flux DB
 commit above.
 
 ## Implemented second increment

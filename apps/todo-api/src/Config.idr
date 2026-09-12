@@ -1,7 +1,7 @@
 module Config
 
 
-import Nebula.PG
+import Flux.DB.PG
 import DevPostgres
 
 --------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ loadConfig = do
 
 ||| Reads dedicated TEST-only env vars (`PG_TEST_HOST`/`PG_TEST_PORT`/
 ||| `PG_TEST_USER`/`PG_TEST_PASSWORD`/`PG_TEST_DB` - matching idris2-pg's
-||| and nebula's own test suites' convention), completely independent of
+||| and flux-db's own test suites' convention), completely independent of
 ||| `loadConfig`'s `PGHOST`/etc. `test/src/Main.idr` drops and recreates
 ||| the `todos` table against whatever this resolves to, so this
 ||| deliberately does NOT fall back to `loadConfig` or share its env-var

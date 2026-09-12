@@ -1,4 +1,4 @@
-"""Generated Idris/Flux UI -> Flux -> Nebula -> PG in a disposable database."""
+"""Generated Idris/Flux UI -> Flux -> Flux DB -> PG in a disposable database."""
 import os
 from pathlib import Path
 import socket
@@ -40,6 +40,12 @@ try:
                PGPASSWORD='testpass', PGDATABASE='platform_test',
                IDRIS2_INC_SRC=str(app), LD_LIBRARY_PATH=str(app),
                DYLD_LIBRARY_PATH=str(app), FLUX_EVENT_LOOPS='2')
+    # Exercise the renamed persistence package against this owned disposable DB.
+    repository_env = dict(env, PG_TEST_HOST='127.0.0.1', PG_TEST_PORT=pgport,
+                          PG_TEST_USER='testuser', PG_TEST_PASSWORD='testpass',
+                          PG_TEST_DB='platform_test')
+    subprocess.run(['python3', str(ROOT.parent / 'packages/db/test/runtime_integration_test.py')],
+                   env=repository_env, check=True, timeout=200)
     migration_app = ROOT / 'example/build/exec/platform-migration-test_app'
     migration_env = dict(env, FLUX_DISPOSABLE_TEST='1', IDRIS2_INC_SRC=str(migration_app),
                          LD_LIBRARY_PATH=str(migration_app), DYLD_LIBRARY_PATH=str(migration_app))

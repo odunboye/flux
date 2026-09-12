@@ -11,9 +11,9 @@ every public API, or establish production readiness.
 | flux-server | repository root `src/` | `flux` |
 | flux-runtime | `packages/runtime/` | `flux-async` |
 | flux-ui | `packages/ui/` | `flux-ui` |
-| flux-db | `packages/db/` | `nebula` |
+| flux-db | `packages/db/` | `flux-db` |
 | flux-db-postgres | `packages/postgres/`, including `async/` | `idris2-pg`, `idris2-pg-async` |
-| Server/database integration | `packages/db-flux/` | `nebula-flux` |
+| Server/database integration | `packages/db-flux/` | `flux-db-flux` |
 | flux-client | `platform/client/` | `flux-platform-client` |
 | flux-platform | `platform/` | `flux-platform` |
 | Example application | `apps/todo-api/` | `todo-api` |
@@ -22,6 +22,9 @@ every public API, or establish production readiness.
 
 The UI has now been renamed outright to `flux-ui` and `Flux.UI.*`, with no
 legacy package or namespace shim. See the [breaking migration guide](../packages/ui/MIGRATION.md).
+Persistence is also renamed outright to `flux-db` / `flux-db-flux` and
+`Flux.DB.*`. Existing databases require the explicit
+[metadata cutover](../packages/db/MIGRATION.md); old history must not be replayed.
 Other package names remain as listed; the remaining proposed names are not
 additional published packages. Server source remains at the root.
 
@@ -35,7 +38,7 @@ Playwright; database tests require Docker and a local `postgres:16` image.
 
 ## History and ownership
 
-Runtime, PostgreSQL, Nebula, Nebula/Flux integration, Flux UI, and todo-api were
+Runtime, PostgreSQL, Flux DB, Flux DB/Flux integration, Flux UI, and todo-api were
 imported with **unsquashed Git subtrees**. Original commits are ancestors of the
 consolidated branch, not flattened snapshots. `workspace.json` records each
 source tip. Original repositories were not deleted, rewritten or modified by
@@ -80,7 +83,7 @@ replace every library's native sanitizer, property, soak or platform-specific
 suite. Individual package builds remain available, for example:
 
 ```sh
-(cd packages/db && pack --no-prompt build nebula.ipkg)
+(cd packages/db && pack --no-prompt build flux-db.ipkg)
 (cd packages/ui && pack --no-prompt build flux-ui.ipkg)
 (cd platform && pack --no-prompt build crud/server.ipkg)
 ```
@@ -126,14 +129,14 @@ incompatible system `idris2`.
 The Flux UI client uses Flux UI lifecycle/effects, not the Chez owned server runtime.
 `flux-platform-client` depends on Flux/UI/json-simple and generated shared wire
 types. UI/client packages must not transitively depend on `flux`, `flux-async`,
-Nebula, PostgreSQL, or the server endpoint package. The workspace check enforces
+Flux DB, PostgreSQL, or the server endpoint package. The workspace check enforces
 this across local `.ipkg` dependency declarations. Version bounds are stripped
 before graph traversal, including multiline bounds and compact comparisons
 such as `server>=0.1.0`. Direct and transitive version-qualified forbidden edges
 are regression-tested; unsupported name syntax and duplicate `depends`
 declarations fail closed.
 
-Nebula is currently PostgreSQL-backed; the `flux-db` umbrella label does not
+Flux DB is currently PostgreSQL-backed; the `flux-db` umbrella label does not
 claim that it already abstracts every database backend. Keep SQL protocol and
 pool ownership in the PostgreSQL packages while persistence models, queries,
 repositories and migrations remain in the database layer.

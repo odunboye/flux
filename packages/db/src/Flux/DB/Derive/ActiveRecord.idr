@@ -1,13 +1,13 @@
 ||| Elaborator-reflection derivation of `FromRow`/`ToRow` (declared in
-||| `Data.PGRow`) and `Table` (declared in `Data.PGTable`): maps a plain,
+||| `Flux.DB.Row`) and `Table` (declared in `Flux.DB.Table`): maps a plain,
 ||| single-constructor record to/from a Postgres `Row`, one field at a
-||| time, via `Data.PGField`'s `FromField`/`ToField`, plus the static
-||| per-type table metadata `Data.PGCrud`'s generic CRUD helpers run on.
+||| time, via `Flux.DB.Field`'s `FromField`/`ToField`, plus the static
+||| per-type table metadata `Flux.DB.Crud`'s generic CRUD helpers run on.
 |||
 ||| All three derivations - and their shared "walk this record's fields"
 ||| helper - deliberately live in this ONE file, not split across
 ||| separate modules the way the rest of this codebase usually would
-||| (see e.g. `Data.PGRow`/`Data.PGTable` staying separate from THIS file
+||| (see e.g. `Flux.DB.Row`/`Flux.DB.Table` staying separate from THIS file
 ||| for a similar-sounding but different reason). Confirmed empirically,
 ||| the hard way: `%runElab derive "X" [...]`'s compile-time reduction
 ||| cannot unfold a THREE-module call chain (consumer -> deriver-module
@@ -21,13 +21,13 @@
 ||| and duplicated in spirit, not split out, purely to keep every derive
 ||| call here at a guaranteed two-hop depth regardless of which
 ||| combination of `[FromRow, ToRow, Table]` a caller derives together.
-module Derive.PGActiveRecord
+module Flux.DB.Derive.ActiveRecord
 
-import public Data.PGField
-import public Data.PGRow
-import public Data.PGTable
-import public Data.PGColumnType
-import public Data.PGQuery
+import public Flux.DB.Field
+import public Flux.DB.Row
+import public Flux.DB.Table
+import public Flux.DB.ColumnType
+import public Flux.DB.Query
 import public Language.Reflection.Util
 import Data.List
 import Data.Maybe
@@ -381,7 +381,7 @@ deriveSubset keepFields newTypeNameStr derives orig = do
 ||| `orig` EXCEPT `pk` (default `"id"`, same convention as `Table`'s own
 ||| primary-key field) via `deriveSubset` (with `[ToRow]`), plus an
 ||| `Insertable New<orig> orig` instance linking it back - i.e.
-||| everything `insert` (`Data.PGCrud`) needs, without a caller
+||| everything `insert` (`Flux.DB.Crud`) needs, without a caller
 ||| hand-writing a second record. Excluding the pk is the one place an
 ||| EXCLUDE-shaped companion type still makes sense (Postgres, not the
 ||| caller, assigns it) - contrast `deriveSubset` itself, which is
@@ -422,7 +422,7 @@ lowerFirst s = case unpack s of
 ||| `TodoColumns`) whose fields are `Column orig <fieldType>` for every
 ||| field of `orig`, plus a top-level value (`todoColumns` for `Todo`)
 ||| constructing it with each field's own `MkColumn "<fieldName>"` - the
-||| typed column references `Data.PGQuery`'s `Condition`/`Query` builder
+||| typed column references `Flux.DB.Query`'s `Condition`/`Query` builder
 ||| runs on (`todoColumns.title ==. "Buy milk"`). Reuses `recordFields`,
 ||| the same field-enumeration source of truth `customFromRow`/
 ||| `customToRow`/`customTable` already share - called via

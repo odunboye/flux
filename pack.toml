@@ -12,6 +12,22 @@ type = "local"
 path = "packages/runtime"
 ipkg = "flux-async.ipkg"
 
+[custom.all.flux-db]
+type = "local"
+path = "packages/db"
+ipkg = "flux-db.ipkg"
+test = "test/test.ipkg"
+
+[custom.all.flux-db-flux]
+type = "local"
+path = "packages/db-flux"
+ipkg = "flux-db-flux.ipkg"
+
+[custom.all.flux-db-test]
+type = "local"
+path = "packages/db/test"
+ipkg = "test.ipkg"
+
 [custom.all.flux-examples]
 type = "local"
 path = "examples"
@@ -66,22 +82,6 @@ ipkg = "idris2-pg-async.ipkg"
 [custom.all.idris2-pg-test]
 type = "local"
 path = "packages/postgres/test"
-ipkg = "test.ipkg"
-
-[custom.all.nebula]
-type = "local"
-path = "packages/db"
-ipkg = "nebula.ipkg"
-test = "test/test.ipkg"
-
-[custom.all.nebula-flux]
-type = "local"
-path = "packages/db-flux"
-ipkg = "nebula-flux.ipkg"
-
-[custom.all.nebula-test]
-type = "local"
-path = "packages/db/test"
 ipkg = "test.ipkg"
 
 [custom.all.platform-crud-server]

@@ -1,6 +1,6 @@
 # Flux application platform — Idris clients for Flux UI
 
-A **separate package** on top of Flux, not a replacement for Flux, Nebula, or
+A **separate package** on top of Flux, not a replacement for Flux, Flux DB, or
 idris2-pg. The client target is **Idris 2 / Flux UI**, not Dart or Flutter.
 This remains an experimental protocol/client integration milestone, not a
 complete application platform or a production-ready release.
@@ -17,7 +17,7 @@ complete application platform or a production-ready release.
 | `openapi.json` | API tooling | OpenAPI 3.1 description |
 
 The client package `flux-platform-client` depends on **flux-ui and json-simple**,
-not Flux's server runtime, Nebula or PostgreSQL. Browser builds do not pull
+not Flux's server runtime, Flux DB or PostgreSQL. Browser builds do not pull
 server sockets, worker threads or database bindings into their generated JS.
 The distinct server package `flux-platform` supplies typed endpoint adapters.
 
@@ -83,7 +83,7 @@ use `useAlways corsAllowAll` so both successes and errors are browser-readable.
 Do not adopt wildcard CORS as an authenticated application's policy by default.
 
 `example/Main.idr` is a nonpersistent protocol smoke server.
-`example/PGMain.idr` uses the real todo-api pooled repository through Nebula;
+`example/PGMain.idr` uses the real todo-api pooled repository through Flux DB;
 it does not change the existing todo-api entry point or routes.
 
 ### Complete typed CRUD example
@@ -100,7 +100,7 @@ records ordered by ID; `nextId` is the last returned ID when more rows exist,
 otherwise null. This is keyset pagination, not a cross-request snapshot: writes
 between page requests can change what is observed.
 
-The CRUD server bootstraps through Nebula's migration runner using **frozen,
+The CRUD server bootstraps through Flux DB's migration runner using **frozen,
 reviewed SQL**, not an evolving model-derived CREATE statement. Restarts verify
 history without resetting data. This does not supply automatic model-to-SQL
 migration planning or authentication. Both examples remain public development
@@ -108,7 +108,7 @@ applications.
 
 ## Build and generate
 
-From the consolidated Flux repository root (Flux/UI/Nebula/PG sources are included
+From the consolidated Flux repository root (Flux/UI/Flux DB/PG sources are included
 under `packages/`; no sibling repositories are required):
 
 ```sh
@@ -156,7 +156,7 @@ actual cross-origin browser preflight/error handling. The test dispatcher is
 minimal; these are HTTP/Cmd integration tests, not a complete Flux UI test.
 
 `test_pg_wire.py` creates its **own disposable PostgreSQL container**, runs
-14 Nebula migration checks, then runs JS and Chromium generated-client checks.
+14 Flux DB migration checks, then runs JS and Chromium generated-client checks.
 Each target creates one round-trip row plus 24 concurrent fetch commands. The
 runner independently confirms **50 persisted rows** in PostgreSQL and clean
 shutdown, then removes only its own container/volume. IDs deliberately exceed

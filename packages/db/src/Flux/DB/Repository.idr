@@ -1,12 +1,12 @@
-module Data.PGRepository
+module Flux.DB.Repository
 
 import Idris2_pg
 import Data.PGTypes
-import Data.PGField
-import Data.PGRow
-import Data.PGTable
-import Data.PGQuery
-import Data.PGCrud as Crud
+import Flux.DB.Field
+import Flux.DB.Row
+import Flux.DB.Table
+import Flux.DB.Query
+import Flux.DB.Crud as Crud
 
 %default total
 
@@ -22,20 +22,20 @@ import Data.PGCrud as Crud
 ||| Deliberately HTTP-independent: every operation returns a plain
 ||| `IO (Either PGError _)`, no `Context`/status codes/`AppProg` - a
 ||| handler decides what a `Nothing`/`False`/`Left` becomes (a 404, a
-||| 500, ...). `Nebula.PG.dbIO` already lifts any of these into
-||| `AppProg` unchanged, the same way it already lifts `Data.PGCrud`'s
-||| own functions - no nebula-flux changes needed for this.
+||| 500, ...). `Flux.DB.PG.dbIO` already lifts any of these into
+||| `AppProg` unchanged, the same way it already lifts `Flux.DB.Crud`'s
+||| own functions - no flux-db-flux changes needed for this.
 |||
-||| `pk` is generic (matching `Data.PGCrud.findById`/`deleteById`'s own
+||| `pk` is generic (matching `Flux.DB.Crud.findById`/`deleteById`'s own
 ||| genericity over the same name) - any type with a `ToField` instance
-||| works (`Data.PGField` already has one for `String`, so a UUID/slug
+||| works (`Flux.DB.Field` already has one for `String`, so a UUID/slug
 ||| primary key stored as text works today with no new code needed
 ||| anywhere underneath this). Most apps still use `Integer`
-||| (`SERIAL`/`BIGSERIAL`) - `nebula-flux`'s `requireId` stays
+||| (`SERIAL`/`BIGSERIAL`) - `flux-db-flux`'s `requireId` stays
 ||| `Integer`-only for exactly that reason, not generalized speculatively
 ||| ahead of a real non-`Integer`-keyed consumer; an app that needs one
 ||| reads its own path param as whatever type it needs and calls
-||| `repo.findById`/`repo.deleteById` directly, no nebula-flux change
+||| `repo.findById`/`repo.deleteById` directly, no flux-db-flux change
 ||| required for that to already work.
 public export
 record Repository pk a ins where
@@ -47,12 +47,12 @@ record Repository pk a ins where
   query      : Query a -> IO (Either PGError (List a))
 
 ||| The default, real implementation: every operation delegates straight
-||| to `Data.PGCrud`'s generic CRUD helpers and `Data.PGQuery.selectQuery`,
+||| to `Flux.DB.Crud`'s generic CRUD helpers and `Flux.DB.Query.selectQuery`,
 ||| all bound to `db`. Free once a type has the `Table`/`FromRow`/`ToRow`/
 ||| `Insertable ins a` instances `%runElab derive [...]` already
 ||| generates - nothing repository-specific to derive.
 |||
-||| `Data.PGCrud` is imported qualified (`as Crud`) here specifically
+||| `Flux.DB.Crud` is imported qualified (`as Crud`) here specifically
 ||| because it exports top-level `findById`/`insert`/`update`/
 ||| `deleteById`, and `Repository` above declares fields with those
 ||| exact same names - real record-field accessors join a namespaced

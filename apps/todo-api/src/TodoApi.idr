@@ -1,7 +1,7 @@
 ||| A small Todo CRUD API demonstrating Flux (HTTP framework) wired up to
 ||| a real Postgres database via idris2-pg.
 |||
-||| Main uses an exclusive connection pool. Nebula.PG.dbIO runs repository
+||| Main uses an exclusive connection pool. Flux.DB.PG.dbIO runs repository
 ||| operations on bounded workers, leaving Flux's event loops responsive.
 |||
 ||| Kept separate from `Main` (which just loads config and starts the
@@ -12,7 +12,7 @@
 ||| Wires the LIVE handlers - `Handlers.ActiveRecord` (see that module's
 ||| own doc comment for why it's the one wired here). `Handlers.
 ||| TypedQuery` has unwired `listTodos`/`getTodo` alternates built on
-||| nebula's typed query builder instead - a side-by-side comparison,
+||| flux-db's typed query builder instead - a side-by-side comparison,
 ||| not part of this app's live API surface; see `test/src/Main.idr`'s
 ||| `queryApp` for where those are actually exercised.
 module TodoApi
@@ -23,7 +23,7 @@ import public Flux.Core.Middleware
 import Flux.Middleware.JSON
 import public Idris2_pg
 import public Data.PGTypes
-import public Data.PGTable
+import public Flux.DB.Table
 import public Models
 import public TodoRepository
 import public Handlers.ActiveRecord

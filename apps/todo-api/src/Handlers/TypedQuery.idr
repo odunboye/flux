@@ -1,15 +1,15 @@
-||| `listTodos`/`getTodo` reimplemented via nebula's typed query builder
-||| (`Data.PGQuery`'s `Column`/`Condition`/`Query`/`selectQuery`,
+||| `listTodos`/`getTodo` reimplemented via flux-db's typed query builder
+||| (`Flux.DB.Query`'s `Column`/`Condition`/`Query`/`selectQuery`,
 ||| `Models`'s derived `todoColumns`) instead of `Handlers.ActiveRecord`'s
 ||| hand-written-SQL/`findById` versions - a side-by-side comparison of
-||| nebula's two query layers on the same two operations, kept separate
+||| flux-db's two query layers on the same two operations, kept separate
 ||| from the live API surface (see `TodoApi.appRouter`, which wires
 ||| `Handlers.ActiveRecord`'s versions, not these) and exercised only in
 ||| `test/src/Main.idr`'s `queryApp`.
 |||
 ||| Only these two exist here, not all six `Handlers.ActiveRecord`
-||| handlers - `Data.PGQuery` is deliberately `SELECT`-only (see its own
-||| doc comment/nebula's README: no bulk `updateWhere`/`deleteWhere` by
+||| handlers - `Flux.DB.Query` is deliberately `SELECT`-only (see its own
+||| doc comment/flux-db's README: no bulk `updateWhere`/`deleteWhere` by
 ||| condition, not built yet), so `createTodo`/`updateTodo`/`toggleTodo`/
 ||| `deleteTodo` (all mutations) have no typed-query-builder equivalent
 ||| to write - `Handlers.ActiveRecord`'s versions are the only ones that
@@ -21,11 +21,11 @@ import public Flux.Core.HTTP
 import Flux.Middleware.JSON
 import public Idris2_pg
 import public Data.PGTypes
-import Data.PGField
-import Data.PGRow
-import public Data.PGTable
-import Data.PGQuery
-import Nebula.PG
+import Flux.DB.Field
+import Flux.DB.Row
+import public Flux.DB.Table
+import Flux.DB.Query
+import Flux.DB.PG
 import Models
 
 %default covering

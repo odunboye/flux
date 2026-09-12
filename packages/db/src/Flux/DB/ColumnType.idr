@@ -1,7 +1,7 @@
 ||| Maps an Idris type to the Postgres column type used when deriving
-||| `Table`'s `createTableSql` (`Derive.PGActiveRecord`).
+||| `Table`'s `createTableSql` (`Flux.DB.Derive.ActiveRecord`).
 |||
-||| Deliberately a separate typeclass from `Data.PGField`'s
+||| Deliberately a separate typeclass from `Flux.DB.Field`'s
 ||| `FromField`/`ToField`, not reusing them: a type can have a
 ||| well-defined wire encoding without one canonical SQL column type
 ||| (`Integer` decodes from `int2`/`int4`/`int8`/`numeric` text
@@ -18,7 +18,7 @@
 ||| means a consumer can add a `PGColumnType` instance for their own
 ||| type - an enum stored as `TEXT`, say - without touching this
 ||| library's derive code at all.
-module Data.PGColumnType
+module Flux.DB.ColumnType
 
 %default total
 

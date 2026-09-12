@@ -42,7 +42,7 @@ import System
 %default covering
 
 -- A second, test-only `App` wiring `Handlers.TypedQuery`'s `listTodos`/
--- `getTodo` (nebula's typed-query-builder versions) at the same paths
+-- `getTodo` (flux-db's typed-query-builder versions) at the same paths
 -- the real app uses - a separate `Router`/`App` value, never merged
 -- into `TodoApi.appRouter`, so this exists purely to compare its output
 -- against `Handlers.ActiveRecord`'s versions (wired in `TodoApi.
@@ -74,7 +74,7 @@ scenario st db application queryApplication = do
 
   -- get an id that's all-digit (so it passes requireId's digit check)
   -- but exceeds what a Postgres BIGINT/BIGSERIAL column can hold -
-  -- regression test for Nebula.PG.requireIntParam's range check: this
+  -- regression test for Flux.DB.PG.requireIntParam's range check: this
   -- must be rejected at the request boundary with a 400, not reach the
   -- database and surface as an opaque 500. Also state-independent.
   r9b <- run application (mkRequest GET "/todos/99999999999999999999999999")
@@ -89,10 +89,10 @@ scenario st db application queryApplication = do
   -- left.
   repositoryBehaviorChecks st application
 
-  -- Handlers.TypedQuery's listTodos/getTodo (nebula's typed-query-
+  -- Handlers.TypedQuery's listTodos/getTodo (flux-db's typed-query-
   -- builder versions) must agree with Handlers.ActiveRecord's, against
   -- whatever live data the behavioral pass above left behind - both
-  -- nebula query layers reading the same table, checked once against a
+  -- flux-db query layers reading the same table, checked once against a
   -- realistic post-mutation state rather than at several mid-pipeline
   -- points (the underlying claim - "both layers agree" - doesn't need
   -- more than one checkpoint to prove).
@@ -112,7 +112,7 @@ scenario st db application queryApplication = do
   -- Error redaction: a genuine DB-side error (not a client mistake)
   -- must return the generic public message, not the real Postgres
   -- error text (which can name real tables/columns/constraints) -
-  -- regression test for Nebula.PG.dbFail's log-and-redact policy.
+  -- regression test for Flux.DB.PG.dbFail's log-and-redact policy.
   -- Dropping the table out from under a live request forces a real
   -- SqlError ("relation \"todos\" does not exist") - the response body
   -- must not contain any of that, only the generic message. Last check

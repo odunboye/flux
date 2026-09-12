@@ -3,13 +3,13 @@
 A small Todo CRUD API demonstrating [Flux](../..) (an
 Idris2 HTTP framework) wired up to a real Postgres database via
 [idris2-pg](../../packages/postgres) (a from-scratch, primitive Postgres
-wire-protocol client, no `libpq`), through [nebula](../../packages/db)
+wire-protocol client, no `libpq`), through [flux-db](../../packages/db)
 (the derivable active-record layer built on top of idris2-pg - `Row`<->
 record mapping, generated CRUD, a typed query builder, and a generic
 repository pattern - see "Repository pattern" below) and
-[nebula-flux](../../packages/db-flux) (the glue lifting idris2-pg's own
+[flux-db-flux](../../packages/db-flux) (the glue lifting idris2-pg's own
 error type into Flux's `AppProg` - split into its own package so
-`nebula` itself has no Flux dependency).
+`flux-db` itself has no Flux dependency).
 
 ## Run it
 
@@ -101,7 +101,7 @@ curl -X DELETE localhost:8080/todos/1
 
 ## Row<->record mapping and CRUD
 
-`TodoApi.idr`'s `Todo` record uses [nebula](../../packages/db)'s
+`TodoApi.idr`'s `Todo` record uses [flux-db](../../packages/db)'s
 derivable "active-record" layer rather than hand-written `Row`
 decoding/SQL:
 
@@ -115,7 +115,7 @@ TodoTable = customTable Export (Just "todos") Nothing [("done", "false")]
 `FromRow`/`ToRow` generate `Row<->Todo` mapping per field (replacing what
 used to be a hand-written `rowToTodo`); `TodoTable` generates the table
 metadata and fixed SQL text `getTodo`/`createTodo`/`updateTodo`/
-`deleteTodo` now run through `Data.PGCrud`'s generic `findById`/`insert`/
+`deleteTodo` now run through `Flux.DB.Crud`'s generic `findById`/`insert`/
 `update`/`deleteById`, instead of each handler building its own SQL
 string. The `Just "todos"` override is required, not optional - the real
 Postgres table is `todos` (plural) while the Idris type is `Todo`
@@ -125,7 +125,7 @@ name) doesn't guess plurals.
 `TodoTable` also generates `createTableSql` - `Main.idr`/
 `test/src/Main.idr` both call `execCommand db (createTableSql {a = Todo})
 []` instead of running a hand-written `CREATE TABLE IF NOT EXISTS`
-string. `[("done", "false")]` is nebula's take on
+string. `[("done", "false")]` is flux-db's take on
 [Drift](https://github.com/simolus3/drift)'s `withDefault()` - a real
 `DEFAULT false` on `done` at the DB level (confirmed with `\d todos`:
 `done | boolean | not null | false`). It isn't load-bearing for
@@ -137,9 +137,9 @@ schema this table already had, and to prove the override is real.
 
 `insert` needs a value for `id` even though Postgres generates the real
 one (now `BIGSERIAL`, chosen by `createTableSql` to match `Integer`'s
-own pairing elsewhere in nebula - previously a hand-written `SERIAL`),
+own pairing elsewhere in flux-db - previously a hand-written `SERIAL`),
 so it takes a second, pk-less record instead of `Todo` itself.
-`nebula`'s `deriveInsertable` generates that record - and its
+`flux-db`'s `deriveInsertable` generates that record - and its
 `ToRow` instance, and the link back to `Todo` - in one line, so
 `TodoApi.idr` never hand-writes it:
 
@@ -158,7 +158,7 @@ against a raw `DB` any more, though - see "Repository pattern" below for
 what they actually go through, and why.
 
 `TodoUpdate` (the PUT body's shape) is generated the same way, via
-`nebula`'s more general `deriveSubset` - the include-list version of
+`flux-db`'s more general `deriveSubset` - the include-list version of
 what `deriveInsertable` does:
 
 ```idris
@@ -189,8 +189,8 @@ its derive's own source: a plain, untagged single-constructor record
 always takes this path for its one-and-only field, with no `Options`
 flag able to turn it off without also switching to sum-type-shaped
 tagging (`{"tag":...,"contents":...}`), which isn't the wire format we
-want either. `ObjectFromJSON` (now [nebula](../../packages/db)'s, not
-local to this project - see nebula's own README) is a from-scratch
+want either. `ObjectFromJSON` (now [flux-db](../../packages/db)'s, not
+local to this project - see flux-db's own README) is a from-scratch
 `FromJSON` derivation - pure JSON, no DB coupling - that always decodes
 as a plain object regardless of field count, built the same way (and
 composable the same way, as one more item in `deriveSubset`'s `derives`
@@ -208,17 +208,17 @@ manually purely to route around the same quirk.
 public export
 record TodoRepository where
   constructor MkTodoRepository
-  crud   : Repository Integer Todo NewTodo  -- nebula's Data.PGRepository
+  crud   : Repository Integer Todo NewTodo  -- flux-db's Flux.DB.Repository
   toggle : Integer -> IO (Either PGError (Maybe Todo))
 ```
 
-`crud` is [nebula](../../packages/db)'s generic `Data.PGRepository`
+`crud` is [flux-db](../../packages/db)'s generic `Flux.DB.Repository`
 (`findById`/`insert`/`update`/`deleteById`/`query`) - free once `Todo`
 has the `Table`/`FromRow`/`ToRow`/`Insertable NewTodo Todo` instances
 already derived above. `toggle` is this app's own domain-specific
-extension - a partial update (`SET done = NOT done`) nebula's generic
-CRUD has no primitive for - hand-written SQL decoded via nebula's
-exported `Data.PGCrud.decodeFirst`, the same "single optional row"
+extension - a partial update (`SET done = NOT done`) flux-db's generic
+CRUD has no primitive for - hand-written SQL decoded via flux-db's
+exported `Flux.DB.Crud.decodeFirst`, the same "single optional row"
 helper `findById`/`update` use internally, reused instead of duplicated.
 A handler looks like:
 
@@ -234,7 +234,7 @@ getTodo repo ctx = do
 
 Plain values, no `Context`/status codes/`AppProg` anywhere in
 `TodoRepository` itself - the handler decides a missing todo becomes a
-404, not the repository. `dbIO` (nebula-flux) lifts the result into
+404, not the repository. `dbIO` (flux-db-flux) lifts the result into
 `AppProg` the same way it already lifts every other `IO (Either PGError
 a)`-shaped call.
 
@@ -244,12 +244,12 @@ InMemoryRepository.idr` provides a second one - `IORef`-backed, zero
 Postgres connection - and both implementations are exercised through the
 exact same `RepositoryBehavior.repositoryBehaviorChecks` (see "Tests"
 below): the actual proof the pattern buys something (substitutability),
-not just a restructuring. See nebula's own README for
-`Data.PGRepository`'s design (why it's a record of functions, not an
+not just a restructuring. See flux-db's own README for
+`Flux.DB.Repository`'s design (why it's a record of functions, not an
 interface; why the primary key `pk` is generic, not hardcoded; the
 `withTransactionRepos` combinator for atomic multi-repository writes -
 `Todo` is a single-table model with no natural use for it yet, so it's
-only exercised in nebula's own test suite, not here).
+only exercised in flux-db's own test suite, not here).
 
 `Handlers/TypedQuery.idr` is deliberately **not** migrated to
 `TodoRepository` - it still takes a raw `DB` directly. It's already
@@ -260,19 +260,19 @@ needs to prove - a reasonable later cleanup, not done here.
 ## Two ways to query: active record vs. typed query builder
 
 `src/Handlers/` has two implementations of `listTodos`/`getTodo`, in
-separate files, demonstrating nebula's two query layers side by side on
+separate files, demonstrating flux-db's two query layers side by side on
 the same two operations:
 
 - **`Handlers/ActiveRecord.idr`** - the live version, wired into
-  `TodoApi.appRouter`. `getTodo` uses `Data.PGCrud`'s `findById`;
+  `TodoApi.appRouter`. `getTodo` uses `Flux.DB.Crud`'s `findById`;
   `listTodos` falls back to hand-written SQL decoded through the
-  derived `FromRow` instance, since `Data.PGCrud` has no generic "list
+  derived `FromRow` instance, since `Flux.DB.Crud` has no generic "list
   all" primitive (only by-pk `insert`/`findById`/`update`/`deleteById`).
   This file also has the other four handlers (`createTodo`/`updateTodo`/
   `toggleTodo`/`deleteTodo`) - see below for why they don't get a second
   version.
 - **`Handlers/TypedQuery.idr`** - `listTodos`/`getTodo` reimplemented via
-  nebula's typed query builder instead (`Data.PGQuery`'s `selectQuery`,
+  flux-db's typed query builder instead (`Flux.DB.Query`'s `selectQuery`,
   `Models`'s derived `todoColumns`):
   ```idris
   listTodos db ctx = do
@@ -285,9 +285,9 @@ the same two operations:
   responses against the same live data, including after mutations made
   through the active-record routes.
 
-Only `listTodos`/`getTodo` get two versions. `Data.PGQuery` is
+Only `listTodos`/`getTodo` get two versions. `Flux.DB.Query` is
 deliberately `SELECT`-only (no bulk `updateWhere`/`deleteWhere` by
-condition - see nebula's own README) - `createTodo`/`updateTodo`/
+condition - see flux-db's own README) - `createTodo`/`updateTodo`/
 `toggleTodo`/`deleteTodo` are mutations with no typed-query-builder
 equivalent to write, not an oversight.
 
@@ -311,7 +311,7 @@ table) regardless of what the app itself, or a previous test run, left
 behind. Connection details come from their own, separate env vars -
 `PG_TEST_HOST`/`PG_TEST_PORT`/`PG_TEST_USER`/`PG_TEST_PASSWORD`/
 `PG_TEST_DB` (`Config.loadTestConfig`), matching idris2-pg's and
-nebula's own test suites' convention - deliberately **not**
+flux-db's own test suites' convention - deliberately **not**
 `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE` (what `Main` itself
 reads via `Config.loadConfig`). The default *database name* is also
 deliberately different (`todo_api_test` here, `testdb` for the app) -
@@ -346,7 +346,7 @@ pack build test.ipkg
 `Handlers.ActiveRecord`'s versions on whatever live data the behavioral
 pass left behind (see "Two ways to query" above), and a check that a
 genuine DB-side error (the table dropped out from under a live request)
-comes back redacted to nebula-flux's generic public message, not the
+comes back redacted to flux-db-flux's generic public message, not the
 real Postgres error text.
 
 ### `inmemory-test.ipkg` - zero Postgres
@@ -389,7 +389,7 @@ bookkeeping via `test/src/TestHarness.idr` rather than duplicating it.
 
 The running app uses `pooledTodoRepository` with `Data.PGPool` defaults:
 8 exclusive connections, 128 queued acquirers, and a 5-second acquisition
-deadline. Database operations run on bounded workers through `Nebula.PG.dbIO`.
+deadline. Database operations run on bounded workers through `Flux.DB.PG.dbIO`.
 Set `FLUX_EVENT_LOOPS` to choose HTTP owner threads; the default is 2.
 
 Tests can still supply `pgTodoRepository db` or the in-memory implementation.

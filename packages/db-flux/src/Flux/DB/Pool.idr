@@ -1,12 +1,12 @@
-module Nebula.Pool
+module Flux.DB.Pool
 
 import public Data.PGPool
-import Data.PGQuery
-import Data.PGRepository
-import Data.PGCrud
-import Data.PGField
-import Data.PGRow
-import Data.PGTable
+import Flux.DB.Query
+import Flux.DB.Repository
+import Flux.DB.Crud
+import Flux.DB.Field
+import Flux.DB.Row
+import Flux.DB.Table
 import Idris2_pg
 
 %default covering

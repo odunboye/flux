@@ -7,21 +7,21 @@
 ||| TTImp` nor `elab-util` has any mechanism to declare new infix
 ||| operators (fixity + name) as a source-level `Decl` - so `==.`/`&&.`/
 ||| etc below are ordinary, hand-written top-level definitions. Only the
-||| per-table `Column` *values* (`Derive.PGActiveRecord.deriveColumns`)
+||| per-table `Column` *values* (`Flux.DB.Derive.ActiveRecord.deriveColumns`)
 ||| are actually code-generated.
 |||
 ||| Scope: `SELECT` only - `WHERE`/`ORDER BY`/`LIMIT`/`OFFSET`. No JOINs,
-||| no raw-SQL escape hatch, no `LIKE`, no migrations. `Data.PGCrud`'s
+||| no raw-SQL escape hatch, no `LIKE`, no migrations. `Flux.DB.Crud`'s
 ||| `insert`/`update`/`deleteById` (by primary key) are untouched by
 ||| this module; a bulk `updateWhere`/`deleteWhere` (by an arbitrary
 ||| condition, not just pk) would reuse `compileCondition` cheaply as a
 ||| later addition, not built here.
-module Data.PGQuery
+module Flux.DB.Query
 
 import Data.List
-import Data.PGField
-import Data.PGRow
-import Data.PGTable
+import Flux.DB.Field
+import Flux.DB.Row
+import Flux.DB.Table
 import Data.PGTypes
 import Data.PGValue
 import Idris2_pg
@@ -205,7 +205,7 @@ compileQuery {a} q =
 
 ||| Runs a `Query a`, decoding every row via `FromRow` - a decode
 ||| failure becomes `Left (ProtocolError "could not decode a row: ...")`,
-||| matching `Data.PGCrud`'s own existing decode-error convention.
+||| matching `Flux.DB.Crud`'s own existing decode-error convention.
 export
 selectQuery : (Table a, FromRow a) => DB -> Query a -> IO (Either PGError (List a))
 selectQuery {a} db q = do

@@ -1,4 +1,7 @@
-# nebula
+# Flux DB
+
+`flux-db` 0.3 is an outright package/module rename, not a compatibility layer.
+Read [MIGRATION.md](MIGRATION.md) before upgrading an existing database.
 
 A derivable active-record layer, typed query builder, and repository
 pattern for Idris2 apps - `Row`<->record mapping, generated CRUD, a
@@ -8,7 +11,7 @@ on [idris2-pg](../idris2-pg) today; idris2-pg itself stays a primitive
 Postgres wire-protocol client only - everything that maps a `Row` onto
 an application record type lives here instead, so it isn't tied to one
 backend forever (see "Backends" below). Deliberately has no dependency
-on any HTTP framework - see [nebula-flux](../nebula-flux) for the
+on any HTTP framework - see [flux-db-flux](../db-flux) for the
 [Flux](../..) adapter (`dbIO`/`query`/`command`/
 `decodeRows`/`decodeOne`/`requireId`), split into its own package so a
 consumer that only wants this active-record/query-builder layer isn't
@@ -21,7 +24,7 @@ the `Row`<->record decode/encode boilerplate for every table, the basic
 CRUD calls, and a `CREATE TABLE` for each type. None of that is
 app-specific - no schema, no routes, no handlers - so it belongs in a
 shared library instead of being re-derived per project. `todo-api`
-(`~/dev/idris2/playground/todo-api`) is the first real consumer; this
+(`../../apps/todo-api`) is the first real consumer; this
 library exists so the second one doesn't re-derive any of it.
 
 ## Active-record layer: deriving `Row`<->record mapping and CRUD
@@ -31,11 +34,11 @@ For the common case - a record type that maps one-to-one onto a table -
 CRUD calls, instead of hand-writing them per type:
 
 ```idris
-import Data.PGField
-import Data.PGRow
-import Data.PGTable
-import Derive.PGActiveRecord
-import Data.PGCrud
+import Flux.DB.Field
+import Flux.DB.Row
+import Flux.DB.Table
+import Flux.DB.Derive.ActiveRecord
+import Flux.DB.Crud
 
 %language ElabReflection
 
@@ -59,13 +62,13 @@ main = do
   closeDB db
 ```
 
-- **`FromRow`/`ToRow`** (`Data.PGRow`) decode/encode one field at a time,
-  via a `FromField`/`ToField` typeclass (`Data.PGField`) with instances
+- **`FromRow`/`ToRow`** (`Flux.DB.Row`) decode/encode one field at a time,
+  via a `FromField`/`ToField` typeclass (`Flux.DB.Field`) with instances
   for `String`/`Int`/`Integer`/`Double`/`Bool`, plus a blanket
   `FromField a => FromField (Maybe a)`/`ToField a => ToField (Maybe a)`
   that maps SQL `NULL` to `Nothing` (something none of idris2-pg's raw
   `Data.PGValue` getters do on their own).
-- **`Table`** (`Data.PGTable`) generates static per-type metadata - table
+- **`Table`** (`Flux.DB.Table`) generates static per-type metadata - table
   name, column list, primary-key column - plus the four fixed SQL
   strings the CRUD calls below run, computed once at compile time so
   they're literal, byte-identical every call (this matters: idris2-pg's
@@ -76,7 +79,7 @@ main = do
   `customTable Export (Just "users") Nothing []` in place of `Table` in
   the derive list, for a table name that doesn't match the type name.
 - **`Table` also generates `createTableSql`** - a real
-  `CREATE TABLE IF NOT EXISTS` - via `Data.PGColumnType`, a typeclass
+  `CREATE TABLE IF NOT EXISTS` - via `Flux.DB.ColumnType`, a typeclass
   mapping an Idris type to its column type
   (`String`/`Bool`/`Int`/`Integer`/`Double`, `Maybe a` for a nullable
   column; add your own instance for a type of your own, e.g. an enum
@@ -95,7 +98,7 @@ main = do
   mirrors [Drift](https://github.com/simolus3/drift)'s own two-defaults
   split for Dart/SQLite: `columnDefaults` is Drift's `withDefault()` - a
   real DB-level default; `deriveInsertable`'s pk-less companion record,
-  below, is nebula's equivalent of Drift's `clientDefault()` - an
+  below, is flux-db's equivalent of Drift's `clientDefault()` - an
   application-side default needing no schema support, since the caller
   always supplies every field of the companion type explicitly.)
   No migrations, and no other constraints (`UNIQUE`/`CHECK`/foreign
@@ -111,7 +114,7 @@ main = do
   works, same as if you'd hand-written the record) and a `FromJSON
   TodoUpdate` instance, in one line. `derives` can be anything
   `derive`-shaped - this module's own `FromRow`/`ToRow`, `elab-util`'s
-  `Show`/`Eq`, `json-simple`'s `FromJSON`/`ToJSON`, not just nebula's
+  `Show`/`Eq`, `json-simple`'s `FromJSON`/`ToJSON`, not just flux-db's
   own. Deliberately inclusive by default: something built from untrusted
   input (an HTTP request body, say) shouldn't silently gain a new
   accepted field just because the original record gained a column.
@@ -127,18 +130,18 @@ main = do
   `ToRow`/`Table` above: they declare a brand new record type (not just
   an instance for an existing one), so each is its own standalone
   `%runElab` line, not one more item in `derive`'s own list - see the
-  doc comments in `Derive.PGActiveRecord` for why, and for a real
+  doc comments in `Flux.DB.Derive.ActiveRecord` for why, and for a real
   Idris2-elaborator gotcha this surfaced (two reflection-declared
   records sharing a field name collide unless each is given its own
   nested namespace, same as a normal `record` block gets implicitly).
-- **`Data.PGCrud`** provides the actual CRUD calls, generic over any
+- **`Flux.DB.Crud`** provides the actual CRUD calls, generic over any
   `Table`/`FromRow`/`ToRow`/`Insertable` instance rather than
   per-type-generated: `insert`, `findById`, `update` (whole-record
   replace of every non-pk column), `deleteById`. "Not found" is
   `Right Nothing`/`Right False`, not an error. `findById`/`deleteById`
   don't take the target type as an argument, so a call site needs
   `{a = User}`.
-- **`deriveColumns`** + **`Data.PGQuery`** - a typed `SELECT` query
+- **`deriveColumns`** + **`Flux.DB.Query`** - a typed `SELECT` query
   builder, inspired by [Drift](https://github.com/simolus3/drift) (Dart/
   SQLite)'s `select(table)..where(...)..orderBy(...)..limit(...)`.
   `%runElab deriveColumns "User"` generates `UserColumns`/`userColumns`
@@ -170,14 +173,14 @@ yourself, same as always). This is meant for the common "one record, one
 table, basic CRUD plus simple filtering" case - anything more exotic
 still goes through idris2-pg's own `queryRows`/`execCommand` directly.
 
-## Repository pattern: `Data.PGRepository`
+## Repository pattern: `Flux.DB.Repository`
 
 A generic CRUD+query repository, bound to one `DB` connection - the same
 integration pattern every app gets for free, instead of handlers taking
 a raw `DB` directly:
 
 ```idris
-import Data.PGRepository
+import Flux.DB.Repository
 
 getUser : DB -> Integer -> IO (Either PGError (Maybe User))
 getUser db uid =
@@ -208,33 +211,33 @@ record Repository pk a ins where
 - **`pgRepository`** builds the real implementation for free, once a
   type has the `Table`/`FromRow`/`ToRow`/`Insertable ins a` instances
   `%runElab derive [...]` already generates - every field just delegates
-  to `Data.PGCrud`'s generic CRUD helpers and `Data.PGQuery.selectQuery`.
+  to `Flux.DB.Crud`'s generic CRUD helpers and `Flux.DB.Query.selectQuery`.
 - **HTTP-independent on purpose.** Every operation returns a plain
   `IO (Either PGError _)` - no `Context`/status codes/`AppProg`. A
-  handler (in [nebula-flux](../nebula-flux) or an app) decides what a
+  handler (in [flux-db-flux](../db-flux) or an app) decides what a
   `Nothing`/`False`/`Left` becomes (a 404, a 500, ...); the repository
-  just reports what happened. `Nebula.PG.dbIO` already lifts any of
+  just reports what happened. `Flux.DB.PG.dbIO` already lifts any of
   these into `AppProg` unchanged, the same way it already lifts
-  `Data.PGCrud`'s own functions - no `nebula-flux` changes were needed
+  `Flux.DB.Crud`'s own functions - no `flux-db-flux` changes were needed
   to add this.
-- **The primary key (`pk`) is generic**, matching `Data.PGCrud.findById`/
+- **The primary key (`pk`) is generic**, matching `Flux.DB.Crud.findById`/
   `deleteById`'s own genericity over the same name - any type with a
-  `ToField` instance works. `Data.PGField` already has one for `String`,
+  `ToField` instance works. `Flux.DB.Field` already has one for `String`,
   so a UUID/slug key stored as text works today with no new code needed
   anywhere underneath this. Most apps still use `Integer`
-  (`SERIAL`/`BIGSERIAL`) - `nebula-flux`'s `requireId` stays
+  (`SERIAL`/`BIGSERIAL`) - `flux-db-flux`'s `requireId` stays
   `Integer`-only for exactly that reason (not generalized speculatively
   ahead of a real non-`Integer`-keyed consumer); an app that needs one
   reads its own path param as whatever type it needs and calls
-  `repo.findById`/`repo.deleteById` directly - no `nebula-flux` change
+  `repo.findById`/`repo.deleteById` directly - no `flux-db-flux` change
   required for that to already work.
-- **An app's own domain-specific operations aren't here.** `Data.PGCrud`
+- **An app's own domain-specific operations aren't here.** `Flux.DB.Crud`
   has no "list all"/partial-update primitive, so an app needing e.g. a
   partial update builds its own hand-written-SQL extension on top of
-  this, reusing the now-exported `Data.PGCrud.decodeFirst` (the same
+  this, reusing the now-exported `Flux.DB.Crud.decodeFirst` (the same
   "decode a single optional row" helper `findById`/`update` use
   internally) instead of duplicating it - see `todo-api`'s
-  `TodoRepository.toggle` for a worked example. Nebula supplies the
+  `TodoRepository.toggle` for a worked example. Flux DB supplies the
   generic piece and this extension point; the domain-specific operation
   itself is each app's own.
 
@@ -269,7 +272,7 @@ transferOwnership db widgetId newOwnerId =
            -- either one rolls both back)
 ```
 
-Verified against real Postgres (`nebula/test/src/Main.idr`'s
+Verified against real Postgres (`test/src/Main.idr`'s
 `testTransaction`, exercising `Widget`/`Gadget` together) for both
 paths - reading through a SEPARATE connection from the one the
 transaction itself ran on, so the check can't be fooled by read-your-
@@ -286,14 +289,14 @@ with `txStatus` back to `Idle` afterward either way.
 - **No HTTP-framework glue in this package.** `dbIO`/`dbFail`/`query`/
   `command`/`decodeRows`/`decodeOne`/`requireId` - the functions that
   lift an `IO (Either PGError a)` call into a Flux handler - live in
-  [nebula-flux](../nebula-flux) instead, so a consumer that only wants
+  [flux-db-flux](../db-flux) instead, so a consumer that only wants
   `Row`<->record mapping, CRUD, or the typed query builder isn't forced
   to depend on Flux at all.
 
 ## Backends
 
-Built against [idris2-pg](../idris2-pg) today - `Table`/`Data.PGCrud`/
-`Data.PGQuery`'s `selectQuery`/`Data.PGRepository`'s `Repository` are all
+Built against [idris2-pg](../idris2-pg) today - `Table`/`Flux.DB.Crud`/
+`Flux.DB.Query`'s `selectQuery`/`Flux.DB.Repository`'s `Repository` are all
 typed against idris2-pg's `DB`/`PGError`/`Row`. SQLite support is planned
 next; the active-record/
 query-builder design above (typeclass-driven `FromRow`/`ToRow`/`Table`/
@@ -301,18 +304,18 @@ query-builder design above (typeclass-driven `FromRow`/`ToRow`/`Table`/
 idris2-pg-specific baked into the elaborator reflection) was kept
 deliberately backend-agnostic in shape for exactly this, but the actual
 multi-backend split (what stays shared vs. what becomes a
-`Nebula.SQLite`-style per-backend module) hasn't been designed yet - not
+`Flux.DB.SQLite`-style per-backend module) hasn't been designed yet - not
 speculatively built ahead of that work.
 
 ## Explicit SQL migrations (experimental)
 
-`Data.PGMigration` supplies `Migration` (`version`, `name`, `statements`) and
+`Flux.DB.Migration` supplies `Migration` (`version`, `name`, `statements`) and
 `runMigrations : PGConfig -> List Migration -> IO (Either PGError Nat)`.
 Pass the complete ordered migration history; the result counts newly applied
 versions. Versions must be strictly increasing positive BIGINTs.
 
 The runner opens a **dedicated connection**, takes a nonblocking database-wide
-session advisory lock, and checks `nebula_meta.migrations` against the supplied
+session advisory lock, and checks `flux_db_meta.migrations` against the supplied
 version/name/SHA-256 checksums. Missing or edited applied migrations fail
 closed. Each migration's SQL and history insertion share one transaction;
 a failure rolls back that migration, not earlier successful versions. Closing
@@ -325,7 +328,7 @@ CREATE [UNIQUE]/DROP INDEX, INSERT INTO, UPDATE and DELETE FROM. Each entry is
 one extended-protocol statement. Transaction control and multiple statements
 per entry are rejected. Leading comments, CTEs, nontransactional migrations,
 procedures and arbitrary session commands are unsupported. SQL remains trusted,
-reviewed application code: do not mutate `nebula_meta` or release the advisory
+reviewed application code: do not mutate `flux_db_meta` or release the advisory
 lock from a migration. Rollback covers PostgreSQL transactional effects, not
 external effects triggered by user-defined database code.
 
@@ -344,22 +347,21 @@ held-lock exclusion/recovery, invalid versions and transaction-control rejection
 Requires [pack](https://github.com/stefan-hoeck/idris2-pack).
 
 ```sh
-pack build nebula.ipkg
+# From the Flux repository root:
+pack --no-prompt build packages/db/flux-db.ipkg
 ```
 
 ## Running the tests
 
-Needs a real Postgres - connection details come from
-`PG_TEST_HOST`/`PG_TEST_PORT`/`PG_TEST_USER`/`PG_TEST_PASSWORD`/
-`PG_TEST_DB`, defaulting to `127.0.0.1:5432`/`testuser`/`testpass`/
-`testdb`:
+From the Flux root, run the combined gate:
 
 ```sh
-docker run -d --name nebula-test \
-  -e POSTGRES_USER=testuser -e POSTGRES_PASSWORD=testpass -e POSTGRES_DB=testdb \
-  -p 5432:5432 postgres:16
-
-cd test
-pack build test.ipkg
-./build/exec/nebula-test
+python3 tools/workspace.py test
 ```
+
+It builds `flux-db-test` and runs the repository/query/derivation/transaction
+suite against an owned disposable PostgreSQL database, followed by migration,
+metadata-cutover, generated-client and CLI/browser integration checks. Docker
+and the `postgres:16` image are required. The standalone repository executable
+uses `PG_TEST_HOST`, `PG_TEST_PORT`, `PG_TEST_USER`, `PG_TEST_PASSWORD` and
+`PG_TEST_DB`; point it only at a disposable test database.

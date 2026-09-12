@@ -15,13 +15,13 @@
 ||| which isn't what a single-field API body wants either.
 |||
 ||| This derivation is deliberately independent of `idris2-pg`'s
-||| `Derive.PGActiveRecord` - it's plain JSON, with no DB coupling at
+||| `Flux.DB.Derive.ActiveRecord` - it's plain JSON, with no DB coupling at
 ||| all - but is written the same way and is meant to compose with
 ||| `idris2-pg`'s `deriveSubset` the same way `FromRow`/`ToRow`/
 ||| `elab-util`'s `Show`/`Eq` do: pass `[ObjectFromJSON]` as `deriveSubset`'s
 ||| `derives` argument to get a companion type's JSON body decoded this
 ||| way instead of through `json-simple`'s own `FromJSON`.
-module ObjectFromJSON
+module Flux.DB.ObjectFromJSON
 
 import public JSON.Simple
 import Language.Reflection.Util
@@ -40,7 +40,7 @@ objVar : Name
 objVar = UN (Basic "obj")
 
 -- Chains `field {a=<field type>} obj "<field name>"` per field, via the
--- same Either-chaining shape as `Derive.PGActiveRecord`'s `FromRow` (and
+-- same Either-chaining shape as `Flux.DB.Derive.ActiveRecord`'s `FromRow` (and
 -- json-simple's own `Derive.FromJSON.Simple`'s `decFields`/`matchEither`
 -- - the exact logic that gets skipped for a single-field record there).
 buildBody : Name -> List (Name, TTImp) -> TTImp

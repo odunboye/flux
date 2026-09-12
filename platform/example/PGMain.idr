@@ -4,11 +4,11 @@ import Protocol
 import Config
 import Models
 import TodoRepository
-import Data.PGTable
-import Data.PGRepository
+import Flux.DB.Table
+import Flux.DB.Repository
 import Idris2_pg
-import Nebula.PG
-import Nebula.Pool
+import Flux.DB.PG
+import Flux.DB.Pool
 import System
 
 %default covering
