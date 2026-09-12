@@ -74,20 +74,39 @@ commit above.
   earlier wire/PG/migration tests and Flux regressions pass again.
 
 This is not completion of the platform. Endpoints remain public POST methods,
-with no recursive models or omittable fields. There is no complete Iris UI,
-identity system, migration CLI or deployment workflow. Client transport behavior
+with no recursive models or omittable fields. The complete todo Iris UI and
+repository-local project CLI are now implemented (see below). There is still no
+identity system or production deployment workflow. Client transport behavior
 and limits are inherited from Iris, not strengthened by these adapters.
 Existing todo-api entry points are unchanged; a separate PG example exercises
 its repositories. The underlying PG TLS authentication gap remains unresolved.
+
+## Iris application and project CLI checkpoint
+
+- `platform/crud/TodoUI.idr`: complete generated-client CRUD UI, keyset pages,
+  explicit loading/empty/validation/error states, edit/delete cancellation,
+  write serialization, lifecycle cancellation recovery without automatic write
+  replay, and reload persistence. IDs remain strings.
+- `./flux`: repository-local `new/doctor/generate/build/migrate/dev`, reviewed
+  starter registration in the canonical map, strict project configuration,
+  loopback static/RPC development serving and explicit disposable DB ownership.
+- Fresh-source acceptance creates/builds a new app, applies migrations twice,
+  exercises real Chromium UI flows and independently checks PostgreSQL.
+- Root CI's combined gate includes CLI unit tests and actual application
+  acceptance, not only raw generated-client commands.
+
+This is an initial macOS/Linux workspace CLI, not a published standalone SDK,
+watch/reload service, automatic migration planner or deployment system. The
+[application guide](../platform/crud/README.md) records operation and limitations.
 
 ## Workstreams and integration gates
 
 | Track | Next implementation | Completion gate |
 | --- | --- | --- |
-| Protocol/client | Full typed CRUD, collections/nullability implemented; next: additional wire types, transport hardening and Iris UI | Complete generated-client UI application |
-| Persistence | Explicit SQL runner and CRUD example bootstrap implemented; next: model-to-SQL planning, CLI and existing app integration | Repeatable fresh install and upgrade through the application workflow |
+| Protocol/client | Full typed CRUD and todo UI implemented; next: additional wire types and transport hardening | Broader protocol contracts and UI scenarios |
+| Persistence | Explicit SQL runner and CRUD example bootstrap implemented; migration application CLI implemented; next: model-to-SQL planning and existing app integration | Repeatable fresh install and upgrade through the application workflow |
 | Identity/security | Authenticated PG TLS; session/identity contract; endpoint and row ownership authorization | Trusted cert accepted; unknown CA/hostname/expiry rejected; cross-user access denied |
-| Developer tooling | CLI, portable project template, validated configuration, disposable local services | Fresh checkout through generate/build/test/deploy with no user-specific paths |
+| Developer tooling | Initial workspace CLI/template and disposable services implemented; next: standalone packaging, watch/reload and deployment | Fresh checkout through generate/build/test/deploy with no user-specific paths |
 | Operations | Request IDs, structured logging/metrics, pool wait metrics, readiness, deployment | Diagnose injected DB failures; CI and shutdown/restart tests |
 | Services | Durable jobs, realtime, uploads, email, caching | Each service has bounded resource use, recovery and authorization tests |
 

@@ -145,6 +145,7 @@ python3 -m unittest discover -s platform -p test_generator.py -v
 python3 platform/test_wire.py
 python3 platform/test_pg_wire.py
 python3 platform/test_crud.py
+python3 platform/test_app.py
 ```
 
 `test_wire.py` runs the same generated Idris client on native Chez/curl,
@@ -167,6 +168,11 @@ codecs, missing rows, invalid IDs/titles/cursors, two-page traversal over 55
 seed rows, independent DB verification, migration bootstrap and restart safety.
 Neither test touches existing application data.
 
+`test_app.py` additionally creates and builds an application in a fresh source
+copy through `./flux`, then operates the actual Iris DOM UI against PostgreSQL.
+See the [application and CLI guide](crud/README.md) for operation, coverage and
+explicit development-only limitations.
+
 Full CRUD regression reports are in `reports/crud/`; the first Idris/Iris
 slice is recorded in `reports/iris-client/`. Earlier Dart-based
 prototype records are archived under `reports/pre-iris/` and are **not evidence
@@ -176,10 +182,12 @@ for this client implementation**.
 
 - Authenticated PostgreSQL TLS: the underlying existing gap remains.
 - User identity/authorization, credential storage and row ownership.
-- Enums, optional/omittable fields, additional scalar types and a complete Iris UI.
-- Migration CLI/planning and integration into the existing todo-api entry point.
+- Enums, optional/omittable fields and additional scalar types.
+- Migration planning and integration into the existing todo-api entry point.
   The new CRUD example uses versioned bootstrap; the older one-method PG smoke
   example still creates its table directly.
-- Project CLI, deployment, platform observability, durable jobs and realtime.
+- Standalone CLI/SDK packaging, watch/reload, deployment, platform observability,
+  durable jobs and realtime. The initial repository-local application CLI and
+  complete generated-client todo UI are now implemented.
 
 See [the implementation plan](../design/PLATFORM_IMPLEMENTATION.md).

@@ -14,8 +14,9 @@ jobs:
         run: |
           python3 tools/workspace.py check
           python3 -m unittest discover -s tools -p test_workspace.py -v
-          bash -n tools/ci-linux.sh tools/ci-suite.sh
-          shellcheck tools/ci-linux.sh tools/ci-suite.sh
+          python3 -m unittest discover -s tools -p test_flux.py -v
+          bash -n tools/ci-linux.sh tools/ci-suite.sh flux
+          shellcheck tools/ci-linux.sh tools/ci-suite.sh flux
 
   # Imported nested workflows are not executed by GitHub. These independent
   # root jobs protect both Iris itself and its full-stack generated clients.

@@ -79,6 +79,16 @@ type = "local"
 path = "packages/db/test"
 ipkg = "test.ipkg"
 
+[custom.all.platform-crud-server]
+type = "local"
+path = "platform/crud"
+ipkg = "server.ipkg"
+
+[custom.all.platform-crud-ui]
+type = "local"
+path = "platform/crud"
+ipkg = "ui.ipkg"
+
 [custom.all.todo-api]
 type = "local"
 path = "apps/todo-api"

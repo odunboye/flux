@@ -84,13 +84,16 @@ main = do
   let cfg = { connectTimeoutMs := Just 5000, readTimeoutMs := Just 30000 } loaded
   Right _ <- runMigrations cfg migrations
     | Left err => putStrLn (displayError err) >> exitFailure
-  Right pool <- newPool defaultPoolConfig cfg
-    | Left err => putStrLn (displayError err) >> exitFailure
-  let repo = pooledTodoRepository pool
-  let api = MkApi (createTodo repo) (deleteTodo repo) (getTodo repo)
-                  (listTodos repo) (toggleTodo repo) (updateTodo repo)
-  let application = app |> useAlways corsAllowAll |> withErrorRenderer rpcErrorRenderer
-                        |> withRoutes (routes api)
   args <- getArgs
-  runProg (runServerArgs (runApp application) (drop 1 args))
-  closePool pool
+  if drop 1 args == ["--migrate-only"]
+    then putStrLn "Migrations applied."
+    else do
+      Right pool <- newPool defaultPoolConfig cfg
+        | Left err => putStrLn (displayError err) >> exitFailure
+      let repo = pooledTodoRepository pool
+      let api = MkApi (createTodo repo) (deleteTodo repo) (getTodo repo)
+                      (listTodos repo) (toggleTodo repo) (updateTodo repo)
+      let application = app |> useAlways corsAllowAll |> withErrorRenderer rpcErrorRenderer
+                            |> withRoutes (routes api)
+      runProg (runServerArgs (runApp application) (drop 1 args))
+      closePool pool

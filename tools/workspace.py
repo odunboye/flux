@@ -136,6 +136,7 @@ def test(manifest, without_db):
             ['pack', '--no-prompt'] + (['--cg', 'javascript'] if js else []) + ['build', file])
     try:
         run('workspace-unit', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_workspace.py'])
+        run('cli-unit', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_flux.py'])
         run('generator', [sys.executable, '-m', 'unittest', 'discover', '-s', 'platform', '-p', 'test_generator.py'])
         for example in ['example', 'crud']:
             run('generated-' + example, [sys.executable, 'platform/generate.py', f'platform/{example}/schema.json', '--out', f'platform/{example}', '--check'])
@@ -146,7 +147,7 @@ def test(manifest, without_db):
         for file in ['platform/example/example.ipkg', 'platform/example/pg-example.ipkg',
                      'platform/example/migrations.ipkg', 'platform/crud/server.ipkg']:
             build(file)
-        for file in ['platform/example/client-web-test.ipkg', 'platform/crud/client-test.ipkg']:
+        for file in ['platform/example/client-web-test.ipkg', 'platform/crud/client-test.ipkg', 'platform/crud/ui.ipkg']:
             build(file, js=True)
         run('iris-wire', [sys.executable, 'platform/test_wire.py'])
         if without_db:
@@ -154,6 +155,7 @@ def test(manifest, without_db):
         else:
             run('iris-pg-migrations', [sys.executable, 'platform/test_pg_wire.py'])
             run('iris-crud', [sys.executable, 'platform/test_crud.py'])
+            run('iris-app-cli', [sys.executable, 'platform/test_app.py'])
     finally:
         (reports / 'results.json').write_text(json.dumps(outcomes, indent=2) + '\n')
         print('Reports:', reports, flush=True)

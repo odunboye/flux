@@ -23,6 +23,21 @@ For the combined integration gate, first install the prerequisites in the
 python3 tools/workspace.py test
 ```
 
+## Run the Iris application
+
+```sh
+./flux doctor
+./flux build
+./flux dev --disposable-db --no-build
+# Open http://127.0.0.1:8090
+```
+
+This creates a disposable PostgreSQL database and removes it on exit. For
+persistent data, configure `PG*` explicitly and omit `--disposable-db`.
+The [application/CLI guide](platform/crud/README.md) covers `new`, `generate`,
+`build`, `migrate` and `dev`, plus the real browser/database acceptance tests.
+This is a public development demo, not an authenticated production application.
+
 ## HTTP server reference
 
 The existing `flux` package remains an HTTP/1.1 framework using `flux-async`.

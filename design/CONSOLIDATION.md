@@ -87,7 +87,9 @@ suite. Individual package builds remain available, for example:
 
 After changing package locations or IDs, edit `workspace.json`, run
 `python3 tools/workspace.py sync`, and rerun the checks. The workspace utility
-is developer tooling, **not** the future `flux new/dev/migrate` application CLI.
+remains workspace tooling. The separate repository-local `./flux` application
+CLI now implements `new`, `doctor`, `generate`, `build`, `migrate` and `dev`;
+see the [application guide](../platform/crud/README.md).
 
 ## Root CI coverage
 
@@ -98,7 +100,8 @@ pull requests and main pushes, in addition to the existing boundary/HTTP jobs:
   validation (`make check`), then all Playwright browser integration tests.
 - **generated-client-db**: the complete `workspace.py test` gate, including
   generated-output freshness, native/JS clients, Chromium, disposable PostgreSQL,
-  migrations and full CRUD. Database checks are not skipped.
+  migrations and full CRUD, plus fresh-source CLI project creation/build and
+  actual Iris UI acceptance against PostgreSQL. Database checks are not skipped.
 
 The old nested Iris workflow was removed; GitHub never executed it from inside
 `packages/ui`. Both root jobs install locked browser dependencies, audit them,
@@ -136,9 +139,13 @@ repositories and migrations remain in the database layer.
 ## Next platform gates
 
 CRUD, collections, explicit nullability, Iris client commands, keyset pagination,
-and migration-backed example startup are implemented and committed. Remaining:
+and migration-backed example startup are implemented and committed.
 
-1. A complete Iris UI using the generated client, plus application CLI/templates.
+The complete todo Iris UI and initial workspace application CLI/template are
+implemented and verified together. Remaining tooling includes standalone SDK
+packaging, watch/reload, migration planning and production deployment.
+
+1. Broaden the UI/project workflow beyond the reviewed todo starter.
 2. Authenticated PostgreSQL TLS, user identity, authorization and row ownership.
 3. Supported deployment, operational tooling, and reproducible release CI.
 4. Gradual public entry-module/package naming migration with compatibility tests.
