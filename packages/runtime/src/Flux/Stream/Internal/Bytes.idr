@@ -1,0 +1,121 @@
+-- Adapted from idris2-streams by Stefan Hoeck; see STREAMS_LICENSE.
+module Flux.Stream.Internal.Bytes
+
+import Data.Bits
+import Data.ByteString
+import Data.ByteVect
+import Derive.Prelude
+
+%default total
+%language ElabReflection
+
+public export
+0 SnocBytes : Type
+SnocBytes = SnocList ByteString
+
+public export
+0 Bytes : Type
+Bytes = List ByteString
+
+export
+concatSnoc : SnocBytes -> ByteString
+concatSnoc [<]  = empty
+concatSnoc [<x] = x
+concatSnoc sx   = fastConcat (sx <>> [])
+
+export
+nl : ByteString
+nl = singleton 0x0a
+
+ls : SnocBytes -> (n : Nat) -> ByteVect n -> (Maybe Bytes, ByteString)
+ls sb n bs = case breakNL bs of
+  MkBreakRes l1 0      b1 _  prf => (Just $ sb <>> [], BS l1 b1)
+  MkBreakRes l1 (S l2) b1 b2 prf =>
+    ls (sb :< BS l1 b1) (assert_smaller n l2) (tail b2)
+
+export
+splitNL : ByteString -> ByteString -> (Maybe Bytes, ByteString)
+splitNL x (BS n bs) =
+  case breakNL bs of
+    MkBreakRes l1 0      b1 _  prf => (Nothing, x <+> BS l1 b1)
+    MkBreakRes l1 (S l2) b1 b2 prf => ls [<x <+> BS l1 b1] l2 (tail b2)
+
+export
+breakLastNL : ByteString -> ByteString -> (Maybe ByteString, ByteString)
+breakLastNL x (BS n bs) =
+  case breakEnd (0x0a ==) bs of
+    MkBreakRes 0      l2 b1 b2 prf => (Nothing, x <+> BS l2 b2)
+    MkBreakRes (S l1) l2 b1 b2 prf => (Just (x <+> BS _ (init b1)), BS l2 b2)
+
+namespace UTF8
+  ||| The number of continuation bytes following a UTF-8 leading byte.
+  |||
+  ||| See [Wikipedia](https://en.wikipedia.org/wiki/UTF-8#Description)
+  ||| for a description of the magic numbers used in the implementation
+  ||| and the UTF-8 encoding in general.
+  export
+  continuationBytes : Bits8 -> Maybe Nat
+  continuationBytes b =
+    -- we use binary notation for the magic constants to make
+    -- them easily comparable with the values in the table on Wikipedia
+    if      (b .&. 0b1000_0000) == 0b0000_0000 then Just 0
+    else if (b .&. 0b1110_0000) == 0b1100_0000 then Just 1
+    else if (b .&. 0b1111_0000) == 0b1110_0000 then Just 2
+    else if (b .&. 0b1111_1000) == 0b1111_0000 then Just 3
+    else                                            Nothing
+
+  -- splits a bytestring at the last UTF-8 leading byte.
+  splitLeading :
+       {n : Nat}
+    -> (k : Nat)
+    -> ByteVect n
+    -> {auto 0 p : LTE k n}
+    -> (Maybe ByteString,ByteString)
+  splitLeading 0     x = (Nothing, BS _ x)
+  splitLeading (S k) x =
+    case continuationBytes (atNat x k) of
+      Nothing  => splitLeading k x
+      Just y   =>
+        if S k + y == n
+           then (nonEmpty $ BS _ x, empty)
+           else (nonEmpty $ BS _ $ take k x, BS _ $ drop k x)
+
+  ||| Breaks a list of byte vectors at the last incomplete UTF-8 codepoint
+  ||| The first list is a concatenation of all the complete UTF-8 strings,
+  ||| while the second list contains the last incomplete codepoint (in case
+  ||| of a valid UTF-8 string, the second list holds at most 3 bytes).
+  export
+  breakAtLastIncomplete : ByteString -> ByteString -> (Maybe ByteString, ByteString)
+  breakAtLastIncomplete pre cur =
+    let BS sz bv := pre <+> cur
+     in splitLeading sz bv
+
+--------------------------------------------------------------------------------
+-- Breaking at Substrings
+--------------------------------------------------------------------------------
+
+||| Result of splitting a byte string at a given substring
+public export
+data BSSRes : Type where
+  ||| Input was too short. Will be passed on as a whole.
+  TooShort : ByteString -> BSSRes
+
+  ||| Substring not found. `pst` is one shorter than the substring in question,
+  ||| because it might still end on a prefix of the substring.
+  NoSS     : (pre,pst : ByteString) -> BSSRes
+
+  ||| Substring was found between `pre` and `pst`.
+  SS       : (pre,pst : ByteString) -> BSSRes
+
+%runElab derive "BSSRes" [Show,Eq]
+
+export
+breakAtSS : (ss, cur : ByteString) -> BSSRes
+breakAtSS ss cur =
+  case size cur < size ss of
+    True  => TooShort cur
+    False => case breakAtSubstring ss cur of
+      (pre, BS 0 _) =>
+        let ln := S (size pre) `minus` size ss
+         in NoSS (take ln pre) (drop ln pre)
+      (pre, pst)    => SS pre (drop ss.size pst)
