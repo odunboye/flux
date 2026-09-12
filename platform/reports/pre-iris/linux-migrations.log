@@ -1,0 +1,15 @@
+PASS migration fresh install
+PASS migration replay is a no-op
+PASS migration upgrade applies only pending version
+PASS migration history drift rejected
+PASS database ahead of application rejected
+PASS failed migration reports failure
+PASS failed migration rolls back data and preserves existing rows
+PASS failed migration does not record its version
+PASS concurrent migration runner fails closed on held lock
+PASS migration succeeds after lock release and previous failure
+PASS duplicate migration versions rejected
+PASS transaction control rejected
+PASS multiple statements in an entry rejected
+PASS migration history remains usable after invalid SQL
+All migration checks passed

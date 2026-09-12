@@ -1,0 +1,7 @@
+package platform-example
+version = 0.1.0
+depends = flux-platform
+sourcedir = "."
+modules = ProtocolTypes, Protocol, Main
+main = Main
+executable = platform-example

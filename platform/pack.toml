@@ -1,0 +1,54 @@
+[custom.all.flux]
+type = "local"
+path = ".."
+ipkg = "flux.ipkg"
+
+[custom.all.flux-platform]
+type = "local"
+path = "."
+ipkg = "flux-platform.ipkg"
+
+[custom.all.iris]
+type = "local"
+path = "../../iris"
+ipkg = "iris.ipkg"
+
+[custom.all.flux-platform-client]
+type = "local"
+path = "."
+ipkg = "flux-platform-client.ipkg"
+
+[custom.all.todo-api]
+type = "local"
+path = "../../../playground/todo-api"
+ipkg = "todo-api.ipkg"
+
+[custom.all.idris2-pg]
+type = "local"
+path = "../../../libs/idris2-pg"
+ipkg = "idris2-pg.ipkg"
+
+[custom.all.idris2-pg-async]
+type = "local"
+path = "../../../libs/idris2-pg/async"
+ipkg = "idris2-pg-async.ipkg"
+
+[custom.all.idris2-docker]
+type = "local"
+path = "../../../libs/idris2-docker"
+ipkg = "idris2-docker.ipkg"
+
+[custom.all.nebula]
+type = "local"
+path = "../../../libs/nebula"
+ipkg = "nebula.ipkg"
+
+[custom.all.nebula-flux]
+type = "local"
+path = "../../../libs/nebula-flux"
+ipkg = "nebula-flux.ipkg"
+
+[custom.all.flux-async]
+type = "local"
+path = "../../../libs/idris2-flux-async"
+ipkg = "flux-async.ipkg"

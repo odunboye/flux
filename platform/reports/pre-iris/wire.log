@@ -1,0 +1,11 @@
+PASS generated Dart -> Idris -> Dart round trip
+PASS BIGINT identifier preserves exact decimal text
+PASS single-field model requires an object
+PASS client rejects invalid response field types
+PASS server rejects invalid request field types
+PASS server rejects malformed JSON
+PASS server rejects unsupported media type
+PASS typed domain error
+PASS server errors redact private details
+PASS malformed error envelope is rejected
+PASS generated endpoint server clean shutdown

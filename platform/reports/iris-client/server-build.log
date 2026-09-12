@@ -1,0 +1,15 @@
+[ info ] Found local config at
+         - /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+         - /Users/odunadeboye/dev/idris2/projects/flux/platform/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: platform-example
+[ build ] 3/3: Building Main (Main.idr)
+[ build ] Now compiling the executable: platform-example
+[ info ] Found local config at
+         - /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+         - /Users/odunadeboye/dev/idris2/projects/flux/platform/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: platform-pg-example
+[ build ] 3/3: Building PGMain (PGMain.idr)
+[ build ] Now compiling the executable: platform-pg-example
+[ build ] Warning: compiling hole Helper.unimplementedEncode

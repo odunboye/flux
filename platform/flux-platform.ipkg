@@ -1,0 +1,6 @@
+package flux-platform
+version = 0.1.0
+brief = "Experimental typed application platform for Flux"
+depends = flux
+sourcedir = "src"
+modules = Flux.Platform.Endpoint

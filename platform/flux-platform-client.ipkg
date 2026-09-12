@@ -1,0 +1,8 @@
+package flux-platform-client
+version = 0.1.0
+brief = "Generated RPC client support for Iris applications"
+depends = iris, json-simple
+sourcedir = "client/src"
+modules = Flux.Platform.Client
+        , Flux.Platform.Client.Web
+        , Flux.Platform.Client.Native

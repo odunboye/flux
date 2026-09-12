@@ -1,0 +1,31 @@
+[ info ] Found local config at
+         - /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+         - /Users/odunadeboye/dev/idris2/projects/flux/platform/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: platform-client-native-test
+[ build ] 3/4: Building ClientChecks (ClientChecks.idr)
+[ build ] 4/4: Building ClientNativeTest (ClientNativeTest.idr)
+[ build ] Now compiling the executable: platform-client-native-test
+[ info ] Found local config at
+         - /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+         - /Users/odunadeboye/dev/idris2/projects/flux/platform/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: platform-client-web-test
+[ build ] 4/4: Building ClientWebTest (ClientWebTest.idr)
+[ build ] Now compiling the executable: platform-client-web-test
+[ info ] Found local config at
+         - /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+         - /Users/odunadeboye/dev/idris2/projects/flux/platform/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: platform-example
+[ build ] 2/3: Building Protocol (Protocol.idr)
+[ build ] 3/3: Building Main (Main.idr)
+[ build ] Now compiling the executable: platform-example
+[ info ] Found local config at
+         - /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+         - /Users/odunadeboye/dev/idris2/projects/flux/platform/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: platform-pg-example
+[ build ] 3/3: Building PGMain (PGMain.idr)
+[ build ] Now compiling the executable: platform-pg-example
+[ build ] Warning: compiling hole Helper.unimplementedEncode
