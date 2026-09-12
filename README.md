@@ -41,6 +41,13 @@ pack --no-prompt build apps/landing/landing.ipkg
 Open **http://127.0.0.1:8080**. See the [site guide](apps/landing/README.md)
 for the design, server configuration and browser verification.
 
+## Learn Flux by use case
+
+The [examples guide](examples/README.md) walks through public HTTP APIs, typed
+JSON, middleware/health, generated contracts, PostgreSQL migrations, private
+accounts/tasks, Idris UI effects and native clients. Start with the small runnable
+recipes in `examples/src/Recipes/`, then follow the complete application.
+
 ## Run the Flux UI application
 
 ```sh

@@ -143,6 +143,8 @@ def test(manifest, without_db):
         run('generator', [sys.executable, '-m', 'unittest', 'discover', '-s', 'platform', '-p', 'test_generator.py'])
         for example in ['example', 'crud']:
             run('generated-' + example, [sys.executable, 'platform/generate.py', f'platform/{example}/schema.json', '--out', f'platform/{example}', '--check'])
+        build('examples/use-cases.ipkg')
+        run('example-use-cases', [sys.executable, 'examples/test_use_cases.py'])
         build('apps/landing/landing.ipkg')
         run('landing-browser', [sys.executable, 'apps/landing/test_site.py'])
         build('test/test.ipkg')

@@ -6,6 +6,7 @@
     "flux": "flux.ipkg",
     "flux-test": "test/test.ipkg",
     "flux-examples": "examples/examples.ipkg",
+    "flux-use-cases": "examples/use-cases.ipkg",
     "flux-landing": "apps/landing/landing.ipkg",
     "flux-runtime": "packages/runtime/flux-runtime.ipkg",
     "flux-ui": "packages/ui/flux-ui.ipkg",

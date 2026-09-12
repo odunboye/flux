@@ -89,6 +89,11 @@ type = "local"
 path = "packages/ui/examples/todo"
 ipkg = "flux-ui-todo.ipkg"
 
+[custom.all.flux-use-cases]
+type = "local"
+path = "examples"
+ipkg = "use-cases.ipkg"
+
 [custom.all.platform-crud-server]
 type = "local"
 path = "platform/crud"
