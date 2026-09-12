@@ -1,7 +1,7 @@
 # nebula-flux
 
 Glue lifting [nebula](../nebula)/[idris2-pg](../idris2-pg)'s
-`IO (Either PGError a)` calls into [Flux](../../projects/flux) (an
+`IO (Either PGError a)` calls into [Flux](../..) (an
 Idris2 HTTP framework)'s `AppProg`/`Handler` pipeline. `Nebula.PG` is the module
 (`Nebula.PG`) that used to live in `nebula` itself, split out into its
 own package so a consumer that only wants `nebula`'s active-record layer

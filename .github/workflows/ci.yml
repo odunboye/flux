@@ -6,6 +6,15 @@ on:
   pull_request:
 
 jobs:
+  workspace-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the consolidated package map and browser boundaries
+        run: |
+          python3 tools/workspace.py check
+          python3 -m unittest discover -s tools -p test_workspace.py -v
+
   # Compile the library and run the unit test suite (router, HTTP wire
   # parsing, JSON, middleware/readBody, logging, config, cookies,
   # sessions, static files - see README's "Running the tests"). No real

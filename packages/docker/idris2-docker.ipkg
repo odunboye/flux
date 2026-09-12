@@ -1,0 +1,19 @@
+package idris2-docker
+version = 0.1.0
+authors = "Odun Adeboye"
+license = "MIT"
+brief = "A small library for managing Docker containers from Idris2 - dev-workflow convenience (spin up a database, a queue, etc.), not a full Docker API client"
+readme = "README.md"
+
+-- packages to add to search path
+-- (base only - deliberately no new dependency beyond what every Idris2
+-- install already has)
+
+-- modules to install
+modules = Docker
+
+-- main file (i.e. file to load at REPL) - this is a library, not a
+-- standalone executable.
+main = Docker
+
+sourcedir = "src"

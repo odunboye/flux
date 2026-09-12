@@ -4,6 +4,10 @@ Status: in progress. The runtime checkpoint is complete; the application
 platform is a separate, substantially larger project. Do not describe plans,
 generated scaffolding, or an isolated endpoint as Serverpod feature parity.
 
+Source consolidation is now implemented as a modular Flux repository. See
+[the workspace/package map](CONSOLIDATION.md) for locations, preserved history,
+compatible package IDs and the combined verification command.
+
 ## Boundaries
 
 - Flux: transport, request lifecycle, routing, middleware, supervision.

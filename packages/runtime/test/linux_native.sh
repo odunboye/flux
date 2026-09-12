@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
-runtime=/workspace/libs/idris2-flux-async
-pg=/workspace/libs/idris2-pg
+runtime=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+pg="$runtime/../postgres"
 cc -O1 -g -Wall -Wextra -Werror -std=c11 -pthread -fsanitize=address,undefined -I"$runtime/c" "$runtime/c/flux_native.c" "$runtime/test/native_test.c" -o /tmp/flux-native-test
 /tmp/flux-native-test
 cc -O1 -g -Wall -Wextra -Werror -std=c11 -pthread -fsanitize=address,undefined -I"$runtime/c" "$runtime/c/flux_native.c" "$runtime/test/native_stress_test.c" -o /tmp/flux-native-stress

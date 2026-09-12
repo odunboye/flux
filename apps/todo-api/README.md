@@ -1,13 +1,13 @@
 # todo-api
 
-A small Todo CRUD API demonstrating [Flux](../../projects/flux) (an
+A small Todo CRUD API demonstrating [Flux](../..) (an
 Idris2 HTTP framework) wired up to a real Postgres database via
-[idris2-pg](../../libs/idris2-pg) (a from-scratch, primitive Postgres
-wire-protocol client, no `libpq`), through [nebula](../../libs/nebula)
+[idris2-pg](../../packages/postgres) (a from-scratch, primitive Postgres
+wire-protocol client, no `libpq`), through [nebula](../../packages/db)
 (the derivable active-record layer built on top of idris2-pg - `Row`<->
 record mapping, generated CRUD, a typed query builder, and a generic
 repository pattern - see "Repository pattern" below) and
-[nebula-flux](../../libs/nebula-flux) (the glue lifting idris2-pg's own
+[nebula-flux](../../packages/db-flux) (the glue lifting idris2-pg's own
 error type into Flux's `AppProg` - split into its own package so
 `nebula` itself has no Flux dependency).
 
@@ -35,7 +35,7 @@ Connection details come from the standard libpq env vars -
 
 `src/DevPostgres.idr`'s `ensureLocalPostgres` (used by both the app and
 its test suite, in place of a plain `connectDB`) wraps
-[idris2-docker](../../libs/idris2-docker), a general-purpose
+[idris2-docker](../../packages/docker), a general-purpose
 container-management library, with Postgres-specific glue: on startup, if
 `PGHOST` is local (`127.0.0.1`/`localhost`) and `docker` is installed and
 reachable, it creates the `todo-api-pg` container if it doesn't exist yet,
@@ -101,7 +101,7 @@ curl -X DELETE localhost:8080/todos/1
 
 ## Row<->record mapping and CRUD
 
-`TodoApi.idr`'s `Todo` record uses [nebula](../../libs/nebula)'s
+`TodoApi.idr`'s `Todo` record uses [nebula](../../packages/db)'s
 derivable "active-record" layer rather than hand-written `Row`
 decoding/SQL:
 
@@ -189,7 +189,7 @@ its derive's own source: a plain, untagged single-constructor record
 always takes this path for its one-and-only field, with no `Options`
 flag able to turn it off without also switching to sum-type-shaped
 tagging (`{"tag":...,"contents":...}`), which isn't the wire format we
-want either. `ObjectFromJSON` (now [nebula](../../libs/nebula)'s, not
+want either. `ObjectFromJSON` (now [nebula](../../packages/db)'s, not
 local to this project - see nebula's own README) is a from-scratch
 `FromJSON` derivation - pure JSON, no DB coupling - that always decodes
 as a plain object regardless of field count, built the same way (and
@@ -212,7 +212,7 @@ record TodoRepository where
   toggle : Integer -> IO (Either PGError (Maybe Todo))
 ```
 
-`crud` is [nebula](../../libs/nebula)'s generic `Data.PGRepository`
+`crud` is [nebula](../../packages/db)'s generic `Data.PGRepository`
 (`findById`/`insert`/`update`/`deleteById`/`query`) - free once `Todo`
 has the `Table`/`FromRow`/`ToRow`/`Insertable NewTodo Todo` instances
 already derived above. `toggle` is this app's own domain-specific

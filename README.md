@@ -1,9 +1,35 @@
-# flux
+# Flux — full-stack Idris applications
 
-An HTTP/1.1 framework for Idris2, using the local `flux-async` owned-task
-runtime. Request parsing, persistent connections, streaming responses,
-routing, and middleware are implemented in Idris. A small native shim
-provides socket readiness and standalone shutdown supervision.
+**Platform preview.** Flux brings its HTTP server and owned runtime, Iris UI,
+Nebula persistence/migrations, PostgreSQL transport/pooling, and generated Iris
+clients into one modular repository. Existing package IDs and imports remain
+compatible; this is not a production-readiness declaration.
+
+- `packages/runtime/`: owned tasks, sockets, streams and supervision.
+- `packages/ui/`: Iris widgets, application lifecycle and platform backends.
+- `packages/db/`, `packages/postgres/`, `packages/db-flux/`: persistence and PG integration.
+- `platform/`: shared protocols, generated server/client code and typed CRUD examples.
+- `apps/todo-api/`: database-backed application example.
+
+See the [workspace/package map](design/CONSOLIDATION.md) and
+[typed Iris client guide](platform/README.md). No sibling repositories or
+user-specific dependency paths are needed. Run `python3 tools/workspace.py check`
+to verify the package map and browser/server dependency boundary.
+
+For the combined integration gate, first install the prerequisites in the
+[workspace guide](design/CONSOLIDATION.md), then run:
+
+```sh
+python3 tools/workspace.py test
+```
+
+## HTTP server reference
+
+The existing `flux` package remains an HTTP/1.1 framework using `flux-async`.
+Request parsing, persistent connections, streaming responses, routing and
+middleware are implemented in Idris; a small native shim provides readiness
+and standalone shutdown supervision. The sections below document this server
+package, not every component of the full-stack preview.
 
 ## Install / build
 
@@ -429,7 +455,7 @@ exclusive database leases. Sharing one raw `DB` across requests is unsafe.
 Handler signatures such as `Async Poll es a` remain compatibility aliases
 for the new `Task es a`; no old scheduler is involved. Low-level socket and
 supervisor APIs changed. Use `Flux.Async.Server.serve` for embedded servers
-and explicit stop tasks. See the [runtime guide](../../libs/idris2-flux-async/README.md).
+and explicit stop tasks. See the [runtime guide](packages/runtime/README.md).
 
 ## Graceful shutdown
 

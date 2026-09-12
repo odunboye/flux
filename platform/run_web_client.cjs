@@ -14,7 +14,7 @@ const executable = mode === 'crud' ? 'crud/build/exec/platform-crud-client-test'
 const source = fs.readFileSync(path.join(__dirname, executable), 'utf8');
 
 async function browserTest() {
-  const iris = process.env.IRIS_ROOT || path.resolve(__dirname, '../../iris');
+  const iris = process.env.IRIS_ROOT || path.resolve(__dirname, '../packages/ui');
   const { chromium } = createRequire(path.join(iris, 'package.json'))('@playwright/test');
   const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html' });

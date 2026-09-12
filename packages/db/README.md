@@ -9,7 +9,7 @@ Postgres wire-protocol client only - everything that maps a `Row` onto
 an application record type lives here instead, so it isn't tied to one
 backend forever (see "Backends" below). Deliberately has no dependency
 on any HTTP framework - see [nebula-flux](../nebula-flux) for the
-[Flux](../../projects/flux) adapter (`dbIO`/`query`/`command`/
+[Flux](../..) adapter (`dbIO`/`query`/`command`/
 `decodeRows`/`decodeOne`/`requireId`), split into its own package so a
 consumer that only wants this active-record/query-builder layer isn't
 forced to pull in Flux and its own dependency tree too.
@@ -334,8 +334,8 @@ or CLI yet. Review SQL explicitly before applying it to an intended environment.
 The deployment role needs DDL permissions and access to the metadata schema.
 
 The first integration checks live in Flux's platform example:
-`../../projects/flux/platform/example/MigrationTests.idr`, run by
-`../../projects/flux/platform/test_pg_wire.py` against its own disposable DB.
+`../../platform/example/MigrationTests.idr`, run by
+`../../platform/test_pg_wire.py` against its own disposable DB.
 They cover fresh install, replay, upgrade, drift, rollback/history atomicity,
 held-lock exclusion/recovery, invalid versions and transaction-control rejection.
 

@@ -1,0 +1,5 @@
+[ info ] Found local config at /private/tmp/flux-consolidation-final/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: platform-crud-server
+[ build ] Now compiling the executable: platform-crud-server
+[ build ] Warning: compiling hole Helper.unimplementedEncode

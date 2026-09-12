@@ -1,0 +1,185 @@
+[
+  {
+    "name": "workspace-unit",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools",
+      "-p",
+      "test_workspace.py"
+    ],
+    "exit": 0,
+    "seconds": 0.13
+  },
+  {
+    "name": "generator",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "platform",
+      "-p",
+      "test_generator.py"
+    ],
+    "exit": 0,
+    "seconds": 0.19
+  },
+  {
+    "name": "generated-example",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "platform/generate.py",
+      "platform/example/schema.json",
+      "--out",
+      "platform/example",
+      "--check"
+    ],
+    "exit": 0,
+    "seconds": 0.05
+  },
+  {
+    "name": "generated-crud",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "platform/generate.py",
+      "platform/crud/schema.json",
+      "--out",
+      "platform/crud",
+      "--check"
+    ],
+    "exit": 0,
+    "seconds": 0.04
+  },
+  {
+    "name": "build-test-test",
+    "command": [
+      "pack",
+      "--no-prompt",
+      "build",
+      "test/test.ipkg"
+    ],
+    "exit": 0,
+    "seconds": 3.86
+  },
+  {
+    "name": "flux-regression",
+    "command": [
+      "./test/build/exec/flux-test"
+    ],
+    "exit": 0,
+    "seconds": 2.81
+  },
+  {
+    "name": "build-platform-example-client-native-test",
+    "command": [
+      "pack",
+      "--no-prompt",
+      "build",
+      "platform/example/client-native-test.ipkg"
+    ],
+    "exit": 0,
+    "seconds": 1.6
+  },
+  {
+    "name": "build-platform-example-example",
+    "command": [
+      "pack",
+      "--no-prompt",
+      "build",
+      "platform/example/example.ipkg"
+    ],
+    "exit": 0,
+    "seconds": 2.2
+  },
+  {
+    "name": "build-platform-example-pg-example",
+    "command": [
+      "pack",
+      "--no-prompt",
+      "build",
+      "platform/example/pg-example.ipkg"
+    ],
+    "exit": 0,
+    "seconds": 2.79
+  },
+  {
+    "name": "build-platform-example-migrations",
+    "command": [
+      "pack",
+      "--no-prompt",
+      "build",
+      "platform/example/migrations.ipkg"
+    ],
+    "exit": 0,
+    "seconds": 2.0
+  },
+  {
+    "name": "build-platform-crud-server",
+    "command": [
+      "pack",
+      "--no-prompt",
+      "build",
+      "platform/crud/server.ipkg"
+    ],
+    "exit": 0,
+    "seconds": 2.77
+  },
+  {
+    "name": "build-platform-example-client-web-test",
+    "command": [
+      "pack",
+      "--no-prompt",
+      "--cg",
+      "javascript",
+      "build",
+      "platform/example/client-web-test.ipkg"
+    ],
+    "exit": 0,
+    "seconds": 1.58
+  },
+  {
+    "name": "build-platform-crud-client-test",
+    "command": [
+      "pack",
+      "--no-prompt",
+      "--cg",
+      "javascript",
+      "build",
+      "platform/crud/client-test.ipkg"
+    ],
+    "exit": 0,
+    "seconds": 1.54
+  },
+  {
+    "name": "iris-wire",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "platform/test_wire.py"
+    ],
+    "exit": 0,
+    "seconds": 2.61
+  },
+  {
+    "name": "iris-pg-migrations",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "platform/test_pg_wire.py"
+    ],
+    "exit": 0,
+    "seconds": 9.39
+  },
+  {
+    "name": "iris-crud",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "platform/test_crud.py"
+    ],
+    "exit": 0,
+    "seconds": 6.97
+  }
+]

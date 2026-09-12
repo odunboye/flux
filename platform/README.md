@@ -108,7 +108,8 @@ applications.
 
 ## Build and generate
 
-From the Flux repository root (workspace sibling Iris/Nebula/PG sources required):
+From the consolidated Flux repository root (Iris/Nebula/PG sources are included
+under `packages/`; no sibling repositories are required):
 
 ```sh
 python3 platform/generate.py platform/example/schema.json --out platform/example
@@ -134,8 +135,9 @@ There is no Dart generator, Dart client, or Dart toolchain dependency.
 
 ## Verification
 
-Requires Python 3, pack/Idris2, Node.js with fetch, native curl, and Iris's
-installed Playwright/Chromium development dependencies. The PG test also
+Requires Python 3, pack/Idris2, Node.js with fetch, native curl, and
+Playwright/Chromium installed from `packages/ui/package-lock.json`
+(`cd packages/ui && npm ci`, then install Chromium from that directory). The PG test also
 requires Docker with a local `postgres:16` image. From the Flux root:
 
 ```sh
