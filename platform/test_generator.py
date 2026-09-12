@@ -45,6 +45,57 @@ class GeneratorTests(unittest.TestCase):
             with self.subTest(kind=kind), self.assertRaises(ValueError):
                 generate(schema)
 
+    def test_named_lists_and_nullable_types(self):
+        schema = copy.deepcopy(SCHEMA)
+        schema['models']['AContainer'] = {
+            'items': {'list': {'nullable': 'TodoResponse'}},
+            'nextId': {'nullable': 'string'},
+        }
+        files = generate(schema)
+        source = files['ProtocolTypes.idr']
+        self.assertLess(source.index('record TodoResponse'), source.index('record AContainer'))
+        self.assertIn('items : List (Maybe (TodoResponse))', source)
+        self.assertIn('nextId : Maybe (String)', source)
+        specs = json.loads(files['openapi.json'])['components']['schemas']
+        self.assertEqual(specs['AContainer']['required'], ['items', 'nextId'])
+        self.assertEqual(specs['AContainer']['properties']['items']['items']['anyOf'],
+                         [{'$ref': '#/components/schemas/TodoResponse'}, {'type': 'null'}])
+
+    def test_recursive_models_rejected(self):
+        for fields in [{'self': 'Recursive'}, {'children': {'list': 'Recursive'}}]:
+            schema = copy.deepcopy(SCHEMA)
+            schema['models']['Recursive'] = fields
+            with self.subTest(fields=fields), self.assertRaisesRegex(ValueError, 'recursive'):
+                generate(schema)
+        schema['models']['Recursive'] = {'other': 'Other'}
+        schema['models']['Other'] = {'back': {'nullable': 'Recursive'}}
+        with self.assertRaisesRegex(ValueError, 'recursive'):
+            generate(schema)
+
+    def test_invalid_composite_types(self):
+        for kind in [{'list': 'Missing'}, {'optional': 'string'},
+                     {'list': 'string', 'nullable': 'bool'}, {'nullable': {'nullable': 'string'}}]:
+            schema = copy.deepcopy(SCHEMA)
+            schema['models']['CreateTodoRequest']['title'] = kind
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                generate(schema)
+
+    def test_type_depth_bounded(self):
+        schema = copy.deepcopy(SCHEMA)
+        kind = 'string'
+        for _ in range(10):
+            kind = {'list': kind}
+        schema['models']['CreateTodoRequest']['title'] = kind
+        with self.assertRaisesRegex(ValueError, 'nesting'):
+            generate(schema)
+
+    def test_full_crud_schema(self):
+        schema = json.loads((ROOT / 'crud/schema.json').read_text())
+        files = generate(schema)
+        for name in ['createTodo', 'getTodo', 'listTodos', 'updateTodo', 'toggleTodo', 'deleteTodo']:
+            self.assertIn(f'{name} : {{msg : Type}} -> Client ->', files['Client.idr'])
+        self.assertEqual(len(json.loads(files['openapi.json'])['paths']), 6)
+
     def test_authentication_fails_closed(self):
         schema = copy.deepcopy(SCHEMA)
         schema['endpoints'][0]['access'] = 'authenticated'

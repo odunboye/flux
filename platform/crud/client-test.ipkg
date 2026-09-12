@@ -1,0 +1,7 @@
+package platform-crud-client-test
+version = 0.1.0
+depends = flux-platform-client
+sourcedir = "."
+modules = ProtocolTypes, Client, ClientTest
+main = ClientTest
+executable = platform-crud-client-test

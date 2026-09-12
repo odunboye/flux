@@ -9,4 +9,3 @@ import public Flux.Platform.Client
 export
 createTodo : {msg : Type} -> Client -> CreateTodoRequest -> (Either RpcError TodoResponse -> msg) -> Cmd msg
 createTodo client input = call client "/rpc/v1/todos/create" input
-

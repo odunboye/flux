@@ -30,6 +30,64 @@ def identifier(value, upper=False):
         raise ValueError(f'unsupported or reserved identifier: {value!r}')
 
 
+def type_refs(kind, models, depth=0):
+    if depth > 8:
+        raise ValueError('wire type nesting exceeds eight levels')
+    if isinstance(kind, str):
+        if kind in TYPES:
+            return set()
+        if kind in models:
+            return {kind}
+        raise ValueError(f'unknown wire type: {kind}')
+    if isinstance(kind, dict) and len(kind) == 1:
+        wrapper, inner = next(iter(kind.items()))
+        if wrapper in {'list', 'nullable'}:
+            if wrapper == 'nullable' and isinstance(inner, dict) and 'nullable' in inner:
+                raise ValueError('nested nullable types have an ambiguous wire representation')
+            return type_refs(inner, models, depth + 1)
+    raise ValueError('wire types must be string, bool, a named model, list, or nullable')
+
+
+def model_order(models):
+    visiting, visited, ordered = set(), set(), []
+
+    def visit(name):
+        if name in visiting:
+            raise ValueError('recursive wire models are not supported')
+        if name in visited:
+            return
+        visiting.add(name)
+        refs = set()
+        for kind in models[name].values():
+            refs.update(type_refs(kind, models))
+        for dependency in sorted(refs):
+            visit(dependency)
+        visiting.remove(name)
+        visited.add(name)
+        ordered.append(name)
+
+    for name in sorted(models):
+        visit(name)
+    return ordered
+
+
+def idris_type(kind):
+    if isinstance(kind, str):
+        return TYPES.get(kind, kind)
+    wrapper, inner = next(iter(kind.items()))
+    return ('List' if wrapper == 'list' else 'Maybe') + ' (' + idris_type(inner) + ')'
+
+
+def schema_type(kind):
+    if isinstance(kind, str):
+        if kind in TYPES:
+            return {'type': 'boolean' if kind == 'bool' else kind}
+        return {'$ref': '#/components/schemas/' + kind}
+    if 'list' in kind:
+        return {'type': 'array', 'items': schema_type(kind['list'])}
+    return {'anyOf': [schema_type(kind['nullable']), {'type': 'null'}]}
+
+
 def validate(schema):
     exact(schema, ['version', 'models', 'endpoints'], 'protocol')
     if type(schema['version']) is not int or schema['version'] != 1:
@@ -45,8 +103,8 @@ def validate(schema):
             raise ValueError('models require at least one named field')
         for field, kind in fields.items():
             identifier(field)
-            if not isinstance(kind, str) or kind not in TYPES:
-                raise ValueError('v1 supports required string/bool fields only')
+            type_refs(kind, models)
+    model_order(models)
     endpoints = schema['endpoints']
     if not isinstance(endpoints, list) or not endpoints:
         raise ValueError('endpoints must be a nonempty array')
@@ -75,16 +133,16 @@ def wire_types(schema, digest):
     # This module is shared by both targets. Never import Flux/PG/native runtime
     # here: Iris browser builds must depend only on portable JSON codecs.
     lines = header('ProtocolTypes', digest) + ['import public JSON.Simple', '', '%default covering', '']
-    for name, fields in sorted(schema['models'].items()):
-        fields = sorted(fields.items())
+    for name in model_order(schema['models']):
+        fields = sorted(schema['models'][name].items())
         lines += ['public export', f'record {name} where', f'  constructor Mk{name}']
-        lines += [f'  {field} : {TYPES[kind]}' for field, kind in fields]
+        lines += [f'  {field} : {idris_type(kind)}' for field, kind in fields]
         pairs = ', '.join(f'("{field}", toJSON v.{field})' for field, _ in fields)
         lines += ['', 'export', f'ToJSON {name} where', f'  toJSON v = JObject [{pairs}]',
                   '', 'export', f'FromJSON {name} where',
                   f'  fromJSON = withObject "{name}" $ \\obj =>',
                   f'    Mk{name} <$> ' + ' <*> '.join(f'field obj "{field}"' for field, _ in fields), '']
-    return '\n'.join(lines) + '\n'
+    return '\n'.join(lines).rstrip() + '\n'
 
 
 def server(schema, digest):
@@ -100,7 +158,7 @@ def server(schema, digest):
     for ep in endpoints:
         lines += [f'  |> post "{ep["path"]}" (rpcHandler api.{ep["name"]})',
                   f'  |> options_ "{ep["path"]}" preflight']
-    return '\n'.join(lines) + '\n'
+    return '\n'.join(lines).rstrip() + '\n'
 
 
 def client(schema, digest):
@@ -111,12 +169,12 @@ def client(schema, digest):
         lines += ['export',
                   f"{ep['name']} : {{msg : Type}} -> Client -> {ep['request']} -> (Either RpcError {ep['response']} -> msg) -> Cmd msg",
                   f"{ep['name']} client input = call client \"{ep['path']}\" input", '']
-    return '\n'.join(lines) + '\n'
+    return '\n'.join(lines).rstrip() + '\n'
 
 
 def openapi(schema, digest):
     models = {name: {'type': 'object', 'required': sorted(fields),
-                     'properties': {field: {'type': 'boolean' if kind == 'bool' else kind}
+                     'properties': {field: schema_type(kind)
                                     for field, kind in sorted(fields.items())}}
               for name, fields in sorted(schema['models'].items())}
     def ref(name):

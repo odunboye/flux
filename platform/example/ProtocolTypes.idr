@@ -34,4 +34,3 @@ export
 FromJSON TodoResponse where
   fromJSON = withObject "TodoResponse" $ \obj =>
     MkTodoResponse <$> field obj "done" <*> field obj "id" <*> field obj "title"
-

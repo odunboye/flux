@@ -7,10 +7,11 @@ const http = require('node:http');
 const { createRequire } = require('node:module');
 
 const [base, mode = 'smoke', target = 'node'] = process.argv.slice(2);
-if (!base || !['smoke', 'pooled'].includes(mode) || !['node', 'browser'].includes(target)) {
-  throw new Error('usage: node run_web_client.cjs BASE_URL [smoke|pooled] [node|browser]');
+if (!base || !['smoke', 'pooled', 'crud'].includes(mode) || !['node', 'browser'].includes(target)) {
+  throw new Error('usage: node run_web_client.cjs BASE_URL [smoke|pooled|crud] [node|browser]');
 }
-const source = fs.readFileSync(path.join(__dirname, 'example/build/exec/platform-client-web-test'), 'utf8');
+const executable = mode === 'crud' ? 'crud/build/exec/platform-crud-client-test' : 'example/build/exec/platform-client-web-test';
+const source = fs.readFileSync(path.join(__dirname, executable), 'utf8');
 
 async function browserTest() {
   const iris = process.env.IRIS_ROOT || path.resolve(__dirname, '../../iris');

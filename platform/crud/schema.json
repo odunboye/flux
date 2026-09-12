@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "models": {
+    "CreateTodoRequest": {"title": "string"},
+    "TodoView": {"id": "string", "title": "string", "done": "bool"},
+    "TodoIdRequest": {"id": "string"},
+    "UpdateTodoRequest": {"id": "string", "title": "string", "done": "bool"},
+    "FindTodoResponse": {"todo": {"nullable": "TodoView"}},
+    "DeleteTodoResponse": {"deleted": "bool"},
+    "ListTodosRequest": {"afterId": {"nullable": "string"}},
+    "ListTodosResponse": {"todos": {"list": "TodoView"}, "nextId": {"nullable": "string"}}
+  },
+  "endpoints": [
+    {"name": "createTodo", "path": "/rpc/v1/todos/create", "request": "CreateTodoRequest", "response": "TodoView", "access": "public"},
+    {"name": "getTodo", "path": "/rpc/v1/todos/get", "request": "TodoIdRequest", "response": "FindTodoResponse", "access": "public"},
+    {"name": "listTodos", "path": "/rpc/v1/todos/list", "request": "ListTodosRequest", "response": "ListTodosResponse", "access": "public"},
+    {"name": "updateTodo", "path": "/rpc/v1/todos/update", "request": "UpdateTodoRequest", "response": "FindTodoResponse", "access": "public"},
+    {"name": "toggleTodo", "path": "/rpc/v1/todos/toggle", "request": "TodoIdRequest", "response": "FindTodoResponse", "access": "public"},
+    {"name": "deleteTodo", "path": "/rpc/v1/todos/delete", "request": "TodoIdRequest", "response": "DeleteTodoResponse", "access": "public"}
+  ]
+}
