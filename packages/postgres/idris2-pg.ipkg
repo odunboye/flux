@@ -1,0 +1,73 @@
+package idris2-pg
+version = 0.1.0
+authors = "Odun Adeboye"
+-- maintainers =
+license = "MIT"
+brief = "A from-scratch PostgreSQL wire-protocol client (no libpq)"
+readme = "README.md"
+homepage = "https://github.com/odunboye/idris2-pg"
+sourceloc = "https://github.com/odunboye/idris2-pg"
+bugtracker = "https://github.com/odunboye/idris2-pg/issues"
+
+-- the Idris2 version required (e.g. langversion >= 0.5.1)
+-- langversion
+
+-- packages to add to search path
+ depends = network
+        ,  elab-util
+        ,  contrib
+
+-- modules to install
+prebuild = "make native"
+
+modules = Network.Deadline
+        , Network.Core
+        , Network.RawSocket
+        , Network.Timeout
+        , Network.TLSWire
+        , Network.TLSHandshake
+        , Network.TLS
+        , Data.PGTypes
+        , Data.PGJson
+        , Data.Utf8
+        , Crypto.MD5
+        , Crypto.SHA256
+        , Crypto.SCRAM
+        , Crypto.Curve25519
+        , Crypto.P256
+        , Crypto.ChaCha20
+        , Crypto.Poly1305
+        , Crypto.ChaCha20Poly1305
+        , Crypto.HKDF
+        , Helper
+        , Data.PGBinary
+        , Data.PGValue
+        , Idris2_pg
+
+-- main file (i.e. file to load at REPL)
+-- main =
+
+-- name of executable
+-- executable =
+-- opts =
+sourcedir = "src"
+-- builddir =
+-- outputdir =
+
+-- script to run before building
+-- prebuild =
+
+-- script to run after building
+-- postbuild =
+
+-- script to run after building, before installing
+-- preinstall =
+
+-- script to run after installing
+-- postinstall =
+
+-- script to run before cleaning
+-- preclean =
+
+-- script to run after cleaning
+-- postclean =
