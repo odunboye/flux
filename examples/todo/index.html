@@ -4,70 +4,8 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Iris Todo — Web</title>
-  <style>
-    /* Base reset — Iris injects its own stylesheet via irisCSS */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; }
-
-    /* Page chrome */
-    body {
-      background: #0d1117;
-      color: #c9d1d9;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 24px 16px 32px;
-    }
-
-    header {
-      width: 100%;
-      max-width: 880px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    header h1 { font-size: 1.1rem; font-weight: 600; color: #f0f6fc; }
-    .badge {
-      font-size: 0.7rem;
-      background: #21262d;
-      border: 1px solid #30363d;
-      border-radius: 12px;
-      padding: 2px 8px;
-      color: #8b949e;
-    }
-    .spacer { flex: 1; }
-    .hint   { font-size: 0.75rem; color: #6e7681; }
-
-    /* ── The Iris app mounts here ─────────────────────────────────────── */
-    #iris-app {
-      width: 100%;
-      max-width: 880px;
-      min-height: 400px;
-    }
-
-    footer {
-      margin-top: 28px;
-      font-size: 0.72rem;
-      color: #6e7681;
-      text-align: center;
-      line-height: 2;
-    }
-    footer a { color: #58a6ff; text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
-    kbd {
-      display: inline-block;
-      padding: 1px 5px;
-      font-size: 0.7rem;
-      font-family: monospace;
-      background: #21262d;
-      border: 1px solid #30363d;
-      border-radius: 4px;
-      color: #c9d1d9;
-    }
-  </style>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'"/>
+  <link rel="stylesheet" href="web.css"/>
 </head>
 <body>
 
@@ -80,7 +18,7 @@
 
   <!-- Iris mounts the widget tree here via document.getElementById("iris-app") -->
   <div id="iris-app">
-    <div style="color:#6e7681;padding:20px">Loading…</div>
+    <div class="loading">Loading…</div>
   </div>
 
   <footer>
@@ -90,10 +28,10 @@
     <kbd>d</kbd> delete &nbsp;
     <kbd>Esc</kbd> cancel
     <br/>
-    <strong style="color:#c9d1d9">Write once, run anywhere:</strong>
-    the same <code style="color:#58a6ff">IrisApp</code> value — one call to
-    <code style="color:#58a6ff">runTUI</code> for terminal, one call to
-    <code style="color:#58a6ff">runWeb</code> for browser.
+    <strong>Write once, run anywhere:</strong>
+    the same <code>IrisApp</code> value — one call to
+    <code>runTUI</code> for terminal, one call to
+    <code>runWeb</code> for browser.
     <br/>
     Built with
     <a href="https://github.com/idris-lang/Idris2" target="_blank">Idris2</a>.

@@ -21,6 +21,8 @@ test('DOM app preserves native input behavior and accessible output', async ({ p
   await page.keyboard.press('Enter');
   await expect(page.locator('#iris-app')).toContainText('browser ordered task');
   await expect(page.locator('[role=progressbar]')).toHaveAttribute('aria-valuenow');
+  expect(await page.locator('style, [style]').count()).toBe(0);
+  expect(await page.locator('[data-iris-style]').count()).toBe(0);
 });
 
 test('Canvas app exposes a keyboard and screen-reader text control', async ({ page }) => {
@@ -37,6 +39,8 @@ test('Canvas app exposes a keyboard and screen-reader text control', async ({ pa
   await expect(input).toHaveValue('canvas accessible task');
   await page.keyboard.press('Enter');
   await expect(input).toHaveCount(0);
+  expect(await page.locator('style, [style]').count()).toBe(0);
+  expect(await page.locator('[data-iris-style]').count()).toBe(0);
 });
 
 test('browser history produces ordered typed lifecycle events without errors', async ({ page }) => {

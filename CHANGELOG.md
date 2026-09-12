@@ -7,6 +7,9 @@ Versioning within the normal compatibility limits of a pre-1.0 release.
 
 ### Added
 
+- Strict Web and Canvas Content Security Policy support using constructed
+  stylesheets, with no generated style elements, style attributes, or inline
+  scripts in the Todo browser and Capacitor hosts.
 - General-purpose clipped scroll view and wrapped-text widgets across DOM,
   Canvas, and terminal renderers, including transformed Canvas hit testing.
 - Cancellable browser HTTP retries with bounded exponential backoff.

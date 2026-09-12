@@ -68,15 +68,16 @@ import Iris.App.EventWire
 
 -- ─── JS FFI ──────────────────────────────────────────────────────────────────
 
--- Inject a <style> tag into <head>
-%foreign "javascript:lambda: (css, _w) => { const s=document.createElement('style'); s.textContent=css; document.head.appendChild(s); }"
+-- Install static and generated styles through the CSSOM. Constructed
+-- stylesheets avoid style elements and style attributes under a strict CSP.
+%foreign "javascript:lambda: (css, _w) => { if(!globalThis.__irisStyleSheet){const sheet=new CSSStyleSheet();sheet.replaceSync(css);document.adoptedStyleSheets=[...document.adoptedStyleSheets,sheet];globalThis.__irisStyleSheet=sheet;globalThis.__irisStyleRules=new Map();globalThis.__irisApplyStyles=(root)=>{root.querySelectorAll('[data-iris-style]').forEach(el=>{const value=el.dataset.irisStyle;let cls=globalThis.__irisStyleRules.get(value);if(!cls){cls='iris-dyn-'+globalThis.__irisStyleRules.size;sheet.insertRule('.'+cls+'{'+value+'}',sheet.cssRules.length);globalThis.__irisStyleRules.set(value,cls);}el.classList.add(cls);el.removeAttribute('data-iris-style');});};} }"
 prim_injectCSS : String -> PrimIO ()
 
 -- Set the innerHTML of #iris-app, preserving real browser focus and
 -- text selection across the replace - see this module's doc comment
 -- for why that's necessary, not optional, once any `WInput` is a real
 -- (non-readonly) field.
-%foreign "javascript:lambda: (html, _w) => { const el=document.getElementById('iris-app'); if(!el) return; let focusedId=null, selStart=0, selEnd=0; const active=document.activeElement; if(active && el.contains(active) && active.tagName==='INPUT' && active.id){ focusedId=active.id; try{ selStart=active.selectionStart||0; selEnd=active.selectionEnd||0; }catch(e){} } el.innerHTML=html; if(focusedId){ const ne=document.getElementById(focusedId); if(ne){ ne.focus(); try{ ne.setSelectionRange(selStart, selEnd); }catch(e){} } } }"
+%foreign "javascript:lambda: (html, _w) => { const el=document.getElementById('iris-app'); if(!el) return; let focusedId=null, selStart=0, selEnd=0; const active=document.activeElement; if(active && el.contains(active) && active.tagName==='INPUT' && active.id){ focusedId=active.id; try{ selStart=active.selectionStart||0; selEnd=active.selectionEnd||0;}catch(e){} } el.innerHTML=html; if(globalThis.__irisApplyStyles)globalThis.__irisApplyStyles(el); if(focusedId){const ne=document.getElementById(focusedId);if(ne){ne.focus();try{ne.setSelectionRange(selStart,selEnd);}catch(e){}}} }"
 prim_setHTML : String -> PrimIO ()
 
 -- Set up ONE ordered event queue, then attach the keyboard listener.
@@ -227,7 +228,7 @@ renderLoop app modelRef quitRef control htmlRef idMapRef inputMapRef = do
   if quit
     then do
       teardownQueues
-      setHTML "<div style='padding:24px;color:#3fb950;font-size:1.2em'>👋 Bye! Refresh to restart.</div>"
+      setHTML "<div data-iris-style='padding:24px;color:#3fb950;font-size:1.2em'>👋 Bye! Refresh to restart.</div>"
     else do
       -- drain input, in true chronological order (see drainAll's doc comment)
       drainAll app modelRef quitRef control idMapRef inputMapRef

@@ -38,7 +38,17 @@ colorToCSS ILightYellow  = "#e3b341"
 colorToCSS IDarkBlue     = "#1f6feb"
 colorToCSS IDarkGray     = "#6e7681"
 
--- ─── Style → inline CSS ──────────────────────────────────────────────────────
+-- ─── Style declarations materialized into runtime stylesheet classes ────────
+
+styleAttr : String -> String
+styleAttr css = " data-iris-style='" ++ concatMap attrChar (unpack css) ++ "'"
+  where
+    attrChar : Char -> String
+    attrChar '&' = "&amp;"
+    attrChar '<' = "&lt;"
+    attrChar '>' = "&gt;"
+    attrChar '\'' = "&#39;"
+    attrChar char = pack [char]
 
 styleToCSS : Style -> String
 styleToCSS s =
@@ -85,7 +95,7 @@ renderProgress : Double -> String
 renderProgress frac =
   let pct = show (cast {to=Int} (frac * 100.0))
   in "<div class='iris-progress' role='progressbar' aria-label='Progress' aria-valuemin='0' aria-valuemax='100' aria-valuenow='" ++ pct ++ "'>" ++
-     "<div class='iris-progress-bar' style='width:" ++ pct ++ "%'></div>" ++
+     "<div class='iris-progress-bar'" ++ styleAttr ("width:" ++ pct ++ "%;") ++ "></div>" ++
      "<span class='iris-progress-label' aria-hidden='true'>" ++ pct ++ "%</span>" ++
      "</div>"
 
@@ -164,21 +174,21 @@ renderHTML : Widget msg -> RenderState -> IORef (List (Nat, msg))
 renderHTML (WText s str) _ _ _ = do
   let css = styleToCSS s ++ flexStyle s
   case s.label of
-    Nothing => pure $ "<span style='" ++ css ++ "'>" ++ escapeHTML str ++ "</span>"
+    Nothing => pure $ "<span" ++ styleAttr css ++ ">" ++ escapeHTML str ++ "</span>"
     Just t  => pure $
-      "<div style='position:relative;padding-top:20px;" ++ css ++ "'>" ++
+      "<div" ++ styleAttr ("position:relative;padding-top:20px;" ++ css) ++ ">" ++
       "<span class='iris-box-title'>" ++ escapeHTML t ++ "</span>" ++
       escapeHTML str ++ "</div>"
 
 renderHTML (WWrapText s str) _ _ _ = do
   let css = "white-space:normal;overflow-wrap:anywhere;" ++ styleToCSS s ++ flexStyle s
-  pure $ "<span style='" ++ css ++ "'>" ++ escapeHTML str ++ "</span>"
+  pure $ "<span" ++ styleAttr css ++ ">" ++ escapeHTML str ++ "</span>"
 
 renderHTML (WScroll s scrollX scrollY child) st idMap inputMap = do
   inner <- renderHTML child st idMap inputMap
   let css = "overflow:auto;position:relative;" ++ styleToCSS s ++ flexStyle s
       offset = "transform:translate(-" ++ show scrollX ++ "ch,-" ++ show scrollY ++ "lh);"
-  pure $ "<div style='" ++ css ++ "'><div style='" ++ offset ++ "'>" ++ inner ++ "</div></div>"
+  pure $ "<div" ++ styleAttr css ++ "><div" ++ styleAttr offset ++ ">" ++ inner ++ "</div></div>"
 
 renderHTML (WVStack s children) st idMap inputMap = do
   let brd   = case s.border of
@@ -193,7 +203,7 @@ renderHTML (WVStack s children) st idMap inputMap = do
   let semantics = case s.label of
                     Nothing => " role='group'"
                     Just label => " role='group' aria-label='" ++ escapeHTML label ++ "'"
-  pure $ "<div" ++ semantics ++ " style='" ++ css ++ "'>" ++ title ++ concat inner ++ "</div>"
+  pure $ "<div" ++ semantics ++ "" ++ styleAttr css ++ ">" ++ title ++ concat inner ++ "</div>"
 
 renderHTML (WHStack s children) st idMap inputMap = do
   let css = "display:flex;flex-direction:row;gap:8px;" ++
@@ -202,7 +212,7 @@ renderHTML (WHStack s children) st idMap inputMap = do
   let semantics = case s.label of
                     Nothing => " role='group'"
                     Just label => " role='group' aria-label='" ++ escapeHTML label ++ "'"
-  pure $ "<div" ++ semantics ++ " style='" ++ css ++ "'>" ++ concat inner ++ "</div>"
+  pure $ "<div" ++ semantics ++ "" ++ styleAttr css ++ ">" ++ concat inner ++ "</div>"
 
 renderHTML (WButton s label msg) st idMap _ = do
   eid <- nextId st
@@ -210,7 +220,7 @@ renderHTML (WButton s label msg) st idMap _ = do
   let css = "cursor:pointer;padding:6px 14px;border-radius:6px;" ++
             "border:1px solid #30363d;background:#21262d;" ++
             "color:#c9d1d9;font-size:14px;" ++ styleToCSS s
-  pure $ "<button type='button' aria-label='" ++ escapeHTML label ++ "' style='" ++ css ++ "' " ++
+  pure $ "<button type='button' aria-label='" ++ escapeHTML label ++ "'" ++ styleAttr css ++ " " ++
          "data-iris-click='" ++ show eid ++ "'>" ++
          escapeHTML label ++ "</button>"
 
@@ -221,7 +231,7 @@ renderHTML (WCheckbox s checked msg) st idMap _ = do
       css = "display:flex;align-items:center;gap:8px;cursor:pointer;" ++
             styleToCSS s
   let accessibleName = case s.label of Nothing => "Toggle"; Just label => label
-  pure $ "<label style='" ++ css ++ "'>" ++
+  pure $ "<label" ++ styleAttr css ++ ">" ++
          "<input type='checkbox' aria-label='" ++ escapeHTML accessibleName ++ "'" ++ chk ++
          " data-iris-click='" ++ show eid ++ "'/>" ++
          "</label>"
@@ -251,7 +261,7 @@ renderHTML (WInput s val onChange) st _ inputMap = do
   -- real typing to `onChange`. Seen firsthand mid-testing: an unrelated
   -- autofill suggestion got submitted as a real todo.
   let accessibleName = case s.label of Nothing => "Text input"; Just label => label
-  pure $ "<input type='text' aria-label='" ++ escapeHTML accessibleName ++ "' id='iris-input-" ++ show eid ++ "' autocomplete='off' style='" ++ css ++ "' " ++
+  pure $ "<input type='text' aria-label='" ++ escapeHTML accessibleName ++ "' id='iris-input-" ++ show eid ++ "' autocomplete='off'" ++ styleAttr css ++ " " ++
          "value='" ++ escapeHTML val ++ "' " ++
          "data-iris-input='" ++ show eid ++ "'/>"
 
@@ -261,21 +271,21 @@ renderHTML (WProgress s frac) _ _ _ =
 renderHTML (WSpinner s tick) _ _ _ = do
   let css   = styleToCSS s
       frame = spinFrame tick
-  pure $ "<span class='iris-spinner' role='status' aria-live='polite' aria-label='Working' style='" ++ css ++ "'>" ++
+  pure $ "<span class='iris-spinner' role='status' aria-live='polite' aria-label='Working'" ++ styleAttr css ++ ">" ++
          "<span aria-hidden='true'>" ++ frame ++ "</span></span>"
 
 renderHTML (WSparkline s vals) _ _ _ = do
   let css   = styleToCSS s
       chars = concat (map sparkChar (webListTake 20 vals))
-  pure $ "<span class='iris-sparkline' style='" ++ css ++ "'>" ++ chars ++ "</span>"
+  pure $ "<span class='iris-sparkline'" ++ styleAttr css ++ ">" ++ chars ++ "</span>"
 
 renderHTML WSpacer _ _ _ =
-  pure "<div style='flex:1'></div>"
+  pure $ "<div" ++ styleAttr "flex:1;" ++ "></div>"
 
 renderHTML (WDivider s) _ _ _ = do
   let css = "border:none;border-top:1px solid #30363d;margin:4px 0;" ++
             styleToCSS s
-  pure $ "<hr style='" ++ css ++ "'/>"
+  pure $ "<hr" ++ styleAttr css ++ "/>"
 
 -- ─── CSS stylesheet ──────────────────────────────────────────────────────────
 

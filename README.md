@@ -119,7 +119,7 @@ release checklist.
 | Native mobile renderer | Deferred; Capacitor uses the Canvas/WebView target |
 
 Known limitations include general-purpose Canvas wrapping/scroll containers,
-strict CSP without inline styles, and native-device validation. The legacy
+native-device validation. The legacy
 `Iris.Core.Widget`/`Iris.Core.Runtime` path is retained for compatibility; new
 applications should use `Iris.Widget` and the specialized runners.
 
