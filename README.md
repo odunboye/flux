@@ -304,6 +304,41 @@ multi-backend split (what stays shared vs. what becomes a
 `Nebula.SQLite`-style per-backend module) hasn't been designed yet - not
 speculatively built ahead of that work.
 
+## Explicit SQL migrations (experimental)
+
+`Data.PGMigration` supplies `Migration` (`version`, `name`, `statements`) and
+`runMigrations : PGConfig -> List Migration -> IO (Either PGError Nat)`.
+Pass the complete ordered migration history; the result counts newly applied
+versions. Versions must be strictly increasing positive BIGINTs.
+
+The runner opens a **dedicated connection**, takes a nonblocking database-wide
+session advisory lock, and checks `nebula_meta.migrations` against the supplied
+version/name/SHA-256 checksums. Missing or edited applied migrations fail
+closed. Each migration's SQL and history insertion share one transaction;
+a failure rolls back that migration, not earlier successful versions. Closing
+the dedicated connection releases the lock even after protocol errors/timeouts.
+A second runner fails immediately while the lock is held instead of waiting
+indefinitely. Supply suitable explicit connect/read deadlines in `PGConfig`.
+
+This is a deliberately conservative v1 SQL subset: CREATE/ALTER/DROP TABLE,
+CREATE [UNIQUE]/DROP INDEX, INSERT INTO, UPDATE and DELETE FROM. Each entry is
+one extended-protocol statement. Transaction control and multiple statements
+per entry are rejected. Leading comments, CTEs, nontransactional migrations,
+procedures and arbitrary session commands are unsupported. SQL remains trusted,
+reviewed application code: do not mutate `nebula_meta` or release the advisory
+lock from a migration. Rollback covers PostgreSQL transactional effects, not
+external effects triggered by user-defined database code.
+
+There is no automatic schema diff, automatic destructive migration, downgrade,
+or CLI yet. Review SQL explicitly before applying it to an intended environment.
+The deployment role needs DDL permissions and access to the metadata schema.
+
+The first integration checks live in Flux's platform example:
+`../../projects/flux/platform/example/MigrationTests.idr`, run by
+`../../projects/flux/platform/test_pg_wire.py` against its own disposable DB.
+They cover fresh install, replay, upgrade, drift, rollback/history atomicity,
+held-lock exclusion/recovery, invalid versions and transaction-control rejection.
+
 ## Install / build
 
 Requires [pack](https://github.com/stefan-hoeck/idris2-pack).

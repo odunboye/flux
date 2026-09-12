@@ -11,7 +11,8 @@ depends = idris2-pg
         , json-simple
 
 -- modules to install
-modules = Data.PGField
+modules = Data.PGMigration
+        , Data.PGField
         , Data.PGRow
         , Data.PGTable
         , Data.PGColumnType
