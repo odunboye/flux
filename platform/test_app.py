@@ -1,4 +1,4 @@
-"""Fresh workspace -> CLI new/build/migrate/dev -> real Iris UI -> independent DB checks."""
+"""Fresh workspace -> CLI new/build/migrate/dev -> real Flux UI -> independent DB checks."""
 import os
 import json
 import signal
@@ -136,7 +136,7 @@ def main():
                 server.wait()
             subprocess.run(['docker', 'rm', '-f', '-v', name], timeout=60,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    print('PASS fresh-source project CLI and complete Iris application acceptance')
+    print('PASS fresh-source project CLI and complete Flux UI application acceptance')
 
 
 if __name__ == '__main__':

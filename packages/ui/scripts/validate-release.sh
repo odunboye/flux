@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 TODO="$ROOT/examples/todo"
-WEB_BUNDLE="$TODO/build/exec/iris-todo-web"
+WEB_BUNDLE="$TODO/build/exec/flux-ui-todo-web"
 MOBILE_BUNDLE="$TODO/mobile/www/app.js"
 CONFIG="$TODO/mobile/capacitor.config.json"
 
@@ -25,11 +25,11 @@ for (const key of ['appId', 'appName', 'webDir']) {
 if (config.webDir !== 'www') throw new Error('Capacitor webDir must be www');
 NODE
 
-grep -q 'iris-canvas' "$TODO/mobile/www/index.html" || fail "mobile shell has no iris-canvas"
+grep -q 'flux-ui-canvas' "$TODO/mobile/www/index.html" || fail "mobile shell has no flux-ui-canvas"
 grep -q '__mainExpression' "$WEB_BUNDLE" || fail "web entrypoint is absent"
 grep -q '__mainExpression' "$MOBILE_BUNDLE" || fail "mobile entrypoint is absent"
 
-MAX_BYTES=${IRIS_MAX_BUNDLE_BYTES:-5000000}
+MAX_BYTES=${FLUX_UI_MAX_BUNDLE_BYTES:-5000000}
 for bundle in "$WEB_BUNDLE" "$MOBILE_BUNDLE"; do
   size=$(wc -c < "$bundle" | tr -d ' ')
   (( size <= MAX_BYTES )) || fail "$(basename "$bundle") is $size bytes (limit $MAX_BYTES)"

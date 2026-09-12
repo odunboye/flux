@@ -1,4 +1,4 @@
-// Actual Iris DOM application, not a standalone generated-client smoke test.
+// Actual Flux UI DOM application, not a standalone generated-client smoke test.
 const {chromium, expect} = require('../packages/ui/node_modules/@playwright/test');
 const assert = require('node:assert/strict');
 const [base, mode = 'lifecycle'] = process.argv.slice(2);
@@ -39,12 +39,12 @@ const [base, mode = 'lifecycle'] = process.argv.slice(2);
       const ids = await rows.evaluateAll(nodes => nodes.map(n => n.getAttribute('aria-label')));
       assert.equal(new Set(ids).size, 56);
       assert(ids.every(id => /^Todo 9223372036854775\d{3}$/.test(id)), ids);
-      console.log('PASS Iris UI: real 50/6 keyset pages, unique exact BIGINT IDs');
+      console.log('PASS Flux UI: real 50/6 keyset pages, unique exact BIGINT IDs');
     } else {
       await expect(page.getByText('No todos yet.', {exact:true})).toBeVisible();
       await page.getByRole('button', {name:'Add todo', exact:true}).click();
       await expect(page.getByText('Title must contain 1 to 128 characters.', {exact:true})).toBeVisible();
-      const title = 'Iris UI 🚀 <script>window.uiInjected=true</script>';
+      const title = 'Flux UI 🚀 <script>window.uiInjected=true</script>';
       await page.getByRole('textbox', {name:'New todo title', exact:true}).fill(title);
       let creates = 0;
       page.on('request', req => { if(req.url().endsWith('/todos/create')) creates++; });
@@ -106,7 +106,7 @@ const [base, mode = 'lifecycle'] = process.argv.slice(2);
       await expect(page.getByText('Ready.', {exact:true})).toBeVisible();
       let blocked;
       await page.route('**/rpc/v1/todos/create', async route => {
-        // Commit the real write, but withhold its acknowledgement from Iris.
+        // Commit the real write, but withhold its acknowledgement from Flux UI.
         assert.equal((await route.fetch()).status(), 200);
         blocked = route;
       });
@@ -130,7 +130,7 @@ const [base, mode = 'lifecycle'] = process.argv.slice(2);
       await page.reload();
       await expect(page.getByText('Persisted UI 🚀', {exact:true})).toBeVisible();
       await expect(page.getByText('Complete', {exact:true})).toBeVisible();
-      console.log('PASS Iris UI: loading/empty/validation, duplicate prevention, Unicode escaping, CRUD, confirmation, typed error/retry, lifecycle interruption recovery and reload persistence');
+      console.log('PASS Flux UI: loading/empty/validation, duplicate prevention, Unicode escaping, CRUD, confirmation, typed error/retry, lifecycle interruption recovery and reload persistence');
     }
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'application overflows a narrow viewport');
     assert.deepEqual(errors, [], 'unexpected browser runtime errors');

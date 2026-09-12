@@ -1,0 +1,93 @@
+package flux-ui
+
+authors    = "Odun Adeboye"
+version    = 0.3.0
+brief      = "Flux UI — cross-platform declarative UI for Idris 2"
+
+depends    = contrib
+
+sourcedir  = "src"
+executable = "flux-ui-demo"
+main       = Main
+
+prebuild   = "mkdir -p build/exec/flux-ui-demo_app && cc -dynamiclib c/fluxuitui.c -o build/exec/flux-ui-demo_app/libfluxuitui.dylib 2>/dev/null || cc -shared -fPIC c/fluxuitui.c -o build/exec/flux-ui-demo_app/libfluxuitui.so"
+
+modules =
+  -- Universal widget + app
+    Flux.UI.Widget
+  , Flux.UI.App
+  , Flux.UI.App.Events
+  , Flux.UI.App.EventWire
+
+  -- Core
+  , Flux.UI.Core.Types
+  , Flux.UI.Core.Widget
+  , Flux.UI.Core.VTree
+  , Flux.UI.Core.Runtime
+  , Flux.UI.Runtime.Common
+
+  -- State
+  , Flux.UI.State.TEA
+  , Flux.UI.State.Signal
+
+  -- Layout
+  , Flux.UI.Layout.Types
+
+  -- Render IR
+  , Flux.UI.Render.Types
+
+  -- Effects
+  , Flux.UI.Effect.Http
+  , Flux.UI.Effect.Http.Web
+  , Flux.UI.Effect.Keyboard
+
+  -- Platform abstraction
+  , Flux.UI.Platform.Event
+  , Flux.UI.Platform.Interface
+
+  -- Animation
+  , Flux.UI.Animation.Types
+
+  -- Theme
+  , Flux.UI.Theme.Types
+  , Flux.UI.Theme.Default
+
+  -- Router
+  , Flux.UI.Router.Types
+  , Flux.UI.Router.Web
+
+  -- GUI Backends
+  , Flux.UI.Backend.Canvas.Render
+  , Flux.UI.Backend.Canvas.Layout
+  , Flux.UI.Backend.Canvas.Run
+  , Flux.UI.Backend.Web.DOM
+  , Flux.UI.Backend.Web.Terminal
+  , Flux.UI.Backend.Web.DOM.Render
+  , Flux.UI.Backend.Web.DOM.Run
+  , Flux.UI.Backend.Desktop.SDL2
+  , Flux.UI.Backend.Embedded.Framebuffer
+
+  -- TUI Backend
+  , Flux.UI.Backend.Terminal.WidgetRender
+  , Flux.UI.Backend.Terminal.Run
+  , Flux.UI.Backend.Terminal.Types
+  , Flux.UI.Backend.Terminal.ANSI
+  , Flux.UI.Backend.Terminal.Diff
+  , Flux.UI.Backend.Terminal.Input
+  , Flux.UI.Backend.Terminal.Runtime
+  , Flux.UI.Backend.Terminal.FFI
+  , Flux.UI.Backend.Terminal.Renderer
+  , Flux.UI.Backend.Terminal.App
+
+  -- TUI Core
+  , Flux.UI.Widget.TUI.Core
+
+  -- TUI Widgets
+  , Flux.UI.Widget.TUI.Primitives
+  , Flux.UI.Widget.TUI.List
+  , Flux.UI.Widget.TUI.Table
+  , Flux.UI.Widget.TUI.Progress
+  , Flux.UI.Widget.TUI.Input
+  , Flux.UI.Widget.TUI.Chart
+  , Flux.UI.Widget.TUI.Scroll
+  , Flux.UI

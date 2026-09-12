@@ -1,7 +1,7 @@
-# Iris Todo Manager
+# Flux UI Todo Manager
 
-A terminal-based task manager built entirely with the **Iris framework**.
-It demonstrates every layer of the Iris TUI stack in a real application.
+A terminal-based task manager built entirely with the **Flux UI framework**.
+It demonstrates every layer of the Flux UI TUI stack in a real application.
 
 ---
 
@@ -9,11 +9,11 @@ It demonstrates every layer of the Iris TUI stack in a real application.
 
 ```
 ╭────────────────────────────────────────────────────────────────────────────╮
-│  Iris Todo Manager                                                          │
+│  Flux UI Todo Manager                                                          │
 ╰────────────────────────────────────────────────────────────────────────────╯
 
  ╭─ Tasks (6) ───────────────────────────╮   Progress
- │ ▶  [x] Build the Iris framework       │   ██████████░░░░░░░░░░  33%
+ │ ▶  [x] Build the Flux UI framework       │   ██████████░░░░░░░░░░  33%
  │    [x] Add TUI backend                │
  │    [ ] Write example projects         │   Done: 2 / 6
  │    [ ] Implement layout engine        │
@@ -65,11 +65,11 @@ src/
 ```
 
 **Zero IO in Types, Update, or View** — all platform interaction is
-handled by the Iris runtime and expressed as typed `Cmd`/`Sub` values.
+handled by the Flux UI runtime and expressed as typed `Cmd`/`Sub` values.
 
 ---
 
-## Iris features demonstrated
+## Flux UI features demonstrated
 
 | Feature | Where |
 |---|---|
@@ -120,8 +120,8 @@ handled by the Iris runtime and expressed as typed `Cmd`/`Sub` values.
 make run
 
 # Or step by step:
-make          # installs iris, then builds iris-todo
-./build/exec/iris-todo
+make          # installs flux-ui, then builds flux-ui-todo
+./build/exec/flux-ui-todo
 ```
 
 ### Prerequisites
@@ -129,7 +129,7 @@ make          # installs iris, then builds iris-todo
 - [Idris2](https://github.com/idris-lang/Idris2) ≥ 0.7
 - `make`
 
-The `Makefile` will automatically install the iris library before
+The `Makefile` will automatically install the flux-ui library before
 building the example.
 
 ---
@@ -145,6 +145,6 @@ Some ideas to try:
 3. **Filter screen** — add a `FilterScreen` to `Screen` showing
    only incomplete tasks
 4. **Persistence** — add a `Storage.save` command in the `update`
-   function to write tasks to a JSON file via `Iris.Effect.Storage`
+   function to write tasks to a JSON file via `Flux.UI.Effect.Storage`
 5. **Help overlay** — render a `tuiOverlay` modal with keybindings
    when the user presses `?`

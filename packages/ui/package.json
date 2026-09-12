@@ -1,5 +1,5 @@
 {
-  "name": "iris-browser-tests",
+  "name": "flux-ui-browser-tests",
   "private": true,
   "scripts": {
     "test:browser": "playwright test",

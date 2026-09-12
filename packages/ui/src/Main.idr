@@ -1,20 +1,20 @@
-||| Iris coding-agent demo
+||| Flux UI coding-agent demo
 ||| Streams responses from the Anthropic API in a TUI chat interface.
 ||| Set ANTHROPIC_API_KEY before running.
 module Main
 
 import System
 import Data.Maybe
-import Iris.State.TEA
-import Iris.Platform.Event
-import Iris.Backend.Terminal.Types
-import Iris.Backend.Terminal.App
-import Iris.Widget.TUI.Core
-import Iris.Widget.TUI.Primitives
-import Iris.Widget.TUI.Progress
-import Iris.Widget.TUI.Input
-import Iris.Widget.TUI.Scroll
-import Iris.Effect.Http
+import Flux.UI.State.TEA
+import Flux.UI.Platform.Event
+import Flux.UI.Backend.Terminal.Types
+import Flux.UI.Backend.Terminal.App
+import Flux.UI.Widget.TUI.Core
+import Flux.UI.Widget.TUI.Primitives
+import Flux.UI.Widget.TUI.Progress
+import Flux.UI.Widget.TUI.Input
+import Flux.UI.Widget.TUI.Scroll
+import Flux.UI.Effect.Http
 
 -- ─── Model / Msg ─────────────────────────────────────────────────────────────
 
@@ -195,7 +195,7 @@ view m =
                    (sized w 2 (at 0 0 defaultTUI))))
       hdr      = TBox hdrProps
                    [ TText (withBold (withFg (Color16 15) (at 2 0 defaultTUI)))
-                       " iris coding agent  |  Tab: focus  q: quit  arrows: scroll"
+                       " flux-ui coding agent  |  Tab: focus  q: quit  arrows: scroll"
                    ]
 
       -- Chat scroll pane

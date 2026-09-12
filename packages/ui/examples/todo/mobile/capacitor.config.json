@@ -1,6 +1,6 @@
 {
-  "appId":   "dev.iris.todo",
-  "appName": "Iris Todo",
+  "appId":   "dev.fluxui.todo",
+  "appName": "Flux UI Todo",
   "webDir":  "www",
   "server": {
     "androidScheme": "https"

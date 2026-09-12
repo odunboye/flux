@@ -1,9 +1,9 @@
 module Main
 
 import System
-import Iris.Widget
-import Iris.Backend.Canvas.Layout
-import Iris.Backend.Terminal.WidgetRender
+import Flux.UI.Widget
+import Flux.UI.Backend.Canvas.Layout
+import Flux.UI.Backend.Terminal.WidgetRender
 
 widget : Widget Nat
 widget = vstack
@@ -52,8 +52,8 @@ main = do
   assert "semantic button" (contains "aria-label='first'" semantics)
   assert "semantic checkbox" (contains "type='checkbox'" semantics)
   assert "semantic text input" (contains "aria-label='Canvas text input'" semantics)
-  assert "delegated activation" (contains "data-iris-canvas-activate='" semantics)
-  assert "delegated text input" (contains "data-iris-canvas-input='" semantics)
+  assert "delegated activation" (contains "data-flux-ui-canvas-activate='" semantics)
+  assert "delegated text input" (contains "data-flux-ui-canvas-input='" semantics)
   assert "no inline handlers" (not (contains "onclick=" semantics) &&
                                not (contains "oninput=" semantics) &&
                                not (contains "onchange=" semantics))

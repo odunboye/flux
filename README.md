@@ -1,19 +1,20 @@
 # Flux — full-stack Idris applications
 
-**Platform preview.** Flux brings its HTTP server and owned runtime, Iris UI,
-Nebula persistence/migrations, PostgreSQL transport/pooling, and generated Iris
-clients into one modular repository. Existing package IDs and imports remain
-compatible; this is not a production-readiness declaration.
+**Platform preview.** Flux brings its HTTP server and owned runtime, Flux UI,
+Nebula persistence/migrations, PostgreSQL transport/pooling, and generated Flux UI
+clients into one modular repository. The UI now uses the `flux-ui` package and
+`Flux.UI.*` modules in a breaking rename; other package IDs remain unchanged.
+This is not a production-readiness declaration.
 
 - `packages/runtime/`: owned tasks, sockets, streams and supervision.
-- `packages/ui/`: Iris widgets, application lifecycle and platform backends.
+- `packages/ui/`: Flux UI widgets, application lifecycle and platform backends.
 - `packages/db/`, `packages/postgres/`, `packages/db-flux/`: persistence and PG integration.
 - `platform/`: shared protocols, generated server/client code and typed CRUD examples.
 - `apps/todo-api/`: database-backed application example.
 - `apps/landing/`: Flux's landing page, served by Flux itself.
 
 See the [workspace/package map](design/CONSOLIDATION.md) and
-[typed Iris client guide](platform/README.md). No sibling repositories or
+[typed Flux UI client guide](platform/README.md). No sibling repositories or
 user-specific dependency paths are needed. Run `python3 tools/workspace.py check`
 to verify the package map and browser/server dependency boundary.
 
@@ -34,7 +35,7 @@ pack --no-prompt build apps/landing/landing.ipkg
 Open **http://127.0.0.1:8080**. See the [site guide](apps/landing/README.md)
 for the design, server configuration and browser verification.
 
-## Run the Iris application
+## Run the Flux UI application
 
 ```sh
 ./flux doctor

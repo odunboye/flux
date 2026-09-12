@@ -14,7 +14,7 @@ check failures label valid = do
     n <- readIORef failures
     writeIORef failures (S n)
 
--- Minimal test dispatcher; production apps hand Cmds to the Iris runtime.
+-- Minimal test dispatcher; production apps hand Cmds to the Flux UI runtime.
 -- Returns the cancellation action instead of stripping CancellableTask.
 public export
 execute : Cmd msg -> (msg -> IO ()) -> IO (IO ())
@@ -49,7 +49,7 @@ runCases failures ((label, command, valid) :: rest) done = do
     runCases failures rest done
   pure ()
 
-||| The PG branch starts 24 fetch commands together on the JS/Iris transport.
+||| The PG branch starts 24 fetch commands together on the JS/Flux UI transport.
 ||| Native Task transport is executed serially by this minimal test dispatcher.
 public export
 runChecks : Client -> Bool -> (Bool -> IO ()) -> IO ()
@@ -71,7 +71,7 @@ runChecks client pooled done = do
                      else todo.id == "9223372036854775807")
         _ => False
   let cases =
-        [ ("generated Iris client round trip with exact BIGINT", createTodo client (MkCreateTodoRequest title) id, validTodo)
+        [ ("generated Flux UI client round trip with exact BIGINT", createTodo client (MkCreateTodoRequest title) id, validTodo)
         , ("server rejects invalid field type", raw client "{\"title\":42}" "application/json", isRemote 400 "invalid_request")
         , ("server rejects malformed JSON", raw client "{" "application/json", isRemote 400 "invalid_request")
         , ("server rejects unsupported media type", raw client "{\"title\":\"x\"}" "text/plain", isRemote 415 "unsupported_media_type")
@@ -84,7 +84,7 @@ runChecks client pooled done = do
     remaining <- newIORef (the Nat 24)
     identifiers <- newIORef (the (List String) [])
     traverse_ (\index => do
-      let title = "Iris PG client " ++ show index ++ " 🚀"
+      let title = "Flux UI PG client " ++ show index ++ " 🚀"
       _ <- execute (createTodo client (MkCreateTodoRequest title) id) $ \result => do
         case result of
           Right todo => do

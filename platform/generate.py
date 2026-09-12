@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Experimental v1 schema -> shared Idris types, Flux server, Iris client, OpenAPI."""
+"""Experimental v1 schema -> shared Idris types, Flux server, Flux UI client, OpenAPI."""
 import argparse
 import hashlib
 import json
@@ -131,7 +131,7 @@ def header(module, digest):
 
 def wire_types(schema, digest):
     # This module is shared by both targets. Never import Flux/PG/native runtime
-    # here: Iris browser builds must depend only on portable JSON codecs.
+    # here: Flux UI browser builds must depend only on portable JSON codecs.
     lines = header('ProtocolTypes', digest) + ['import public JSON.Simple', '', '%default covering', '']
     for name in model_order(schema['models']):
         fields = sorted(schema['models'][name].items())

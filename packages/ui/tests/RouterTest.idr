@@ -1,7 +1,7 @@
 module Main
 
 import System
-import Iris.Router.Types
+import Flux.UI.Router.Types
 
 data Route = Home | User String | Missing
 
@@ -43,9 +43,9 @@ main = do
     (case parseLocation encoded of
        Just location => location.path == "/café/✓" && queryParam "q" location == Just "日本 tea"
        _ => False)
-  assert "base path" (withBasePath "/iris" "/users/a" == "/iris/users/a")
-  assert "strip base path" (stripBasePath "/iris" "/iris/users/a" == Just "/users/a")
-  assert "reject wrong base" (stripBasePath "/iris" "/other/users/a" == Nothing)
+  assert "base path" (withBasePath "/flux-ui" "/users/a" == "/flux-ui/users/a")
+  assert "strip base path" (stripBasePath "/flux-ui" "/flux-ui/users/a" == Just "/users/a")
+  assert "reject wrong base" (stripBasePath "/flux-ui" "/other/users/a" == Nothing)
   assert "navigation guard allow"
     (case applyNavigationGuard (\route => Allow route) Home of Just Home => True; _ => False)
   assert "navigation guard block"

@@ -6,11 +6,11 @@ every public API, or establish production readiness.
 
 ## Source and package map
 
-| Platform area / intended public name | Source | Current package ID (compatible) |
+| Platform area / intended public name | Source | Current package ID |
 | --- | --- | --- |
 | flux-server | repository root `src/` | `flux` |
 | flux-runtime | `packages/runtime/` | `flux-async` |
-| flux-ui | `packages/ui/` | `iris` |
+| flux-ui | `packages/ui/` | `flux-ui` |
 | flux-db | `packages/db/` | `nebula` |
 | flux-db-postgres | `packages/postgres/`, including `async/` | `idris2-pg`, `idris2-pg-async` |
 | Server/database integration | `packages/db-flux/` | `nebula-flux` |
@@ -18,12 +18,12 @@ every public API, or establish production readiness.
 | flux-platform | `platform/` | `flux-platform` |
 | Example application | `apps/todo-api/` | `todo-api` |
 | Local container helper | `packages/docker/` | `idris2-docker` |
-| Future flux-cli | not yet implemented | none |
+| Application CLI | repository-local `./flux` | no published package yet |
 
-The intended public names are **not additional published packages yet**.
-Existing package IDs, `Flux.*`, `Iris.*`, `Data.PG*`, and `Nebula.*` imports
-continue working. Server source remains at the root to preserve existing build
-commands; namespace and directory migrations are separate future changes.
+The UI has now been renamed outright to `flux-ui` and `Flux.UI.*`, with no
+legacy package or namespace shim. See the [breaking migration guide](../packages/ui/MIGRATION.md).
+Other package names remain as listed; the remaining proposed names are not
+additional published packages. Server source remains at the root.
 
 `workspace.json` is the canonical map. `pack.toml` is generated from it; nested
 package configs were removed to prevent stale sibling/absolute paths from
@@ -35,7 +35,7 @@ Playwright; database tests require Docker and a local `postgres:16` image.
 
 ## History and ownership
 
-Runtime, PostgreSQL, Nebula, Nebula/Flux integration, Iris, and todo-api were
+Runtime, PostgreSQL, Nebula, Nebula/Flux integration, Flux UI, and todo-api were
 imported with **unsquashed Git subtrees**. Original commits are ancestors of the
 consolidated branch, not flattened snapshots. `workspace.json` records each
 source tip. Original repositories were not deleted, rewritten or modified by
@@ -67,7 +67,7 @@ python3 tools/workspace.py test
 
 On Linux, Chromium may additionally require system libraries (Playwright's
 `install --with-deps chromium` can install these in a suitable CI image).
-`test` builds the native Iris dependency before JS clients, compiles server and
+`test` builds the native Flux UI dependency before JS clients, compiles server and
 client examples, checks generation, runs Flux regressions, and exercises the
 native/browser wire, pooled PostgreSQL/migration and complete CRUD suites.
 Database tests create and remove their own disposable containers. They never
@@ -81,7 +81,7 @@ suite. Individual package builds remain available, for example:
 
 ```sh
 (cd packages/db && pack --no-prompt build nebula.ipkg)
-(cd packages/ui && pack --no-prompt build iris.ipkg)
+(cd packages/ui && pack --no-prompt build flux-ui.ipkg)
 (cd platform && pack --no-prompt build crud/server.ipkg)
 ```
 
@@ -96,16 +96,16 @@ see the [application guide](../platform/crud/README.md).
 The root `.github/workflows/ci.yml` now runs two independent platform jobs on
 pull requests and main pushes, in addition to the existing boundary/HTTP jobs:
 
-- **iris-ui-browser**: Iris unit tests, web/mobile bundle builds and release-asset
+- **flux-ui-browser**: Flux UI unit tests, web/mobile bundle builds and release-asset
   validation (`make check`), then all Playwright browser integration tests.
 - **generated-client-db**: the complete `workspace.py test` gate, including
   generated-output freshness, native/JS clients, Chromium, disposable PostgreSQL,
   migrations and full CRUD, plus fresh-source CLI project creation/build and
-  actual Iris UI acceptance against PostgreSQL. It also builds the native Flux
+  actual Flux UI acceptance against PostgreSQL. It also builds the native Flux
   landing server and checks its responsive page in Chromium. Database checks
   are not skipped.
 
-The old nested Iris workflow was removed; GitHub never executed it from inside
+The old nested Flux UI workflow was removed; GitHub never executed it from inside
 `packages/ui`. Both root jobs install locked browser dependencies, audit them,
 retain logs/failure traces even on failure, and have a 45-minute job timeout.
 Configure branch protection to require these named checks as well as the
@@ -123,8 +123,8 @@ incompatible system `idris2`.
 
 ## Dependency boundary
 
-The Iris client uses Iris lifecycle/effects, not the Chez owned server runtime.
-`flux-platform-client` depends on Iris/json-simple and generated shared wire
+The Flux UI client uses Flux UI lifecycle/effects, not the Chez owned server runtime.
+`flux-platform-client` depends on Flux/UI/json-simple and generated shared wire
 types. UI/client packages must not transitively depend on `flux`, `flux-async`,
 Nebula, PostgreSQL, or the server endpoint package. The workspace check enforces
 this across local `.ipkg` dependency declarations. Version bounds are stripped
@@ -140,17 +140,17 @@ repositories and migrations remain in the database layer.
 
 ## Next platform gates
 
-CRUD, collections, explicit nullability, Iris client commands, keyset pagination,
+CRUD, collections, explicit nullability, Flux UI client commands, keyset pagination,
 and migration-backed example startup are implemented and committed.
 
-The complete todo Iris UI and initial workspace application CLI/template are
+The complete todo Flux UI and initial workspace application CLI/template are
 implemented and verified together. Remaining tooling includes standalone SDK
 packaging, watch/reload, migration planning and production deployment.
 
 1. Broaden the UI/project workflow beyond the reviewed todo starter.
 2. Authenticated PostgreSQL TLS, user identity, authorization and row ownership.
 3. Supported deployment, operational tooling, and reproducible release CI.
-4. Gradual public entry-module/package naming migration with compatibility tests.
+4. Further public package naming decisions; the Flux UI breaking rename is complete.
 
 No managed cloud, security completion, universal UI parity, or production-ready
 release is implied by putting the code in one repository.

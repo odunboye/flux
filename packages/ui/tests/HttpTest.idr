@@ -1,7 +1,7 @@
 module Main
 
 import System
-import Iris.Effect.Http.Web
+import Flux.UI.Effect.Http.Web
 
 assert : String -> Bool -> IO ()
 assert _ True = pure ()

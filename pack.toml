@@ -37,6 +37,16 @@ type = "local"
 path = "test"
 ipkg = "test.ipkg"
 
+[custom.all.flux-ui]
+type = "local"
+path = "packages/ui"
+ipkg = "flux-ui.ipkg"
+
+[custom.all.flux-ui-todo]
+type = "local"
+path = "packages/ui/examples/todo"
+ipkg = "flux-ui-todo.ipkg"
+
 [custom.all.idris2-docker]
 type = "local"
 path = "packages/docker"
@@ -57,16 +67,6 @@ ipkg = "idris2-pg-async.ipkg"
 type = "local"
 path = "packages/postgres/test"
 ipkg = "test.ipkg"
-
-[custom.all.iris]
-type = "local"
-path = "packages/ui"
-ipkg = "iris.ipkg"
-
-[custom.all.iris-todo]
-type = "local"
-path = "packages/ui/examples/todo"
-ipkg = "iris-todo.ipkg"
 
 [custom.all.nebula]
 type = "local"

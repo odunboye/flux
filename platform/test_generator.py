@@ -21,7 +21,7 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn('withObject "CreateTodoRequest"', files['ProtocolTypes.idr'])
         self.assertIn('toJSON v = JObject [("title", toJSON v.title)]', files['ProtocolTypes.idr'])
 
-    def test_iris_client_has_no_server_dependencies(self):
+    def test_flux_ui_client_has_no_server_dependencies(self):
         files = generate(SCHEMA)
         self.assertEqual(set(files), {'Protocol.idr', 'ProtocolTypes.idr', 'Client.idr', 'openapi.json'})
         self.assertIn('Either RpcError TodoResponse -> msg) -> Cmd msg', files['Client.idr'])

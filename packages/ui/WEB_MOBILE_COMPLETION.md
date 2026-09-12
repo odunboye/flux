@@ -1,37 +1,37 @@
 # Web and hybrid-mobile release checklist
 
-Iris has a tested Web DOM target and an HTML Canvas target suitable for a
+Flux UI has a tested Web DOM target and an HTML Canvas target suitable for a
 Capacitor WebView. This checklist defines what is automated and what still
 requires a machine with native SDKs.
 
 ## Portable validation
 
-Run from the repository root:
+Run from the Flux repository root:
 
 ```sh
-make check
+(cd packages/ui && npm ci && npx playwright install chromium)
+bash tools/ci-suite.sh ui
 ```
 
-This command builds Iris, runs the EventWire/runtime/layout/router/DOM tests,
+This command builds Flux UI, runs the public API/EventWire/runtime/layout/router/DOM/HTTP tests,
 builds both Todo browser bundles, checks their JavaScript syntax and
 entrypoints, validates the Capacitor configuration and shell, enforces a 5 MB
 bundle limit, and rejects generated artifacts tracked by Git. Override the
-size limit with `IRIS_MAX_BUNDLE_BYTES` when intentionally evaluating a larger
+size limit with `FLUX_UI_MAX_BUNDLE_BYTES` when intentionally evaluating a larger
 bundle.
 
-CI runs the same command on every push and pull request, then installs
-Playwright Chromium and runs real-browser integration tests. To run those
-locally:
+The suite also checks the public API on Node, builds the separate web entry,
+checks both native TUI entries' startup/keyboard shutdown in pseudo-terminals,
+and runs real-browser integration tests. The root Linux CI job provisions the
+same suite. To rerun only the browser tests after building:
 
 ```sh
-npm ci
-npx playwright install chromium
-make browser-test
+make -C packages/ui browser-test
 ```
 
 ## Implemented behavior
 
-- One `IrisApp` model/update/view API across terminal, DOM, and Canvas.
+- One `UIApp` model/update/view API across terminal, DOM, and Canvas.
 - Versioned and validated platform events for keyboard, pointer, wheel,
   viewport, focus, orientation, lifecycle, composition, and browser location.
 - Ordered DOM and Canvas queues with idempotent listener installation.
@@ -51,19 +51,19 @@ make browser-test
 ## Native Capacitor validation
 
 Native validation is intentionally not part of portable CI. On a machine with
-Xcode or the Android SDK installed:
+Xcode or the Android SDK installed, after the portable bundle build above:
 
 ```sh
-cd examples/todo
-make build-mobile
-cd mobile
+cd packages/ui/examples/todo/mobile
 npm ci
+# First-time setup: npx cap add ios / npx cap add android
 npx cap sync ios       # macOS + Xcode
 npx cap sync android   # Android SDK/Studio
 ```
 
 The `v0.2.0-preview.1` release candidate was successfully compiled as an iOS
-simulator Debug app and Android Debug APK on 2026-09-12. Device-level behavior
+simulator Debug app and Android Debug APK on 2026-09-12. That pre-rename record
+is **not validation of the Flux UI 0.3 rename**. Device-level behavior
 must still be smoke-tested for startup, rotation, background/resume, hardware
 back behavior, multi-touch pointer IDs, safe-area appearance, and offline
 loading. Signing and store packaging remain deployment responsibilities.

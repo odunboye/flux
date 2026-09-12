@@ -15,11 +15,12 @@ jobs:
           python3 tools/workspace.py check
           python3 -m unittest discover -s tools -p test_workspace.py -v
           python3 -m unittest discover -s tools -p test_flux.py -v
+          python3 -m unittest discover -s tools -p test_ui_names.py -v
           bash -n tools/ci-linux.sh tools/ci-suite.sh flux
           shellcheck tools/ci-linux.sh tools/ci-suite.sh flux
 
   # Imported nested workflows are not executed by GitHub. These independent
-  # root jobs protect both Iris itself and its full-stack generated clients.
+  # root jobs protect both Flux UI itself and its full-stack generated clients.
   platform-verification:
     name: ${{ matrix.label }}
     runs-on: ubuntu-latest
@@ -29,7 +30,7 @@ jobs:
       matrix:
         include:
           - suite: ui
-            label: iris-ui-browser
+            label: flux-ui-browser
           - suite: platform
             label: generated-client-db
     steps:

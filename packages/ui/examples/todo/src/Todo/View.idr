@@ -1,11 +1,11 @@
 ||| Todo.View
 ||| Pure view: Model -> Widget Msg
-||| Uses the abstract Iris.Widget tree — renders identically on every backend.
+||| Uses the abstract Flux.UI.Widget tree — renders identically on every backend.
 module Todo.View
 
-import Iris.Widget
-import Iris.Widget.TUI.Input
-import Iris.Widget.TUI.List
+import Flux.UI.Widget
+import Flux.UI.Widget.TUI.Input
+import Flux.UI.Widget.TUI.List
 import Todo.Types
 
 -- ─── Utilities ───────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ taskListScreen : Model -> Widget Msg
 taskListScreen m =
   WVStack (styled [sFixedW 80, sFixedH 24])
     [ WText (styled [bg IBlue, fg IWhite, sBold, sFixedW 80, sFixedH 3])
-            "  Iris Todo"
+            "  Flux UI Todo"
 
     , WHStack (styled [sFixedW 80, sFixedH 18])
         [ WVStack (styled [ sFixedW 46, sFixedH 18
@@ -77,7 +77,7 @@ addTaskScreen : Model -> Widget Msg
 addTaskScreen m =
   WVStack (styled [sFixedW 80, sFixedH 24])
     [ WText (styled [bg IBlue, fg IWhite, sBold, sFixedW 80, sFixedH 3])
-            "  Iris Todo  >  Add Task"
+            "  Flux UI Todo  >  Add Task"
 
     , WText (styled [sPadH 4, sPadV 1]) "Task name:"
 

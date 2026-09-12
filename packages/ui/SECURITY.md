@@ -7,7 +7,7 @@ include credentials, access tokens, or private user data in public issues.
 
 ## Browser deployment
 
-Iris-generated controls do not use inline JavaScript handlers. Applications
+Flux UI-generated controls do not use inline JavaScript handlers. Applications
 should serve assets over HTTPS and start with this Content Security Policy,
 then narrow `connect-src` to their actual APIs:
 

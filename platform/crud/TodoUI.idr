@@ -1,9 +1,9 @@
 module TodoUI
 
 import Client
-import Iris.App
-import Iris.Widget
-import Iris.Platform.Event
+import Flux.UI.App
+import Flux.UI.Widget
+import Flux.UI.Platform.Event
 import Data.List
 
 %default covering
@@ -111,7 +111,7 @@ row busy todo = WVStack (styled [sTitle ("Todo " ++ todo.id), sBorder RoundedBor
 public export
 view : Model -> Widget Msg
 view m = WVStack (styled [sPad 16])
-  ([WText (styled [sBold]) "Flux Todo", wrappedText "An Iris application using generated Idris RPC commands.",
+  ([WText (styled [sBold]) "Flux Todo", wrappedText "A Flux UI application using generated Idris RPC commands.",
     wrappedText m.notice] ++
    (if m.suspended then [text "Paused."] else if m.busy then [text "Working..."] else if isJust m.confirmDelete then [] else
      [WInput (styled [sTitle (case m.editing of Nothing => "New todo title"; Just _ => "Edit todo title")]) m.draft Draft] ++
@@ -130,7 +130,7 @@ view m = WVStack (styled [sPad 16])
       Nothing => []))
 
 public export
-todoApp : Client -> IrisApp Model Msg
+todoApp : Client -> UIApp Model Msg
 todoApp client = MkApp
   (MkModel [] Nothing "" Nothing Nothing True False False "Loading...",
    listTodos client (MkListTodosRequest Nothing) (Listed False))

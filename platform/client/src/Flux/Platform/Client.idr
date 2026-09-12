@@ -1,8 +1,8 @@
-||| Portable RPC client glue for Iris. No Flux server or PostgreSQL dependency.
+||| Portable RPC client glue for Flux UI. No Flux server or PostgreSQL dependency.
 module Flux.Platform.Client
 
-import public Iris.State.TEA
-import public Iris.Effect.Http
+import public Flux.UI.State.TEA
+import public Flux.UI.Effect.Http
 import public JSON.Simple
 
 %default covering
@@ -57,7 +57,7 @@ decodeResponse (Right response) =
     Nothing => Left (InvalidResponse "Invalid RPC response body")
   else Left (remoteError response.status response.body)
 
-||| Produces an Iris Cmd rather than running HTTP eagerly. Mapping the result
+||| Produces a Flux UI Cmd rather than running HTTP eagerly. Mapping the result
 ||| does not unwrap the command, so Web CancellableTask ownership is preserved.
 export
 call : {msg : Type} -> ToJSON req => FromJSON res => Client -> String -> req ->

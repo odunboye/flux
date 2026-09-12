@@ -1,4 +1,4 @@
-# ─── Iris Todo — multi-platform Makefile ───────────────────────────────────
+# ─── Flux UI Todo — multi-platform Makefile ───────────────────────────────────
 #
 #  make terminal     build + run in the terminal  (Chez Scheme backend)
 #  make web          build + open in browser      (Idris2 JS backend)
@@ -7,14 +7,14 @@
 #
 #  make build-terminal   build only
 #  make build-web        build only
-#  make install-iris     install the iris library
+#  make install-flux-ui     install the flux-ui library
 # ───────────────────────────────────────────────────────────────────────────
 
-IRIS_ROOT := ../..
+FLUX_UI_ROOT := ../..
 
 .PHONY: all terminal web desktop mobile check \
         build-terminal build-web \
-        install-iris clean help
+        install-flux-ui clean help
 
 # ─── Default ───────────────────────────────────────────────────────────────
 all: help
@@ -25,39 +25,39 @@ all: help
 # it can run in CI or before a native platform sync.
 check: build-web build-mobile
 	@test -s mobile/www/app.js
-	@echo "  Iris web + hybrid-mobile checks passed"
+	@echo "  Flux UI web + hybrid-mobile checks passed"
 
-# ─── Install iris library ──────────────────────────────────────────────────
-install-iris:
-	cd $(IRIS_ROOT) && idris2 --install iris.ipkg
+# ─── Install flux-ui library ──────────────────────────────────────────────────
+install-flux-ui:
+	cd $(FLUX_UI_ROOT) && idris2 --install flux-ui.ipkg
 
 # ─── Terminal (Chez Scheme) ────────────────────────────────────────────────
-build-terminal: install-iris
-	idris2 --build iris-todo.ipkg
+build-terminal: install-flux-ui
+	idris2 --build flux-ui-todo.ipkg
 
 terminal: build-terminal
 	@echo ""
-	@echo "  ▶ Running iris-todo in the terminal …"
+	@echo "  ▶ Running flux-ui-todo in the terminal …"
 	@echo "  (q to quit)"
 	@echo ""
-	./build/exec/iris-todo
+	./build/exec/flux-ui-todo
 
 # ─── Web / DOM (JavaScript backend) ───────────────────────────────────────
-build-web: install-iris
-	idris2 --cg javascript --build iris-todo-web.ipkg
+build-web: install-flux-ui
+	idris2 --cg javascript --build flux-ui-todo-web.ipkg
 
 web: build-web
 	@echo ""
-	@echo "  ▶ Opening iris-todo-web in the browser …"
+	@echo "  ▶ Opening flux-ui-todo-web in the browser …"
 	@echo "  (edit index.html to customise the page shell)"
 	@echo ""
 	open index.html 2>/dev/null || xdg-open index.html 2>/dev/null || \
 	  echo "  Open file://$(realpath index.html) in your browser."
 
 # ─── Canvas — compile Idris2 JS and copy into mobile/app.js —————————————
-build-canvas: install-iris
-	idris2 --cg javascript --build iris-todo-mobile.ipkg
-	cp build/exec/iris-todo-mobile mobile/www/app.js
+build-canvas: install-flux-ui
+	idris2 --cg javascript --build flux-ui-todo-mobile.ipkg
+	cp build/exec/flux-ui-todo-mobile mobile/www/app.js
 	@echo "  Wrote mobile/www/app.js  (open mobile/www/index.html in any browser)"
 
 build-mobile: build-canvas
@@ -101,9 +101,9 @@ desktop:
 	@echo "Desktop backend: --cg chez + SDL2 renderer (coming next)."
 	@echo "Entry point: src/MainDesktop.idr  →  main = runDesktop todoApp"
 
-# ─── Install the todo library (for iris-todo-web to import) ───────────────
-install-todo: install-iris
-	idris2 --install iris-todo.ipkg
+# ─── Install the todo library (for flux-ui-todo-web to import) ───────────────
+install-todo: install-flux-ui
+	idris2 --install flux-ui-todo.ipkg
 
 # ─── Clean ─────────────────────────────────────────────────────────────────
 clean:
@@ -112,7 +112,7 @@ clean:
 # ─── Help ──────────────────────────────────────────────────────────────────
 help:
 	@echo ""
-	@echo "  Iris Todo — write once, run anywhere"
+	@echo "  Flux UI Todo — write once, run anywhere"
 	@echo ""
 	@echo "  make terminal   Build + run in the terminal"
 	@echo "  make web        Build + open in browser"

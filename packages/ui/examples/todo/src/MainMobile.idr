@@ -1,6 +1,6 @@
 ||| Mobile entry point — HTML5 Canvas + Capacitor (iOS / Android)
 module MainMobile
-import Iris.Backend.Canvas.Run
+import Flux.UI.Backend.Canvas.Run
 import Todo.Types
 import TodoApp
 main : IO ()

@@ -1,7 +1,7 @@
-# Flux Todo — generated-client Iris application
+# Flux Todo — generated-client Flux UI application
 
 This is a complete **public todo demo**, not an authenticated production app.
-`TodoUI.idr` owns the model/update/view; `MainWeb.idr` runs Iris's DOM backend.
+`TodoUI.idr` owns the model/update/view; `MainWeb.idr` runs Flux UI's DOM backend.
 Every API operation goes through generated `Client.idr` commands. There is no
 handwritten JavaScript business model or parallel fetch client in the app.
 
@@ -9,7 +9,7 @@ The UI supports create, fetch/edit, save/cancel, toggle, confirmed deletion,
 keyset pagination, loading/empty states, validation, typed failures and explicit
 retry. BIGINT IDs stay strings. Writes are serialized while pending, input is
 retained on failure, and mutation requests are never automatically retried.
-Iris lifecycle suspension cancels pending effects; the UI clears its pending
+Flux UI lifecycle suspension cancels pending effects; the UI clears its pending
 state, preserves the draft and recovers on resume without replaying a write.
 Transport failure can mean a write committed without its response arriving:
 refresh before retrying. This API does not yet offer idempotency keys or

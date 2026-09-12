@@ -1,19 +1,19 @@
-.PHONY: build install-iris install-todo run clean
+.PHONY: build install-flux-ui install-todo run clean
 
-IRIS_ROOT  := ../..
+FLUX_UI_ROOT  := ../..
 TODO_DIR   := ../todo
-OUT_JS     := build/exec/iris-todo-web
+OUT_JS     := build/exec/flux-ui-todo-web
 
 # ─── Default ───────────────────────────────────────────────────────────────
 build: install-todo
-	idris2 --cg javascript --build iris-todo-web.ipkg
+	idris2 --cg javascript --build flux-ui-todo-web.ipkg
 
 # ─── Dependency chain ──────────────────────────────────────────────────────
-install-iris:
-	cd $(IRIS_ROOT) && idris2 --install iris.ipkg
+install-flux-ui:
+	cd $(FLUX_UI_ROOT) && idris2 --install flux-ui.ipkg
 
-install-todo: install-iris
-	cd $(TODO_DIR) && idris2 --install iris-todo.ipkg
+install-todo: install-flux-ui
+	cd $(TODO_DIR) && idris2 --install flux-ui-todo.ipkg
 
 # ─── Open in browser ───────────────────────────────────────────────────────
 run: build

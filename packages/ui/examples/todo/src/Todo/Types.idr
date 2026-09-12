@@ -1,11 +1,11 @@
 ||| Todo.Types
-||| All shared types for the Iris Todo example.
+||| All shared types for the Flux UI Todo example.
 ||| Model and Msg live together to avoid circular imports.
 module Todo.Types
 
-import Iris.Widget
-import Iris.Widget.TUI.List
-import Iris.Widget.TUI.Input
+import Flux.UI.Widget
+import Flux.UI.Widget.TUI.List
+import Flux.UI.Widget.TUI.Input
 
 -- ─── Task ───────────────────────────────────────────────────────────────────
 

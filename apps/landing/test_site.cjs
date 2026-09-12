@@ -55,6 +55,7 @@ const output = path.resolve(__dirname, "../../.workspace/landing");
     page.on("request", (request) => requests.push(request.url()));
     await page.goto(base);
     await expect(page).toHaveTitle("Flux — One language. Both sides.");
+    await expect(page.locator(".feature-label").filter({ hasText: /^FLUX UI$/ })).toHaveCount(1);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
       "Full possibility.",
     );
@@ -82,6 +83,9 @@ const output = path.resolve(__dirname, "../../.workspace/landing");
     await page.keyboard.press("ArrowRight");
     await expect(client).toBeFocused();
     await expect(page.locator("#client-code")).toBeVisible();
+    await expect(page.locator("#client-code .code-caption")).toHaveText(
+      "Generated commands fit directly into Flux UI.",
+    );
     await expect(page.locator("#client-code")).toContainText(
       "Either RpcError TodoView",
     );

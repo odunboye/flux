@@ -2,11 +2,11 @@ module Main
 
 import System
 import Data.IORef
-import Iris.App
-import Iris.Platform.Event
-import Iris.Runtime.Common
-import Iris.State.TEA
-import Iris.Widget
+import Flux.UI.App
+import Flux.UI.Platform.Event
+import Flux.UI.Runtime.Common
+import Flux.UI.State.TEA
+import Flux.UI.Widget
 
 data Msg = Add | Stop
 
@@ -14,7 +14,7 @@ update : Msg -> Nat -> (Nat, Cmd Msg)
 update Add model = (S model, none)
 update Stop model = (S model, Batch [QuitApp, Task (pure Add)])
 
-app : IrisApp Nat Msg
+app : UIApp Nat Msg
 app = MkApp (0, none) update (\n => text (show n)) (\_, _ => Nothing) Nothing
 
 assert : String -> Bool -> IO ()

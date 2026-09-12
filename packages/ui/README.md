@@ -1,10 +1,10 @@
-# Iris
+# Flux UI
 
-Iris is an experimental cross-platform declarative UI framework for Idris 2.
+Flux UI is an experimental cross-platform declarative UI framework for Idris 2.
 Applications describe a pure model/update/view loop and render through terminal,
 Web DOM, or HTML Canvas/Capacitor backends.
 
-> **Release status:** `v0.2.0-preview.1`. The TUI and Web foundations are
+> **Release status:** `v0.3.0-preview.1`. The TUI and Web foundations are
 > usable previews. Capacitor bundles are portable and tested in browsers, but
 > native store releases still require platform-specific device validation.
 
@@ -35,21 +35,24 @@ Native validation additionally requires Xcode and/or the Android SDK.
 ## Install
 
 ```bash
-git clone <repository-url> iris
-cd iris
-idris2 --install iris.ipkg
+# From the Flux repository root, using its pinned pack collection:
+pack --no-prompt install flux-ui
 ```
+
+This is an outright rename, not an alias package. See
+[the breaking migration guide](MIGRATION.md) for source, DOM, FFI and event-wire
+changes. Rebuild existing applications; old and new bundles must not be mixed.
 
 ## Minimal application
 
 ```idris
 module Main
 
-import Iris.App
-import Iris.State.TEA
-import Iris.Platform.Event
-import Iris.Widget
-import Iris.Backend.Web.DOM.Run
+import Flux.UI.App
+import Flux.UI.State.TEA
+import Flux.UI.Platform.Event
+import Flux.UI.Widget
+import Flux.UI.Backend.Web.DOM.Run
 
 data Msg = Increment
 
@@ -62,22 +65,34 @@ view count = vstack
   , button "Increment" Increment
   ]
 
-app : IrisApp Nat Msg
+app : UIApp Nat Msg
 app = MkApp (0, none) update view (\_, _ => Nothing) Nothing
 
 main : IO ()
 main = runWeb app
 ```
 
-Use `Iris.Backend.Terminal.Run.runTUI` or
-`Iris.Backend.Canvas.Run.runCanvas` for another supported backend.
+Use `Flux.UI.Backend.Terminal.Run.runTUI` or
+`Flux.UI.Backend.Canvas.Run.runCanvas` for another supported backend.
 
 ## Build and test
 
+For the complete root CI suite, install Chromium under `packages/ui` and run
+`bash tools/ci-suite.sh ui` from the Flux root. For individual targets, select
+the pinned compiler/package environment first:
+
 ```bash
-make build          # build Iris
+# From the Flux root, after installing flux-ui:
+compiler=$(pack app-path idris2)
+export PATH="$(dirname "$compiler"):$PATH"
+export IDRIS2_PACKAGE_PATH="$(pack package-path)"
+export IDRIS2_LIBS="$(pack libs-path)"
+cd packages/ui
+make build          # build Flux UI
 make test           # Idris test suites
 make check          # tests, web/mobile bundles, release validation
+make -C examples/todo build-terminal
+python3 tests/native_smoke.py  # both native TUI entries, FFI and keyboard shutdown
 
 npm ci
 npx playwright install chromium
@@ -95,7 +110,7 @@ make mobile-preview
 ## Capacitor validation
 
 Portable bundle validation is included in `make check`. On provisioned native
-build machines:
+build machines, run from `packages/ui` with the same compiler environment:
 
 ```bash
 make native-check
@@ -120,8 +135,8 @@ release checklist.
 
 Known limitations include general-purpose Canvas wrapping/scroll containers,
 native-device validation. The legacy
-`Iris.Core.Widget`/`Iris.Core.Runtime` path is retained for compatibility; new
-applications should use `Iris.Widget` and the specialized runners.
+`Flux.UI.Core.Widget`/`Flux.UI.Core.Runtime` path is retained for compatibility; new
+applications should use `Flux.UI.Widget` and the specialized runners.
 
 See [`API_STABILITY.md`](API_STABILITY.md), [`SECURITY.md`](SECURITY.md), and
 [`CHANGELOG.md`](CHANGELOG.md) before deploying.

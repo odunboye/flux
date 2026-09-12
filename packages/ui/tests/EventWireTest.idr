@@ -2,9 +2,9 @@ module Main
 
 import System
 import Data.String
-import Iris.App.EventWire
-import Iris.Platform.Event
-import Iris.Core.Types
+import Flux.UI.App.EventWire
+import Flux.UI.Platform.Event
+import Flux.UI.Core.Types
 
 mods : ModifierKeys
 mods = MkModifiers True False True False
@@ -58,20 +58,21 @@ checkRoundTrip event =
 invalidCases : List (String, WireError -> Bool)
 invalidCases =
   [ ("", \case EmptyPayload => True; _ => False)
-  , ("i2|T|65", \case UnknownEventVersion => True; _ => False)
-  , ("i1|wat", \case UnknownEventTag "wat" => True; _ => False)
-  , ("i1|R|10", \case WrongFieldCount "resize" => True; _ => False)
-  , ("i1|R|abc|10", \case InvalidNumber "width" => True; _ => False)
-  , ("i1|R|-1|10", \case ValueOutOfRange "width" => True; _ => False)
-  , ("i1|P|down|mouse|-1|0|0|0|0|none|0|0|0|0|0",
+  , ("f2|T|65", \case UnknownEventVersion => True; _ => False)
+  , ("i1|L|resume", \case UnknownEventVersion => True; _ => False)
+  , ("f1|wat", \case UnknownEventTag "wat" => True; _ => False)
+  , ("f1|R|10", \case WrongFieldCount "resize" => True; _ => False)
+  , ("f1|R|abc|10", \case InvalidNumber "width" => True; _ => False)
+  , ("f1|R|-1|10", \case ValueOutOfRange "width" => True; _ => False)
+  , ("f1|P|down|mouse|-1|0|0|0|0|none|0|0|0|0|0",
       \case ValueOutOfRange "pointer id" => True; _ => False)
-  , ("i1|P|down|mouse|1|0|0|0|0|none|1.1|0|0|0|0",
+  , ("f1|P|down|mouse|1|0|0|0|0|none|1.1|0|0|0|0",
       \case ValueOutOfRange "pressure" => True; _ => False)
-  , ("i1|P|down|trackpad|1|0|0|0|0|none|0|0|0|0|0",
+  , ("f1|P|down|trackpad|1|0|0|0|0|none|0|0|0|0|0",
       \case InvalidEnum "pointer kind" => True; _ => False)
-  , ("i1|T|not-a-codepoint", \case InvalidNumber "text code point" => True; _ => False)
-  , ("i1|T|55296", \case ValueOutOfRange "text code point" => True; _ => False)
-  , ("i1|D|-1", \case ValueOutOfRange "timestamp" => True; _ => False)
+  , ("f1|T|not-a-codepoint", \case InvalidNumber "text code point" => True; _ => False)
+  , ("f1|T|55296", \case ValueOutOfRange "text code point" => True; _ => False)
+  , ("f1|D|-1", \case ValueOutOfRange "timestamp" => True; _ => False)
   , (pack (replicate 65537 'x'), \case PayloadTooLarge => True; _ => False)
   ]
 

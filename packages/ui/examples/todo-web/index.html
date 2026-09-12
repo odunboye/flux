@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Iris Todo — Web</title>
+  <title>Flux UI Todo — Web</title>
   <style>
-    /* Base reset — Iris injects its own stylesheet via irisCSS */
+    /* Base reset — Flux UI injects its own stylesheet via fluxUICSS */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
 
@@ -41,8 +41,8 @@
     .spacer { flex: 1; }
     .hint   { font-size: 0.75rem; color: #6e7681; }
 
-    /* ── The Iris app mounts here ─────────────────────────────────────── */
-    #iris-app {
+    /* ── The Flux UI app mounts here ─────────────────────────────────────── */
+    #flux-ui-app {
       width: 100%;
       max-width: 880px;
       min-height: 400px;
@@ -72,14 +72,14 @@
 <body>
 
   <header>
-    <h1>🌸 Iris Todo</h1>
+    <h1>⚡ Flux UI Todo</h1>
     <span class="badge">WORA · Idris2 JS → DOM</span>
     <span class="spacer"></span>
     <span class="hint">Same source as the terminal app</span>
   </header>
 
-  <!-- Iris mounts the widget tree here via document.getElementById("iris-app") -->
-  <div id="iris-app">
+  <!-- Flux UI mounts the widget tree here via document.getElementById("flux-ui-app") -->
+  <div id="flux-ui-app">
     <div style="color:#6e7681;padding:20px">Loading…</div>
   </div>
 
@@ -91,14 +91,14 @@
     <kbd>Esc</kbd> cancel
     <br/>
     <strong style="color:#c9d1d9">Write once, run anywhere:</strong>
-    the same <code style="color:#58a6ff">IrisApp</code> value — one call to
+    the same <code style="color:#58a6ff">UIApp</code> value — one call to
     <code style="color:#58a6ff">runTUI</code> for terminal, one call to
     <code style="color:#58a6ff">runWeb</code> for browser.
     <br/>
     Built with
     <a href="https://github.com/idris-lang/Idris2" target="_blank">Idris2</a>.
     Source:
-    <a href="https://github.com/your-repo/iris" target="_blank">Iris UI Framework</a>.
+    <a href="https://github.com/odunboye/flux" target="_blank">Flux UI Framework</a>.
   </footer>
 
   <!--
@@ -107,7 +107,7 @@
     using flex-box layout and semantic HTML elements.
     Keyboard events are captured via document.addEventListener("keydown").
   -->
-  <script src="build/exec/iris-todo-web"></script>
+  <script src="build/exec/flux-ui-todo-web"></script>
 
 </body>
 </html>

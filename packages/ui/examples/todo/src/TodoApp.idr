@@ -1,9 +1,9 @@
 ||| TodoApp
-||| The single shared Iris application definition.
+||| The single shared Flux UI application definition.
 |||
 ||| This module contains everything that is platform-agnostic:
 |||   • seed data          • initial model
-|||   • keyboard handler   • the IrisApp value itself
+|||   • keyboard handler   • the UIApp value itself
 |||
 ||| Platform entry points (one per target) just do:
 |||
@@ -13,11 +13,11 @@
 |||   main = runMobile  todoApp  -- mobile   (future)
 module TodoApp
 
-import Iris.App
-import Iris.State.TEA
-import Iris.Platform.Event
-import Iris.Widget.TUI.List
-import Iris.Widget.TUI.Input
+import Flux.UI.App
+import Flux.UI.State.TEA
+import Flux.UI.Platform.Event
+import Flux.UI.Widget.TUI.List
+import Flux.UI.Widget.TUI.Input
 
 import Todo.Types
 import Todo.Update
@@ -28,7 +28,7 @@ import Todo.View
 public export
 seedTasks : List Task
 seedTasks =
-  [ MkTask 0 "Build the Iris framework"       True
+  [ MkTask 0 "Build the Flux UI framework"       True
   , MkTask 1 "Add TUI backend"                True
   , MkTask 2 "Write example projects"         False
   , MkTask 3 "Implement layout engine"        False
@@ -81,7 +81,7 @@ handleKey m ke =
 
 -- ─── The application — shared across all platforms ───────────────────────────
 
-||| The Iris Todo application.
+||| The Flux UI Todo application.
 ||| Pass this to the backend entry point of your choice:
 |||
 |||   runTUI     todoApp   ← terminal
@@ -89,5 +89,5 @@ handleKey m ke =
 |||   runDesktop todoApp   ← desktop window  (future)
 |||   runMobile  todoApp   ← iOS / Android   (future)
 public export
-todoApp : IrisApp Model Msg
+todoApp : UIApp Model Msg
 todoApp = MkApp (initModel, none) update view (\m, e => case e of KeyboardEvent ke => handleKey m ke; _ => Nothing) (Just Tick)

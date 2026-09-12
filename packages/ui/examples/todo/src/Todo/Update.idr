@@ -3,11 +3,11 @@
 ||| No IO here — all side-effects are returned as Cmd values.
 module Todo.Update
 
-import Iris.State.TEA
-import Iris.Effect.Keyboard
-import Iris.Platform.Event
-import Iris.Widget.TUI.List
-import Iris.Widget.TUI.Input
+import Flux.UI.State.TEA
+import Flux.UI.Effect.Keyboard
+import Flux.UI.Platform.Event
+import Flux.UI.Widget.TUI.List
+import Flux.UI.Widget.TUI.Input
 import Todo.Types
 
 -- ─── Helpers ────────────────────────────────────────────────────────────────

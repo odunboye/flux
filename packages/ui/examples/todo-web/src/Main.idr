@@ -1,14 +1,14 @@
-||| Iris Todo — Browser/DOM entry point
+||| Flux UI Todo — Browser/DOM entry point
 ||| IDENTICAL logic to examples/todo/src/Main.idr.
 ||| Only the last line differs: runWeb instead of runTUI.
 module Main
 
-import Iris.App
-import Iris.State.TEA
-import Iris.Platform.Event
-import Iris.Widget.TUI.List
-import Iris.Widget.TUI.Input
-import Iris.Backend.Web.DOM.Run
+import Flux.UI.App
+import Flux.UI.State.TEA
+import Flux.UI.Platform.Event
+import Flux.UI.Widget.TUI.List
+import Flux.UI.Widget.TUI.Input
+import Flux.UI.Backend.Web.DOM.Run
 
 import Todo.Types
 import Todo.Update
@@ -18,7 +18,7 @@ import Todo.View
 
 seedTasks : List Task
 seedTasks =
-  [ MkTask 0 "Build the Iris framework"       True
+  [ MkTask 0 "Build the Flux UI framework"       True
   , MkTask 1 "Add TUI backend"                True
   , MkTask 2 "Write example projects"         False
   , MkTask 3 "Implement layout engine"        False
@@ -68,7 +68,7 @@ handleKey m ke =
 
 -- ─── App (identical to terminal version) ───────────────────────────────────
 
-todoWebApp : IrisApp Model Msg
+todoWebApp : UIApp Model Msg
 todoWebApp = MkApp (initModel, none) update view (\m, e => case e of KeyboardEvent ke => handleKey m ke; _ => Nothing) (Just Tick)
 
 -- ─── Entry point — the ONLY line that differs from the terminal version ─────

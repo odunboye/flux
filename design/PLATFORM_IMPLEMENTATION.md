@@ -6,7 +6,9 @@ generated scaffolding, or an isolated endpoint as Serverpod feature parity.
 
 Source consolidation is now implemented as a modular Flux repository. See
 [the workspace/package map](CONSOLIDATION.md) for locations, preserved history,
-compatible package IDs and the combined verification command.
+current package IDs and the combined verification command. Flux UI now uses
+`flux-ui` and `Flux.UI.*` in an outright breaking rename; see
+[the migration guide](../packages/ui/MIGRATION.md).
 
 ## Boundaries
 
@@ -21,16 +23,16 @@ compatible package IDs and the combined verification command.
 
 Start schema-first with an explicitly versioned JSON intermediate protocol.
 Generate shared Idris wire records, typed Flux route adapters, an Idris client
-returning Iris `Cmd msg` values, and OpenAPI from that same description.
-The client target is Iris, not Dart/Flutter. The portable client package depends
-on Iris/json-simple only; it must not import the Flux server runtime or PG. This deliberately avoids pretending
+returning Flux UI `Cmd msg` values, and OpenAPI from that same description.
+The client target is Flux UI, not Dart/Flutter. The portable client package depends
+on Flux/UI/json-simple only; it must not import the Flux server runtime or PG. This deliberately avoids pretending
 that arbitrary dependent Idris types can cross a network. Idris elaborator
 metadata extraction can later target the identical intermediate protocol.
 
 Current subset: required string/bool fields, named model references, lists and
 explicitly nullable fields; named object requests/responses and POST endpoints
 with a bounded JSON body. Omittable fields and recursive models are unsupported. IDs are decimal strings, not JSON
-numbers, so Iris's JavaScript targets do not lose PostgreSQL BIGINT precision. Domain
+numbers, so Flux UI's JavaScript targets do not lose PostgreSQL BIGINT precision. Domain
 validation remains in server application code. Generated codecs validate
 untrusted input; they do not establish domain invariants.
 
@@ -44,8 +46,8 @@ until identity/authorization enforcement is implemented, not silently exposed.
 - `platform/flux-platform.ipkg`: independent package with bounded typed public
   endpoint adapters and stable, redacted RPC error envelopes.
 - Deterministic schema generator: shared Idris object codecs, Flux API/routes,
-  Iris client and OpenAPI 3.1; drift checks and fail-closed unsupported features.
-- Iris native and Web transport adapters preserving Task/CancellableTask shapes.
+  Flux UI client and OpenAPI 3.1; drift checks and fail-closed unsupported features.
+- Flux UI native and Web transport adapters preserving Task/CancellableTask shapes.
 - Real HTTP client tests on Chez/curl, Node/fetch and Chromium, including Unicode,
   string BIGINTs, malformed input, typed errors, redaction, cancellation and CORS.
 - Real pooled todo repository integration: Node and Chromium each execute a
@@ -57,14 +59,14 @@ until identity/authorization enforcement is implemented, not silently exposed.
 - 14 migration integration checks pass in a disposable PostgreSQL container.
   Companion Nebula commit: `a177aee8d3370fd970ff262e549a3611ae3778d2`.
 
-The first Iris/client checkpoint is Flux `f64aef7`, paired with the Nebula
+The first Flux/UI/client checkpoint is Flux `f64aef7`, paired with the Nebula
 commit above.
 
 ## Implemented second increment
 
 - Generator supports acyclic named-model dependencies, list values and explicit
   nullability, with deterministic topological output and matching OpenAPI.
-- `platform/crud/`: complete generated create/get/list/update/toggle/delete Iris
+- `platform/crud/`: complete generated create/get/list/update/toggle/delete Flux UI
   methods backed by the pooled todo repository.
 - Canonical BIGINT ID validation, bounded titles and 50-row keyset pagination.
 - Versioned migration bootstrap with frozen SQL and safe restart verification.
@@ -74,14 +76,14 @@ commit above.
   earlier wire/PG/migration tests and Flux regressions pass again.
 
 This is not completion of the platform. Endpoints remain public POST methods,
-with no recursive models or omittable fields. The complete todo Iris UI and
+with no recursive models or omittable fields. The complete todo Flux UI and
 repository-local project CLI are now implemented (see below). There is still no
 identity system or production deployment workflow. Client transport behavior
-and limits are inherited from Iris, not strengthened by these adapters.
+and limits are inherited from Flux UI, not strengthened by these adapters.
 Existing todo-api entry points are unchanged; a separate PG example exercises
 its repositories. The underlying PG TLS authentication gap remains unresolved.
 
-## Iris application and project CLI checkpoint
+## Flux UI application and project CLI checkpoint
 
 - `platform/crud/TodoUI.idr`: complete generated-client CRUD UI, keyset pages,
   explicit loading/empty/validation/error states, edit/delete cancellation,
@@ -132,7 +134,7 @@ recycle database persistence models indiscriminately as public API records
 ## Verification policy
 
 Keep generation deterministic and reject unsupported schemas before writing
-any output. Compile generated Idris for native and JS targets, and test Iris
+any output. Compile generated Idris for native and JS targets, and test Flux UI
 commands in real browser/native HTTP environments. Test the
 wire contract against a running server rather than only comparing generated
 text. Preserve existing runtime and application regressions. Do not commit

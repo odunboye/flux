@@ -1,4 +1,4 @@
-"""Full generated Iris CRUD, pagination, and migration bootstrap on a disposable DB."""
+"""Full generated Flux UI CRUD, pagination, and migration bootstrap on a disposable DB."""
 import os
 from pathlib import Path
 import socket

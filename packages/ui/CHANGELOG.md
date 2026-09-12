@@ -1,9 +1,19 @@
 # Changelog
 
-All notable changes to Iris are recorded here. The project follows Semantic
+All notable changes to Flux UI are recorded here. The project follows Semantic
 Versioning within the normal compatibility limits of a pre-1.0 release.
 
-## Unreleased
+## 0.3.0-preview.1 — breaking Flux UI rename
+
+- Renamed the implementation and public API to `flux-ui`, `Flux.UI.*`,
+  `UIApp` and `UIColor`; removed the old package and namespace entirely.
+- Renamed native C symbols/libraries, browser hooks/hosts, examples, npm metadata
+  and tooling overrides; internal backend event frames now use `f1`.
+- Updated platform consumers, landing page and CI; added naming and native TUI
+  regression coverage. No old-name wrappers or fallbacks are provided.
+- See [MIGRATION.md](MIGRATION.md) before rebuilding applications.
+
+## Earlier unreleased work (pre-rename record)
 
 ### Added
 

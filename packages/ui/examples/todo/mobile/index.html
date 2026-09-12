@@ -6,7 +6,7 @@
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0,
                  user-scalable=no, viewport-fit=cover"/>
-  <title>Iris Todo</title>
+  <title>Flux UI Todo</title>
   <style>
     /* Full-screen, no scroll, no bounce on iOS */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -18,7 +18,7 @@
       user-select: none;
     }
     /* The canvas IS the entire app surface */
-    #iris-canvas {
+    #flux-ui-canvas {
       display: block;
       width: 100%;
       height: 100%;
@@ -28,7 +28,7 @@
   </style>
 </head>
 <body>
-  <canvas id="iris-canvas"></canvas>
+  <canvas id="flux-ui-canvas"></canvas>
 
   <!--
     Capacitor bridge (auto-injected when running in a native app;
@@ -45,8 +45,8 @@
   </script>
 
   <!--
-    The Iris canvas application.
-    runMobile() draws onto #iris-canvas and handles touch events.
+    The Flux UI canvas application.
+    runMobile() draws onto #flux-ui-canvas and handles touch events.
   -->
   <!-- app.js is the compiled Idris2 JS, copied here by `make build-mobile` -->
   <script src="app.js"></script>

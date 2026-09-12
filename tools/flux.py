@@ -65,7 +65,7 @@ def generate(project, config, check=False):
 def build(project, config):
     generate(project, config, check=True)
     run(['pack', '--no-prompt', 'build', str(project / config['server'])], cwd=ROOT)
-    run(['pack', '--no-prompt', 'install', 'iris'], cwd=ROOT)
+    run(['pack', '--no-prompt', 'install', 'flux-ui'], cwd=ROOT)
     run(['pack', '--no-prompt', '--cg', 'javascript', 'build', str(project / config['ui'])], cwd=ROOT)
 
 
