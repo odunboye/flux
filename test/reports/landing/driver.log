@@ -1,0 +1,24 @@
+PASS 22 local packages, canonical paths and browser dependency boundaries
+RUN workspace-unit: /opt/homebrew/opt/python@3.14/bin/python3.14 -m unittest discover -s tools -p test_workspace.py
+RUN cli-unit: /opt/homebrew/opt/python@3.14/bin/python3.14 -m unittest discover -s tools -p test_flux.py
+RUN generator: /opt/homebrew/opt/python@3.14/bin/python3.14 -m unittest discover -s platform -p test_generator.py
+RUN generated-example: /opt/homebrew/opt/python@3.14/bin/python3.14 platform/generate.py platform/example/schema.json --out platform/example --check
+RUN generated-crud: /opt/homebrew/opt/python@3.14/bin/python3.14 platform/generate.py platform/crud/schema.json --out platform/crud --check
+RUN build-apps-landing-landing: pack --no-prompt build apps/landing/landing.ipkg
+RUN landing-browser: /opt/homebrew/opt/python@3.14/bin/python3.14 apps/landing/test_site.py
+RUN build-test-test: pack --no-prompt build test/test.ipkg
+RUN flux-regression: ./test/build/exec/flux-test
+RUN build-platform-example-client-native-test: pack --no-prompt build platform/example/client-native-test.ipkg
+RUN build-platform-example-example: pack --no-prompt build platform/example/example.ipkg
+RUN build-platform-example-pg-example: pack --no-prompt build platform/example/pg-example.ipkg
+RUN build-platform-example-migrations: pack --no-prompt build platform/example/migrations.ipkg
+RUN build-platform-crud-server: pack --no-prompt build platform/crud/server.ipkg
+RUN build-platform-example-client-web-test: pack --no-prompt --cg javascript build platform/example/client-web-test.ipkg
+RUN build-platform-crud-client-test: pack --no-prompt --cg javascript build platform/crud/client-test.ipkg
+RUN build-platform-crud-ui: pack --no-prompt --cg javascript build platform/crud/ui.ipkg
+RUN iris-wire: /opt/homebrew/opt/python@3.14/bin/python3.14 platform/test_wire.py
+RUN iris-pg-migrations: /opt/homebrew/opt/python@3.14/bin/python3.14 platform/test_pg_wire.py
+RUN iris-crud: /opt/homebrew/opt/python@3.14/bin/python3.14 platform/test_crud.py
+RUN iris-app-cli: /opt/homebrew/opt/python@3.14/bin/python3.14 platform/test_app.py
+Reports: /Users/odunadeboye/dev/idris2/projects/flux/.workspace/reports/20260912-093018
+PASS combined workspace integration

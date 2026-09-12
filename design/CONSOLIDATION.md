@@ -101,7 +101,9 @@ pull requests and main pushes, in addition to the existing boundary/HTTP jobs:
 - **generated-client-db**: the complete `workspace.py test` gate, including
   generated-output freshness, native/JS clients, Chromium, disposable PostgreSQL,
   migrations and full CRUD, plus fresh-source CLI project creation/build and
-  actual Iris UI acceptance against PostgreSQL. Database checks are not skipped.
+  actual Iris UI acceptance against PostgreSQL. It also builds the native Flux
+  landing server and checks its responsive page in Chromium. Database checks
+  are not skipped.
 
 The old nested Iris workflow was removed; GitHub never executed it from inside
 `packages/ui`. Both root jobs install locked browser dependencies, audit them,

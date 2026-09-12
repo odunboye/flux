@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Flux brings an owned server runtime, PostgreSQL persistence, generated Idris clients and Iris UI into one modular application platform. Explore the preview."
+    />
+    <meta name="theme-color" content="#f8f7fc" />
+    <meta property="og:title" content="Flux — One language. Both sides." />
+    <meta
+      property="og:description"
+      content="Build full-stack Idris applications with generated contracts, Iris UI and PostgreSQL. A platform preview, built in the open."
+    />
+    <meta property="og:type" content="website" />
+    <title>Flux — One language. Both sides.</title>
+    <link rel="icon" href="/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/site.css" />
+    <script src="/site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="header wrap">
+      <a class="brand" href="/" aria-label="Flux home"
+        ><img src="/mark.svg" width="36" height="36" alt="" /><span
+          >flux</span
+        ></a
+      >
+      <button
+        class="menu-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="navigation"
+      >
+        Menu <span aria-hidden="true">☰</span>
+      </button>
+      <nav
+        id="navigation"
+        class="navigation"
+        aria-label="Main navigation"
+        data-open="false"
+      >
+        <a href="#platform">Platform</a><a href="#workflow">How it works</a
+        ><a href="#readiness">Roadmap</a>
+        <a href="https://github.com/odunboye/flux" class="source-link"
+          >GitHub <span aria-hidden="true">↗</span></a
+        >
+        <a class="button button-small" href="#start"
+          >Start building <span aria-hidden="true">→</span></a
+        >
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero wrap" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <a class="eyebrow preview-link" href="#readiness"
+            ><span class="status-dot" aria-hidden="true"></span> THE FLUX
+            PLATFORM PREVIEW <span aria-hidden="true">↗</span></a
+          >
+          <h1 id="hero-title">
+            One language.<br />Both sides.<br /><span class="accent"
+              >Full possibility.</span
+            >
+          </h1>
+          <p class="hero-description">
+            Your server, your data, your interface.<br />Build them together in
+            <strong>Idris</strong> — with generated contracts that keep the
+            pieces connected.
+          </p>
+          <div class="hero-actions">
+            <a class="button" href="#start"
+              >Build your first app <span aria-hidden="true">→</span></a
+            ><a class="text-link" href="#workflow"
+              >See the workflow <span aria-hidden="true">↘</span></a
+            >
+          </div>
+          <p class="hero-note">Iris UI. PostgreSQL. One modular workspace.</p>
+        </div>
+        <div
+          class="hero-art"
+          role="img"
+          aria-label="Flux connects an Iris interface to a typed API and PostgreSQL"
+        >
+          <div class="orbit-frame" aria-hidden="true">
+            <div class="orbit orbit-one"></div>
+            <div class="orbit orbit-two"></div>
+          </div>
+          <div class="float-label">
+            <span class="status-dot" aria-hidden="true"></span> connected by
+            types
+          </div>
+          <div class="app-window">
+            <div class="window-top">
+              <span class="window-dots" aria-hidden="true">● ● ●</span
+              ><span>your next idea / iris</span
+              ><span class="window-badge">UI</span>
+            </div>
+            <div class="app-content">
+              <div class="app-heading">
+                <div>
+                  <p class="micro-label">A LITTLE LESS GLUE</p>
+                  <h2>A little more doing.</h2>
+                </div>
+                <span class="sunburst" aria-hidden="true">✳</span>
+              </div>
+              <div class="demo-task">
+                <span class="demo-check checked" aria-hidden="true">✓</span
+                ><span>Define the contract</span
+                ><span class="tiny-tag">typed</span>
+              </div>
+              <div class="demo-task">
+                <span class="demo-check checked" aria-hidden="true">✓</span
+                ><span>Connect the database</span
+                ><span class="tiny-tag">pooled</span>
+              </div>
+              <div class="demo-task">
+                <span class="demo-check" aria-hidden="true"></span
+                ><span>Make something yours</span
+                ><span class="task-arrow" aria-hidden="true">↗</span>
+              </div>
+              <div class="app-bottom">
+                <span>Less translation. More creation.</span
+                ><span class="mini-flux" aria-hidden="true">ƒ</span>
+              </div>
+            </div>
+          </div>
+          <div class="connection" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="api-node">
+            <span class="node-icon" aria-hidden="true">{ }</span>
+            <div>
+              <strong>Flux API</strong><small>Generated Idris contracts</small>
+            </div>
+            <span class="node-line" aria-hidden="true"></span
+            ><span class="db-icon" aria-hidden="true">▤</span>
+            <div>
+              <strong>PostgreSQL</strong><small>Real persistence</small>
+            </div>
+          </div>
+          <p class="art-caption">
+            Illustration of the stack · explore the working todo app below
+          </p>
+        </div>
+      </section>
+
+      <section class="stack-strip" aria-label="The Flux stack">
+        <div class="wrap stack-inner">
+          <span class="micro-label"
+            >ONE WORKSPACE.<br />DIFFERENT SUPERPOWERS.</span
+          ><span>Flux <small>server</small></span
+          ><span>Iris <small>interface</small></span
+          ><span>Nebula <small>persistence</small></span
+          ><span>PostgreSQL <small>database</small></span>
+        </div>
+      </section>
+
+      <section
+        id="workflow"
+        class="section wrap workflow"
+        aria-labelledby="workflow-title"
+      >
+        <div class="section-intro">
+          <p class="eyebrow">THE TWO SIDES OF ONE IDEA</p>
+          <h2 id="workflow-title">
+            Spend less time<br /><span class="muted">connecting the dots.</span>
+          </h2>
+          <p>
+            Define a versioned schema. Generate shared Idris types, server
+            adapters, client commands and OpenAPI. Then write the part that
+            makes your app yours.
+          </p>
+          <a class="text-link" href="#start"
+            >Try the complete todo application
+            <span aria-hidden="true">→</span></a
+          >
+          <div class="workflow-steps">
+            <span><b>01</b> Define</span><span aria-hidden="true">→</span
+            ><span><b>02</b> Generate</span><span aria-hidden="true">→</span
+            ><span><b>03</b> Build</span>
+          </div>
+        </div>
+        <div class="code-window">
+          <div class="code-tabs" role="group" aria-label="Code examples">
+            <button id="server-tab" type="button" data-panel="server-code">
+              Server <span>Main.idr</span></button
+            ><button id="client-tab" type="button" data-panel="client-code">
+              Client <span>Client.idr</span></button
+            ><span class="code-language">IDRIS</span>
+          </div>
+          <div
+            id="server-code"
+            class="code-panel"
+            role="region"
+            aria-labelledby="server-tab"
+          >
+            <p class="code-caption">
+              A real handler from the todo application.
+            </p>
+            <pre><code><span class="token-comment">-- Your logic. A typed contract.</span>
+<span class="token-function">createTodo</span> : TodoRepository
+          -&gt; CreateTodoRequest
+          -&gt; AppProg TodoView
+createTodo repo request = <span class="token-keyword">do</span>
+  requireTitle request.title
+  <span class="token-keyword">map</span> wireTodo
+    (dbIO (repo.crud.insert
+      (MkNewTodo request.title <span class="token-value">False</span>)))</code></pre>
+          </div>
+          <div
+            id="client-code"
+            class="code-panel"
+            role="region"
+            aria-labelledby="client-tab"
+          >
+            <p class="code-caption">
+              Generated commands fit directly into Iris.
+            </p>
+            <pre><code><span class="token-comment">-- Generated, not maintained twice.</span>
+<span class="token-function">createTodo</span> : {msg : Type}
+          -&gt; Client
+          -&gt; CreateTodoRequest
+          -&gt; (Either RpcError TodoView -&gt; msg)
+          -&gt; Cmd msg
+
+<span class="token-comment">-- Use it in your update function:</span>
+createTodo client
+  (MkCreateTodoRequest model.draft)
+  Created</code></pre>
+          </div>
+          <div class="code-footer">
+            <span class="status-dot" aria-hidden="true"></span> No handwritten
+            client transport in your UI.<span aria-hidden="true">↗</span>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="platform"
+        class="section platform-section"
+        aria-labelledby="platform-title"
+      >
+        <div class="wrap">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">SMALL PIECES. A BIGGER PICTURE.</p>
+              <h2 id="platform-title">
+                A stack that works<br />better together.
+              </h2>
+            </div>
+            <p>
+              Keep the pieces you need. Each layer has a job, with existing
+              package names and imports preserved.
+            </p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature feature-lilac">
+              <div class="feature-icon" aria-hidden="true">↔</div>
+              <h3>Typed across the wire.</h3>
+              <p>
+                Shared models, generated RPC commands and structured errors.
+                Exact BIGINT identifiers stay strings, all the way to the
+                browser.
+              </p>
+              <span class="feature-label">GENERATED CONTRACTS</span>
+            </article>
+            <article class="feature feature-dark">
+              <div class="feature-icon" aria-hidden="true">▤</div>
+              <h3>Data with a history.</h3>
+              <p>
+                Pooled PostgreSQL repositories and explicit, reviewed SQL
+                migrations. Transactional changes, recorded checksums and safe
+                replay.
+              </p>
+              <span class="feature-label">NEBULA + POSTGRESQL</span>
+            </article>
+            <article class="feature feature-light">
+              <div class="feature-icon" aria-hidden="true">✳</div>
+              <h3>Interfaces with intent.</h3>
+              <p>
+                Iris brings model, update and view together. Generated commands
+                stay inside its effect lifecycle — including cancellation.
+              </p>
+              <span class="feature-label">IRIS UI</span>
+            </article>
+            <article class="feature feature-light">
+              <div class="feature-icon" aria-hidden="true">⌁</div>
+              <h3>Effects have an owner.</h3>
+              <p>
+                The server runtime makes task lifetimes, socket ownership and
+                shutdown explicit. Background work isn’t an afterthought.
+              </p>
+              <span class="feature-label">OWNED RUNTIME</span>
+            </article>
+            <article class="feature feature-light">
+              <div class="feature-icon" aria-hidden="true">&gt;_</div>
+              <h3>From idea to localhost.</h3>
+              <p>
+                Create an app, generate the contract, build both sides and start
+                a local session. One repository-local CLI brings the workflow
+                together.
+              </p>
+              <span class="feature-label">PROJECT TOOLING</span>
+            </article>
+            <article class="feature feature-green">
+              <div class="feature-icon" aria-hidden="true">✓</div>
+              <h3>Beyond the happy path.</h3>
+              <p>
+                Real Chromium and PostgreSQL checks exercise CRUD, pagination,
+                errors and interrupted writes — with independent persistence
+                verification.
+              </p>
+              <span class="feature-label">INTEGRATION, NOT JUST MOCKS</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="start"
+        class="section wrap start-section"
+        aria-labelledby="start-title"
+      >
+        <div>
+          <p class="eyebrow">MAKE IT REAL</p>
+          <h2 id="start-title">
+            Your first full-stack<br />Idris app starts here.
+          </h2>
+          <p>
+            The working todo application connects an Iris browser UI to a Flux
+            API and PostgreSQL. Start with it. Make it your own.
+          </p>
+          <div class="prerequisites">
+            <strong>Before you start</strong
+            ><span
+              >Install pack, Python 3, Node 20+, curl and Docker. Run these
+              commands from a Flux checkout.</span
+            >
+          </div>
+          <a class="text-link" href="https://github.com/odunboye/flux"
+            >Get the source on GitHub <span aria-hidden="true">↗</span></a
+          >
+        </div>
+        <div class="terminal">
+          <div class="terminal-top">
+            <span class="window-dots" aria-hidden="true">● ● ●</span
+            ><span>terminal — flux checkout</span
+            ><button id="copy-start" type="button" hidden>Copy commands</button>
+          </div>
+          <pre><code id="start-commands">./flux doctor
+./flux build
+./flux dev --disposable-db --no-build</code></pre>
+          <div class="terminal-result">
+            <span aria-hidden="true">↳</span> Open http://127.0.0.1:8090
+          </div>
+          <div class="terminal-note">
+            Disposable data is removed on successful cleanup. Removal failures
+            are reported for manual recovery.
+          </div>
+          <p
+            id="copy-status"
+            class="copy-status"
+            role="status"
+            aria-live="polite"
+          ></p>
+        </div>
+      </section>
+
+      <section
+        id="readiness"
+        class="section wrap readiness"
+        aria-labelledby="readiness-title"
+      >
+        <div class="readiness-copy">
+          <span class="eyebrow">BUILT IN THE OPEN</span>
+          <h2 id="readiness-title">
+            A real foundation.<br />An honest preview.
+          </h2>
+          <p>
+            Flux is ready to explore, build with locally and help shape. It
+            isn’t a production-readiness promise.
+          </p>
+          <a class="text-link" href="https://github.com/odunboye/flux/issues"
+            >Help shape what comes next <span aria-hidden="true">↗</span></a
+          >
+        </div>
+        <div class="readiness-list">
+          <div>
+            <span class="readiness-label ready">IMPLEMENTED</span>
+            <p>
+              Generated CRUD · Iris todo UI · PostgreSQL pooling · SQL
+              migrations · Local project CLI
+            </p>
+          </div>
+          <div>
+            <span class="readiness-label next">NEXT FOUNDATIONS</span>
+            <p>
+              Authenticated PostgreSQL TLS · Identity and row authorization ·
+              Standalone SDK packaging · Production deployment
+            </p>
+          </div>
+          <details>
+            <summary>
+              Can I use Flux in production?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Not yet. Endpoints in the demo are public, PostgreSQL server
+              identity verification is unfinished, and a production deployment
+              workflow is still ahead. Use local or trusted test databases while
+              those foundations are completed.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Is the CLI a hosted platform?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              No. The CLI runs inside the Flux workspace on macOS or Linux.
+              There is no managed cloud, automatic deployment or hot reload.
+              Source changes require a rebuild and restart.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      <section class="closing wrap">
+        <img src="/mark.svg" width="52" height="52" alt="" />
+        <h2>Less glue.<br /><span>More possibility.</span></h2>
+        <a class="button" href="#start"
+          >Build something with Flux <span aria-hidden="true">→</span></a
+        >
+      </section>
+    </main>
+    <footer class="footer wrap">
+      <a class="brand" href="/" aria-label="Flux home"
+        ><img src="/mark.svg" width="28" height="28" alt="" /><span
+          >flux</span
+        ></a
+      >
+      <p>One language. Both sides.</p>
+      <a href="https://github.com/odunboye/flux"
+        >Source code <span aria-hidden="true">↗</span></a
+      ><span class="served-by">This page is served by Flux.</span>
+    </footer>
+  </body>
+</html>

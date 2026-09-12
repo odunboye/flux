@@ -6,6 +6,7 @@
     "flux": "flux.ipkg",
     "flux-test": "test/test.ipkg",
     "flux-examples": "examples/examples.ipkg",
+    "flux-landing": "apps/landing/landing.ipkg",
     "flux-async": "packages/runtime/flux-async.ipkg",
     "iris": "packages/ui/iris.ipkg",
     "nebula": "packages/db/nebula.ipkg",

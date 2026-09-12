@@ -17,6 +17,11 @@ type = "local"
 path = "examples"
 ipkg = "examples.ipkg"
 
+[custom.all.flux-landing]
+type = "local"
+path = "apps/landing"
+ipkg = "landing.ipkg"
+
 [custom.all.flux-platform]
 type = "local"
 path = "platform"

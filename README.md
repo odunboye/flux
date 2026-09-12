@@ -10,6 +10,7 @@ compatible; this is not a production-readiness declaration.
 - `packages/db/`, `packages/postgres/`, `packages/db-flux/`: persistence and PG integration.
 - `platform/`: shared protocols, generated server/client code and typed CRUD examples.
 - `apps/todo-api/`: database-backed application example.
+- `apps/landing/`: Flux's landing page, served by Flux itself.
 
 See the [workspace/package map](design/CONSOLIDATION.md) and
 [typed Iris client guide](platform/README.md). No sibling repositories or
@@ -22,6 +23,16 @@ For the combined integration gate, first install the prerequisites in the
 ```sh
 python3 tools/workspace.py test
 ```
+
+## Run the landing page
+
+```sh
+pack --no-prompt build apps/landing/landing.ipkg
+(cd apps/landing && ./build/exec/flux-landing 8080 128)
+```
+
+Open **http://127.0.0.1:8080**. See the [site guide](apps/landing/README.md)
+for the design, server configuration and browser verification.
 
 ## Run the Iris application
 
