@@ -1,16 +1,27 @@
 # Flux Todo — generated-client Flux UI application
 
-This is a complete **public todo demo**, not an authenticated production app.
-Durable account/session APIs are now mounted under `/rpc/v1/auth/` using
-[Flux Auth](../../packages/auth/README.md): register, login, me, logout,
-logout-all and password change. Migration 2 adds identity tables without changing
-migration 1 or anonymous tasks. Account routes do not inherit the public Todo
-routes' wildcard CORS. There is no login UI or task ownership yet.
+This is a **private multi-user development preview**, not a production-ready
+service. [Flux Auth](../../packages/auth/README.md) supplies durable accounts and
+revocable sessions. All six task methods require a verified principal and bind
+owner in every SQL operation and pagination lookahead. Foreign IDs behave like
+missing IDs. Neither task nor account routes enable wildcard CORS.
+
+Migration 3 archives anonymous tasks without adoption/deletion and creates a
+separate private table; migrations 1/2 and existing accounts/sessions are preserved.
+Read the [reviewed ownership migration](OWNERSHIP_MIGRATION.md) before upgrading.
 `TodoUI.idr` owns the model/update/view; `MainWeb.idr` runs Flux UI's DOM backend.
 Every API operation goes through generated `Client.idr` commands. There is no
 handwritten JavaScript business model or parallel fetch client in the app.
 
-The UI supports create, fetch/edit, save/cancel, toggle, confirmed deletion,
+The Idris UI supports registration, login, logout and expiry/revocation handling
+on 401 responses. Bearers stay in memory; reload requires login. Password inputs
+are masked and cleared after submission. Identity changes clear tasks/drafts;
+every asynchronous reply carries a session generation, so even a delivered late
+user-A read or committed-write acknowledgement cannot enter user B's model.
+Logout clears local data immediately; an unconfirmed server logout requires an
+explicit retry. Sessions may remain alive if the page closes before revocation.
+
+The UI also supports create, fetch/edit, save/cancel, toggle, confirmed deletion,
 keyset pagination, loading/empty states, validation, typed failures and explicit
 retry. BIGINT IDs stay strings. Writes are serialized while pending, input is
 retained on failure, and mutation requests are never automatically retried.
@@ -39,15 +50,16 @@ No existing database or application data is reset. To retain data, supply all of
 then use `./flux dev --no-build` without the disposable flag. For a remote test
 database set `PGSSLMODE=verify-full` and optionally `PGSSLROOTCERT=/path/to/ca.pem`
 (otherwise OpenSSL system trust is used). Host/IP SAN verification is mandatory;
-weaker libpq modes and CA/plaintext conflicts fail closed. The app still has public
-endpoints: do not deploy private/multi-user data yet. Do not commit secrets.
+weaker libpq modes and CA/plaintext conflicts fail closed. This does not provide
+HTTP HTTPS: use a reviewed HTTPS deployment before exposing credentials remotely.
+Do not commit secrets.
 
 The CLI serves only the HTML, stylesheet and compiled JS, proxying `/rpc/v1/`
 to the loopback API. Source, configuration and other repository files are not
 served. The page uses same-origin requests and a strict CSP without inline
 scripts/styles. The proxy rejects cross-origin writes and bounds bodies and
-responses. It is **development tooling**, not a deployment server; the demo API
-itself remains public with development CORS. Do not expose it to untrusted users.
+responses. It is **development tooling**, not a deployment server. Production
+HTTPS, operations, backup/restore and distributed anti-abuse are still needed.
 
 ## Project CLI
 
@@ -73,7 +85,7 @@ and run `sync` to recover the package map.
 `flux.json` identifies the schema and server/UI package manifests. `build`
 requires current generated files; run `generate` after schema changes and
 adapt the handwritten server/UI if the generated types change. The starter
-uses the existing pooled todo repository; it is not arbitrary model-to-SQL
+uses explicit, pooled owner-scoped SQL; it is not arbitrary model-to-SQL
 scaffolding. `migrate` applies the same explicit frozen SQL/history checks as
 startup and exits without opening an HTTP listener. It does not plan, roll back
 or automatically derive destructive schema changes.
@@ -86,9 +98,12 @@ waits and owned process-group cleanup; SIGINT/SIGTERM initiates clean shutdown.
 This CLI is repository-local (`./flux`), for macOS/Linux workspaces, not a
 published globally installed command or a standalone SDK project generator.
 Authenticated PostgreSQL TLS and durable accounts/revocable sessions are
-available. Deployment, login UI and task ownership remain separate milestones.
-Native builds additionally require libsodium 1.0.18+ and pkg-config; `./flux doctor`
-checks these dependencies.
+available alongside private tasks and login UI. Deployment remains a separate
+milestone. Native RPC uses in-process libcurl, never shell arguments or temporary
+request files, with verified TLS and bounded synchronous Tasks. The legacy generic
+Flux UI shell HTTP effect is not suitable for credentials. Native builds require
+libsodium 1.0.18+, OpenSSL 3, libcurl 7.85+ development headers and pkg-config;
+`./flux doctor` checks these dependencies.
 
 ## Verification
 
@@ -106,7 +121,12 @@ fresh workspace, creates an app through the CLI, builds it, applies migrations
 twice, then operates the **real UI** in Chromium. It verifies CRUD, validation,
 errors/retry, cancellation of edits/deletes, lifecycle interruption after a
 committed write with a withheld response, missing rows, pagination, exact
-BIGINT IDs, safe text rendering, narrow layout, persistence after reload and
-restart, restricted static serving and cross-origin/body-limit rejection.
+BIGINT IDs, safe text rendering, narrow layout, persistence after reload/login and
+restart, restricted static serving and cross-origin/body-limit rejection. Two
+browser contexts verify private ownership, real login/logout, delivered stale
+read/write callbacks across account switches and explicit logout-failure recovery.
+`platform/test_crud.py` also checks populated migration history/archive preservation,
+foreign IDs, forged owners/cursors, concurrent mutations, native authenticated
+CRUD, expiry and revocation against PostgreSQL.
 PostgreSQL is checked independently; a separate disposable CLI session must
 remove its own database without changing the configured test database.

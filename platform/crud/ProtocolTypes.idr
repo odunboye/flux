@@ -1,4 +1,4 @@
--- Generated protocol SHA-256: 6fcbf3172431a712be6c13fc580e5c2879b1d128cf1a8286a3ca63ee6a4eabab. Do not edit.
+-- Generated protocol SHA-256: ab2611d80c30ca34eb8152fabb68a651adcd6a7f06cbb795cc2ce8bbf3f8dc81. Do not edit.
 module ProtocolTypes
 
 import public JSON.Simple

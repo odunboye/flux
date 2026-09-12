@@ -4,6 +4,7 @@ module Flux.Platform.Client
 import public Flux.UI.State.TEA
 import public Flux.UI.Effect.Http
 import public JSON.Simple
+import Data.String
 
 %default covering
 
@@ -22,6 +23,14 @@ record Client where
   constructor MkClient
   baseUrl : String
   send : Transport
+
+||| An immutable per-session client. Replaces, rather than duplicates, credentials.
+||| Keep tokens in memory and construct a fresh client when identity changes.
+export
+withBearer : String -> Client -> Client
+withBearer token client = MkClient client.baseUrl (\req, done =>
+  client.send ({ headers := ("Authorization", "Bearer " ++ token) ::
+      filter (\(name,_) => toLower name /= "authorization") req.headers } req) done)
 
 record WireError where
   constructor MkWireError

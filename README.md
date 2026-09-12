@@ -54,7 +54,9 @@ This creates a disposable PostgreSQL database and removes it on exit. For
 persistent data, configure `PG*` explicitly and omit `--disposable-db`.
 The [application/CLI guide](platform/crud/README.md) covers `new`, `generate`,
 `build`, `migrate` and `dev`, plus the real browser/database acceptance tests.
-This is a public development demo, not an authenticated production application.
+The starter has private, owner-scoped tasks and an Idris registration/login UI.
+It is a local multi-user preview, not a production-readiness promise; deployable
+HTTPS, operations and backup/restore remain separate work.
 
 ## HTTP server reference
 
@@ -721,7 +723,8 @@ whether this is production-ready for their use case:
 - **The cookie middleware remains in-memory.** Its IDs have expiry and GC,
   but no restart persistence. Use the separate `flux-auth` platform package for
   durable PostgreSQL-backed password accounts and revocable bearer sessions.
-  Task ownership/login UI and broader identity-provider features remain future work.
+  The starter now includes private task ownership and a session-safe login UI.
+  Production deployment and broader identity-provider features remain future work.
 - **No TLS.** Terminate TLS in a reverse proxy; this project speaks
   plain HTTP only.
 - **CI covers unit tests, both builds, and one live smoke test - not

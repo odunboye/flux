@@ -1,8 +1,8 @@
 # Identity and private tasks: staged implementation
 
-Status: **endpoint enforcement, durable accounts and revocable sessions are
-implemented. Private task ownership and login UI are still pending.** Do not
-deploy the public task demonstration with private data. Authenticated PostgreSQL TLS is available and must be enabled
+Status: **endpoint enforcement, durable accounts, revocable sessions, private
+starter tasks and session-safe login UI are implemented.** This is a local
+multi-user preview, not a production deployment. Authenticated PostgreSQL TLS is available and must be enabled
 for remote databases; it does not secure the HTTP connection or authorize users.
 
 ## Implemented boundary
@@ -43,10 +43,10 @@ credentials, mixed public/protected routes and bounded clean shutdown.
    PostgreSQL/TLS, two Chromium contexts, restart, revocation, expiry, concurrency,
    rate/cost limits and fail-closed outage tests are implemented. The real CRUD
    app and fresh-copy CLI expose these APIs; see `packages/auth/README.md`.
-3. **Private repository and migration — pending.** Keep migration 1's SQL/checksum frozen.
-   Preserve existing anonymous rows in an explicitly named legacy archive, not
-   under the first account to register. A reviewed transactional migration will
-   create the ownership-constrained task table and its `(owner_id, id)` index.
+3. **Private repository and migration — implemented.** Migration 3 keeps migrations
+   1/2 frozen, renames anonymous data to `todos_anonymous_archive` without adoption
+   and creates `private_todos` with an account FK and `(owner_id,id)` index. See
+   `platform/crud/OWNERSHIP_MIGRATION.md` for the operator-reviewed cutover.
    No public endpoint may read the archive. Adoption into an account requires an
    explicit operator-reviewed operation; no silent assignment, deletion or replay.
    Every get/list/create/update/toggle/delete statement derives ownership from
@@ -54,16 +54,19 @@ credentials, mixed public/protected routes and bounded clean shutdown.
    statement, not a separate check-then-write. Pagination always includes owner
    scope, including lookahead and direct forged cursors. A foreign owner's ID
    has the same response as a nonexistent ID.
-4. **Client/UI cutover — pending.** Add registration/login/logout and session expiry UX,
-   then switch every Todo endpoint to authenticated access together with its
-   owner-scoped handler. Do not temporarily protect only the UI. Bearer tokens
-   remain out of URLs and persistent browser storage; browser reload may require
-   login again in the first slice. Clear all task state on identity changes.
-   Tag callbacks with a session generation so late responses from user A cannot
-   enter user B's model. Preserve lifecycle cancellation and never replay writes
-   automatically. The same-origin dev proxy now forwards exactly one bounded
-   bearer credential without weakening its origin/host/body checks. Native transports
-   must not expose credentials in subprocess arguments or diagnostic output.
+4. **Client/UI cutover — implemented.** All six starter task routes require
+   authentication together with owner-scoped SQL. The Idris UI registers/logs in,
+   masks/clears passwords, handles 401 expiry/revocation, and clears identity-bound
+   state immediately on logout. Unconfirmed revocation requires explicit retry.
+   Bearers stay out of URLs and persistent browser storage; reload requires login.
+   All asynchronous results carry a session generation, tested with genuinely
+   delivered late reads and committed-write acknowledgements after switching users.
+   Browser lifecycle cancellation is retained; writes are never automatically
+   replayed. The same-origin proxy forwards exactly one bounded bearer header.
+   Native RPC uses in-process libcurl with verified peers, 5s connect/30s total
+   bounds and a 64KiB response cap, not argv/body files or abandoned workers.
+   Native Tasks remain synchronous; the old generic UI shell HTTP effect is still
+   unsuitable for credentials. Production HTTPS/deployment remain separate work.
 
 ## Required acceptance before calling the application multi-user
 

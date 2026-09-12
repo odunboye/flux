@@ -56,8 +56,8 @@ def main():
                        PGUSER='testuser', PGPASSWORD='testpass', PGDATABASE='testdb')
             for _ in range(2):
                 run(project_cli + ['migrate'], env=env, cwd=export)
-            assert sql('SELECT count(*) FROM flux_db_meta.migrations') == '2'
-            sql('ALTER SEQUENCE todos_id_seq RESTART WITH 9223372036854775000')
+            assert sql('SELECT count(*) FROM flux_db_meta.migrations') == '3'
+            sql('ALTER SEQUENCE private_todos_id_seq RESTART WITH 9223372036854775000')
             for mode in ['lifecycle', 'pagination']:
                 with tempfile.TemporaryFile(mode='w+') as log:
                     server = subprocess.Popen(project_cli + ['dev', '--no-build', '--port', '0'],
@@ -75,6 +75,10 @@ def main():
                         else:
                             raise RuntimeError('CLI readiness timed out: ' + output)
                         run(['node', str(ROOT / 'platform/test_app.cjs'), match[1], mode])
+                        if mode == 'lifecycle':
+                            run(['node', str(ROOT / 'platform/test_private_app.cjs'), match[1]])
+                            assert sql("SELECT count(*) FROM private_todos WHERE owner_id=(SELECT id FROM flux_auth_accounts WHERE username='browser_owner_a')") == '2'
+                            assert sql("SELECT count(*) FROM private_todos WHERE owner_id=(SELECT id FROM flux_auth_accounts WHERE username='browser_owner_b')") == '1'
                     except BaseException:
                         log.seek(0)
                         print(log.read())
@@ -88,13 +92,14 @@ def main():
                             server.wait()
                             raise
                         server = None
-                assert sql("SELECT count(*) FROM todos WHERE title = 'Persisted UI 🚀' AND done = true") == '1'
-                assert sql('SELECT count(*) FROM flux_db_meta.migrations') == '2'
+                owner = sql("SELECT id FROM flux_auth_accounts WHERE username='cli_account'")
+                assert sql(f"SELECT count(*) FROM private_todos WHERE owner_id={owner} AND title = 'Persisted UI 🚀' AND done = true") == '1'
+                assert sql('SELECT count(*) FROM flux_db_meta.migrations') == '3'
                 if mode == 'lifecycle':
-                    assert sql('SELECT count(*) FROM todos') == '1'
-                    sql("INSERT INTO todos(title) SELECT 'seed-' || n::text FROM generate_series(1,55) AS n")
+                    assert sql(f'SELECT count(*) FROM private_todos WHERE owner_id={owner}') == '1'
+                    sql(f"INSERT INTO private_todos(owner_id,title) SELECT {owner},'seed-' || n::text FROM generate_series(1,55) AS n")
                 else:
-                    assert sql('SELECT count(*) FROM todos') == '56'
+                    assert sql(f'SELECT count(*) FROM private_todos WHERE owner_id={owner}') == '56'
                 print('PASS independent PostgreSQL UI persistence and clean CLI shutdown:', mode)
             # Explicit disposable mode must own/remove only its new database,
             # even when persistent PG configuration is present in the environment.
@@ -114,10 +119,17 @@ def main():
                     else:
                         raise RuntimeError('Disposable CLI readiness timed out: ' + output)
                     owned = re.search(r'Disposable development database (flux-dev-[a-f0-9]+):', output)[1]
-                    request = urllib.request.Request(match[1] + '/rpc/v1/todos/list',
-                        data=b'{"afterId":null}', headers={'Content-Type': 'application/json'})
-                    with urllib.request.urlopen(request, timeout=12) as response:
-                        assert json.load(response)['todos'] == []
+                    def rpc(path, body, token=None):
+                        headers = {'Content-Type':'application/json'}
+                        if token: headers['Authorization'] = 'Bearer ' + token
+                        request = urllib.request.Request(match[1] + '/rpc/v1/' + path,
+                            data=json.dumps(body).encode(), headers=headers)
+                        with urllib.request.urlopen(request,timeout=12) as response:
+                            return json.load(response)
+                    credentials = {'username':'disposable_user','password':'Disposable correct horse battery'}
+                    rpc('auth/register',credentials)
+                    token = rpc('auth/login',credentials)['token']
+                    assert rpc('todos/list',{'afterId':None},token)['todos'] == []
                 finally:
                     server.terminate()
                     try:
@@ -128,7 +140,7 @@ def main():
                         raise
                     server = None
                 assert docker('ps', '-a', '--filter', 'name=^' + owned + '$', '--format', '{{.Names}}') == ''
-                assert sql('SELECT count(*) FROM todos') == '56'
+                assert sql(f'SELECT count(*) FROM private_todos WHERE owner_id={owner}') == '56'
                 print('PASS CLI removes its disposable database and preserves the explicitly configured database')
         finally:
             if server is not None and server.poll() is None:

@@ -11,11 +11,11 @@
     "ListTodosResponse": {"todos": {"list": "TodoView"}, "nextId": {"nullable": "string"}}
   },
   "endpoints": [
-    {"name": "createTodo", "path": "/rpc/v1/todos/create", "request": "CreateTodoRequest", "response": "TodoView", "access": "public"},
-    {"name": "getTodo", "path": "/rpc/v1/todos/get", "request": "TodoIdRequest", "response": "FindTodoResponse", "access": "public"},
-    {"name": "listTodos", "path": "/rpc/v1/todos/list", "request": "ListTodosRequest", "response": "ListTodosResponse", "access": "public"},
-    {"name": "updateTodo", "path": "/rpc/v1/todos/update", "request": "UpdateTodoRequest", "response": "FindTodoResponse", "access": "public"},
-    {"name": "toggleTodo", "path": "/rpc/v1/todos/toggle", "request": "TodoIdRequest", "response": "FindTodoResponse", "access": "public"},
-    {"name": "deleteTodo", "path": "/rpc/v1/todos/delete", "request": "TodoIdRequest", "response": "DeleteTodoResponse", "access": "public"}
+    {"name": "createTodo", "path": "/rpc/v1/todos/create", "request": "CreateTodoRequest", "response": "TodoView", "access": "authenticated"},
+    {"name": "getTodo", "path": "/rpc/v1/todos/get", "request": "TodoIdRequest", "response": "FindTodoResponse", "access": "authenticated"},
+    {"name": "listTodos", "path": "/rpc/v1/todos/list", "request": "ListTodosRequest", "response": "ListTodosResponse", "access": "authenticated"},
+    {"name": "updateTodo", "path": "/rpc/v1/todos/update", "request": "UpdateTodoRequest", "response": "FindTodoResponse", "access": "authenticated"},
+    {"name": "toggleTodo", "path": "/rpc/v1/todos/toggle", "request": "TodoIdRequest", "response": "FindTodoResponse", "access": "authenticated"},
+    {"name": "deleteTodo", "path": "/rpc/v1/todos/delete", "request": "TodoIdRequest", "response": "DeleteTodoResponse", "access": "authenticated"}
   ]
 }

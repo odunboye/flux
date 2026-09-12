@@ -1,0 +1,7 @@
+dd2d6c0dea3d86a332892395381e71113d305d1c708922816837d0fcdc93cdc2  platform/client/c/http.c
+8830c00f2870a4abfd832adccd3aa7391ba4c031437034fb8890e4abad093133  platform/client/src/Flux/Platform/Client/Native.idr
+329ea9398332194707c34c4378a31631c8bb2867e8cd8deeb761d2ab670d6db4  platform/client/src/Flux/Platform/Client/Auth.idr
+fa130ebb405fe02b4b74c0b23a76e80da5006c0378d3de0f69aa20c04851dd4a  platform/crud/Main.idr
+e236a2ef7ea71b8a311d7f1c837dc63011389c3070d697d0548515be40936370  platform/crud/TodoUI.idr
+f501d060eae9aa9f9048fb854a7b109288aecbd9795a6c3226312b4a41051ac1  platform/crud/schema.json
+2ce666026d8832c2377dde1d54343b94e33c7423539b2c14cc5da8f99d938749  packages/ui/src/Flux/UI/Widget.idr

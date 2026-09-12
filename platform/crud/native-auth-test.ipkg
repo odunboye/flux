@@ -1,0 +1,7 @@
+package platform-native-auth-test
+version = 0.1.0
+depends = flux-client
+sourcedir = "."
+modules = ProtocolTypes, Client, NativeAuthTest
+main = NativeAuthTest
+executable = platform-native-auth-test

@@ -355,7 +355,7 @@ mutual
   renderWidget (WInput s val _) r =
     let ir  = innerRect s r
         brd = drawBorder s.border s.label r
-    in brd ++ moveCursor ir.col ir.row ++ styleAttrs s ++ padRight ir.w (sanitizeText val) ++ resetAttrs
+    in brd ++ moveCursor ir.col ir.row ++ styleAttrs s ++ padRight ir.w (sanitizeText (inputDisplay s val)) ++ resetAttrs
 
   renderWidget (WButton s lbl _) r =
     let ir = innerRect s r

@@ -2,6 +2,7 @@ module ClientTest
 
 import Client
 import Flux.Platform.Client.Web
+import Flux.Platform.Client.Auth as Auth
 import Data.IORef
 import Data.List
 
@@ -101,7 +102,11 @@ main = do
   check "list decoder rejects non-array field"
     (case decodeMaybe {a = ListTodosResponse} "{\"nextId\":null,\"todos\":{}}" of Nothing => True; _ => False)
   check "nullable request encodes explicit null" (encode (MkListTodosRequest Nothing) == "{\"afterId\":null}")
-  readPages client 4 Nothing [] $ \todos => do
+  run (Auth.login client "generated_client" "Generated client test secret!" id) $ \session =>
+    checkClient (withBearer session.token client)
+  where
+  checkClient : Client -> IO ()
+  checkClient client = readPages client 4 Nothing [] $ \todos => do
     let ids = map (\todo => todo.id) todos
     check "pagination covers 55 seeds without duplicates or omissions"
       (length ids == 55 && length (nub ids) == 55 &&
@@ -117,7 +122,7 @@ main = do
             check "missing delete is false" (not deleted.deleted)
             invalidIds client ["", "0", "-1", "01", "1.0", " 1", "1 ", "9223372036854775808", "1 OR 1=1"] $
               reject (listTodos client (MkListTodosRequest (Just "01")) id) $
-              reject (client.send (MkRequest POST (base ++ "/rpc/v1/todos/list")
+              reject (client.send (MkRequest POST (client.baseUrl ++ "/rpc/v1/todos/list")
                 [("Content-Type", "application/json")] (Just "{}"))
                 (decodeResponse {response = ListTodosResponse})) $
               reject (createTodo client (MkCreateTodoRequest "") id) $

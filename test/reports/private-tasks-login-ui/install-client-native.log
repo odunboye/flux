@@ -1,0 +1,8 @@
+[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Installing libraries:
+         - flux-client
+[ info ] Installing library (with sources): flux-client
+[ build ] pkg-config --atleast-version=7.85.0 libcurl
+[ build ] mkdir -p lib
+[ build ] cc -O2 -Wall -Wextra -Werror -std=c11 -dynamiclib $(pkg-config --cflags libcurl) client/c/http.c -o lib/libflux_client_http.dylib $(pkg-config --libs libcurl) -pthread

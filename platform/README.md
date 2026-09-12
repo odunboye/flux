@@ -43,17 +43,30 @@ Both clients use the same generated endpoint functions and wire types.
 
 - Web/Capacitor: `Flux.UI.Effect.Http.Web.requestWith`, retaining `CancellableTask`
   and its abort action; timeout/size options come from Flux UI's `FetchOptions`.
-- Native: `Flux.UI.Effect.Http.request`, retaining Flux UI's curl-backed `Task`.
+- Native: in-process libcurl `Task`, with 5s connect/30s total deadlines, a 64KiB
+  response cap and mandatory peer verification. No argv credentials, temporary
+  request files, redirects, ambient proxies, netrc or cookie store. HTTPS is
+  required except loopback development; `nativeClientWithCA` accepts a PEM CA file.
 - Custom transport: supply `MkClient base transport`, where the transport
   produces a Flux UI `Cmd` from an HTTP request and result-to-message callback.
 
 `RpcError` distinguishes `TransportFailure HttpError`,
 `RemoteError status code message`, and `InvalidResponse message`. Malformed
 response bodies are not copied into public decoder diagnostics. Credentials,
-URL trust and transport behavior remain application/Flux UI responsibilities;
-this layer does not introduce an authentication system or stronger transport
-limits tha Flux UI supplies. In particular, Flux UI Web currently reads response
+URL trust and transport selection remain application responsibilities. Use
+`withBearer token client` for an immutable session client; portable
+`Flux.Platform.Client.Auth` supplies register/login/logout commands. Never persist
+bearers in browser storage or put them in URLs. Native Tasks are synchronous and
+bounded, not immediately cancellable background workers. These are libcurl
+network timeouts, not hard real-time preemption of platform DNS/trust operations.
+No application request worker is detached on timeout. The legacy generic
+`Flux.UI.Effect.Http` shell transport is still unsuitable for credentials.
+Flux UI Web currently reads response
 text before its post-read size check when no usable Content-Length is supplied.
+
+When changing `client/c/http.c`, refresh `platform/flux-client.ipkg`'s timestamp
+before `pack --no-prompt install flux-client`: pack otherwise ignores C-only
+changes. The combined workspace gate performs this native refresh automatically.
 
 ## Protocol scope and server behavior
 
@@ -86,8 +99,10 @@ Authorization headers are rejected at the HTTP parser boundary.
 This adapter is an **enforcement contract**. The new server-only
 [`flux-auth`](../packages/auth/README.md) package supplies durable Argon2id accounts
 and revocable bearer sessions, and the CRUD app mounts its account routes.
-Owner-scoped SQL is still required; no existing public Todo schema has been
-converted yet. The
+The CRUD starter protects all six task methods and scopes every SQL statement
+and pagination lookahead to the verified principal. Other applications must
+provide their own row authorization; the legacy Todo/API smoke examples remain
+public test fixtures. The
 `auth-boundary/` executable uses fixed **test-only** credentials to verify the
 contract over real HTTP. Never deploy that fixture. See
 [the identity implementation plan](../design/IDENTITY_IMPLEMENTATION.md).
@@ -121,8 +136,10 @@ The CRUD server bootstraps through Flux DB's migration runner using **frozen,
 reviewed SQL**, not an evolving model-derived CREATE statement. Restarts verify
 history without resetting data. This does not supply automatic model-to-SQL
 migration planning. The CRUD server adds durable account/session APIs through
-Flux Auth as migration 2; its Todo methods still remain public. Do not enter
-private task data until the ownership/UI cutover.
+Flux Auth as migration 2. Migration 3 preserves anonymous rows in
+`todos_anonymous_archive` and creates owner-constrained `private_todos`, without
+changing migrations 1/2 or adopting old rows. There is no archive HTTP endpoint.
+See [the reviewed ownership cutover](crud/OWNERSHIP_MIGRATION.md).
 
 ## Build and generate
 
@@ -153,7 +170,8 @@ There is no Dart generator, Dart client, or Dart toolchain dependency.
 
 ## Verification
 
-Requires Python 3, pack/Idris2, Node.js with fetch, native curl, and
+Requires Python 3, pack/Idris2, Node.js with fetch, libcurl 7.85+ development
+headers/pkg-config (plus OpenSSL 3 and libsodium for the server), and
 Playwright/Chromium installed from `packages/ui/package-lock.json`
 (`cd packages/ui && npm ci`, then install Chromium from that directory). The PG test also
 requires Docker with a local `postgres:16` image. From the Flux root:
@@ -198,9 +216,10 @@ for this client implementation**.
 
 ## Remaining platform work
 
-- Private task ownership, login UI and session-generation-safe client state.
-  Authenticated PostgreSQL TLS, durable password accounts and revocable sessions
-  are implemented; MFA, recovery and other identity-provider features are not.
+- Production HTTPS/deployment, backup/restore and distributed anti-abuse.
+  Private tasks, session-generation-safe login UI, verified native RPC transport,
+  authenticated PostgreSQL TLS and revocable accounts/sessions are implemented;
+  MFA, recovery and other identity-provider features are not.
 - Enums, optional/omittable fields and additional scalar types.
 - Migration planning and integration into the existing todo-api entry point.
   The new CRUD example uses versioned bootstrap; the older one-method PG smoke

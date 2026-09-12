@@ -1,9 +1,10 @@
 # Flux Auth
 
 Durable password accounts and revocable opaque bearer sessions for native Flux
-servers. **This is not task ownership, a login UI, or a complete production
-identity service.** The preview CRUD app exposes these account APIs, but its Todo
-methods remain public and visibly warn against private data.
+servers. **This package is not application row authorization or a complete
+production identity service.** The preview CRUD starter combines it with private
+owner-scoped tasks and an Idris login UI; other applications must enforce their
+own ownership rules.
 
 ## Requirements and integration
 
@@ -98,18 +99,21 @@ failures return 401 `Session unavailable`. Never treat an outage as authenticate
   redaction policy. Native buffers are wiped on release; managed Idris strings
   cannot be promised deterministic erasure. Do not log/serialize request objects.
 
-No MFA, OAuth/OIDC, email verification, password recovery, persistent browser
-credential storage or generated login UI is supplied. The existing native Flux
-HTTP client uses curl subprocesses and temporary body files: **do not use that
-native client for account credentials yet**. Use a transport with private
-in-process/header/body handling until that path is upgraded. Browser tests use same-origin
-fetch and memory-only tokens, not localStorage/sessionStorage/cookies.
+No MFA, OAuth/OIDC, email verification, password recovery or persistent browser
+credential storage is supplied. The starter has a handwritten Idris login UI
+using portable `Flux.Platform.Client.Auth` commands. Its native RPC transport is
+now in-process verified libcurl, with no credential argv or temporary request
+files. The legacy generic `Flux.UI.Effect.Http` shell transport remains unsuitable
+for credentials. Browser clients use same-origin fetch and memory-only tokens,
+not localStorage/sessionStorage/cookies.
 
 ## Migration and verification
 
 The CRUD app appends identity as migration 2; migration 1 and anonymous `todos`
-rows remain untouched. Account creation never adopts someone else's anonymous
-tasks. Private task ownership and an explicit legacy-data policy are next.
+rows remain untouched by identity migration 2. The starter's separate migration
+3 archives anonymous rows without adoption and creates an owner-constrained task
+table; see [the reviewed cutover](../../platform/crud/OWNERSHIP_MIGRATION.md).
+These auth-package fixtures intentionally continue testing the frozen v1/v2 slice.
 
 From the workspace root:
 

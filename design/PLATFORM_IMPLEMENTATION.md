@@ -79,14 +79,12 @@ commit above.
 - Independent PostgreSQL checks verify seed preservation, history and restart;
   earlier wire/PG/migration tests and Flux regressions pass again.
 
-This is not completion of the platform. Endpoints remain public POST methods,
-with no recursive models or omittable fields. The complete todo Flux UI and
-repository-local project CLI are now implemented (see below). There is still no
-production deployment workflow. Durable accounts and revocable sessions are now
-implemented separately in `flux-auth`; Todo ownership/UI conversion remains next.
-Client transport behavior and limits are inherited from Flux UI, not strengthened
-by these adapters. Existing todo-api entry points are unchanged; a separate PG
-example exercises its repositories. Authenticated PG TLS uses OpenSSL 3.
+That increment used public POST methods. Subsequent checkpoints added the complete
+Flux UI/CLI, durable accounts/sessions, then protected owner-scoped task methods,
+a session-safe login UI and hardened in-process native RPC transport. Recursive
+models, omittable fields and a production deployment workflow remain future work.
+Legacy todo-api entry points are unchanged; a separate public PG smoke example
+exercises those repositories. Authenticated PG TLS uses OpenSSL 3.
 
 ## Flux UI application and project CLI checkpoint
 
@@ -129,8 +127,10 @@ and SAN hostname/IP verification, explicit/system trust, and the existing owned
 deadline transport. The integration gate tests certificate rejection and real
 PostgreSQL TLS/SCRAM, cancellation and timeout cleanup. See the driver README.
 Durable accounts, revocable sessions and protected endpoint enforcement are now
-implemented separately in `flux-auth`. Row ownership and login UI remain pending;
-the demonstration's task methods are still public and not production-ready.
+implemented separately in `flux-auth`. The starter now has owner-scoped SQL,
+a reviewed anonymous-data archive migration and session-generation-safe login UI.
+Native RPC uses in-process verified libcurl. Production deployment remains pending;
+legacy `apps/todo-api` and protocol smoke fixtures remain public test examples.
 Hosted Linux CI confirmation remains separate from local macOS/Linux-container evidence.
 
 Never auto-apply destructive migration changes. Migration commands must target

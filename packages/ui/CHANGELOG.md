@@ -3,6 +3,15 @@
 All notable changes to Flux UI are recorded here. The project follows Semantic
 Versioning within the normal compatibility limits of a pre-1.0 release.
 
+## Unreleased — private application inputs
+
+- `sSecret` marks a `WInput` as a password: DOM uses `type=password`; terminal
+  and canvas render masks without changing the underlying edit value.
+- `Style` gains a trailing `secret : Bool`. Prefer `defaultStyle` and helpers;
+  direct `MkStyle` callers must add the flag (normally `False`).
+- The legacy shell HTTP effect is not suitable for credentials. Generated native
+  RPC now uses the separate in-process `Flux.Platform.Client.Native` transport.
+
 ## 0.3.0-preview.1 — breaking Flux UI rename
 
 - Renamed the implementation and public API to `flux-ui`, `Flux.UI.*`,

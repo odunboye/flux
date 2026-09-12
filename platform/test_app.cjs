@@ -11,6 +11,18 @@ const [base, mode = 'lifecycle'] = process.argv.slice(2);
     assert.equal((await fetch(base + '/rpc/v1/todos/create', {method:'POST', headers:{Origin:'https://untrusted.example'}, body:'{"title":"forbidden"}'})).status, 403);
     assert.equal((await fetch(base + '/rpc/v1/todos/create', {method:'POST', body:'x'.repeat(65537)})).status, 413);
     const page = await browser.newPage();
+    let bearer;
+    page.on('response', async response => {
+      if (response.url().endsWith('/auth/login') && response.status()===200) {
+        const session=await response.json();
+        if(session.account.username==='cli_account') bearer=session.token;
+      }
+    });
+    const signIn = async () => {
+      await page.getByLabel('Username',{exact:true}).fill('cli_account');
+      await page.getByLabel('Password',{exact:true}).fill('CLI correct horse battery');
+      await page.getByRole('button',{name:'Sign in',exact:true}).click();
+    };
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     let release;
@@ -19,6 +31,15 @@ const [base, mode = 'lifecycle'] = process.argv.slice(2);
       await route.continue();
     });
     await page.goto(base);
+    await expect(page.getByLabel('Password',{exact:true})).toHaveAttribute('type','password');
+    if (mode==='lifecycle') {
+      await page.getByLabel('Username',{exact:true}).fill('cli_account');
+      await page.getByLabel('Password',{exact:true}).fill('CLI correct horse battery');
+      await page.getByRole('button',{name:'Create account',exact:true}).click();
+      await expect(page.getByText('Account created. Sign in.',{exact:true})).toBeVisible();
+      await expect(page.getByLabel('Password',{exact:true})).toHaveValue('');
+    }
+    await signIn();
     await expect(page.getByText('Loading...', {exact:true})).toBeVisible();
     await expect.poll(() => Boolean(release)).toBeTruthy();
     release();
@@ -26,7 +47,7 @@ const [base, mode = 'lifecycle'] = process.argv.slice(2);
     await page.unroute('**/rpc/v1/todos/list');
     if (mode === 'lifecycle') {
       const auth = await page.evaluate(async () => {
-        const credentials = {username:'cli_account',password:'CLI correct horse battery'};
+        const credentials = {username:'cli_proxy_account',password:'CLI correct horse battery'};
         const rpc = async (name,body,token) => {
           const headers = {'Content-Type':'application/json'};
           if(token) headers.Authorization='Bearer '+token;
@@ -108,7 +129,7 @@ const [base, mode = 'lifecycle'] = process.argv.slice(2);
       await page.getByRole('button', {name:'Add todo', exact:true}).click();
       await expect(page.getByText('Created.', {exact:true})).toBeVisible();
       const missingId = (await rows.first().getAttribute('aria-label')).slice('Todo '.length);
-      assert.equal((await fetch(base + '/rpc/v1/todos/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:missingId})})).status, 200);
+      assert.equal((await fetch(base + '/rpc/v1/todos/delete', {method:'POST', headers:{'Content-Type':'application/json',Authorization:'Bearer '+bearer}, body:JSON.stringify({id:missingId})})).status, 200);
       await page.getByRole('button', {name:'Edit Removed by another client', exact:true}).click();
       await expect(page.getByText('Todo no longer exists. Refresh the list.', {exact:true})).toBeVisible();
       await page.getByRole('button', {name:'Refresh', exact:true}).click();
@@ -136,7 +157,7 @@ const [base, mode = 'lifecycle'] = process.argv.slice(2);
       await expect.poll(() => Boolean(blocked)).toBeTruthy();
       const beforeResume = creates;
       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
-      await expect(page.getByText('Request interrupted. Refresh before retrying a write.', {exact:true})).toBeVisible();
+      await expect(page.getByText('Request interrupted. Refresh or explicitly retry after resuming.', {exact:true})).toBeVisible();
       await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
       await blocked.abort();
       await page.unroute('**/rpc/v1/todos/create');
@@ -149,6 +170,10 @@ const [base, mode = 'lifecycle'] = process.argv.slice(2);
       await page.getByRole('button', {name:'Confirm delete', exact:true}).click();
       await expect(rows).toHaveCount(1);
       await page.reload();
+      await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();
+      await expect(rows).toHaveCount(0);
+      assert.deepEqual(await page.evaluate(() => [localStorage.length,sessionStorage.length]),[0,0]);
+      await signIn();
       await expect(page.getByText('Persisted UI 🚀', {exact:true})).toBeVisible();
       await expect(page.getByText('Complete', {exact:true})).toBeVisible();
       console.log('PASS Flux UI: loading/empty/validation, duplicate prevention, Unicode escaping, CRUD, confirmation, typed error/retry, lifecycle interruption recovery and reload persistence');

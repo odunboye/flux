@@ -1,5 +1,7 @@
 ||| Flux.UI.Effect.Http
-||| HTTP client effect — backed by system curl via popen.
+||| Legacy HTTP client effect — backed by system curl via popen.
+||| Do not send credentials through this argv/temporary-file transport.
+||| Generated RPC clients instead use the in-process Flux.Platform.Client.Native.
 |||
 ||| Regular requests:   `request`, `get`, `post`
 ||| Streaming (SSE):    `stream` (for LLM token streaming)

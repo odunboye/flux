@@ -156,6 +156,12 @@
         ],
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "sessionBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
@@ -199,7 +205,11 @@
             "description": "RPC error"
           }
         },
-        "security": []
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
       }
     },
     "/rpc/v1/todos/delete": {
@@ -237,7 +247,11 @@
             "description": "RPC error"
           }
         },
-        "security": []
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
       }
     },
     "/rpc/v1/todos/get": {
@@ -275,7 +289,11 @@
             "description": "RPC error"
           }
         },
-        "security": []
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
       }
     },
     "/rpc/v1/todos/list": {
@@ -313,7 +331,11 @@
             "description": "RPC error"
           }
         },
-        "security": []
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
       }
     },
     "/rpc/v1/todos/toggle": {
@@ -351,7 +373,11 @@
             "description": "RPC error"
           }
         },
-        "security": []
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
       }
     },
     "/rpc/v1/todos/update": {
@@ -389,9 +415,13 @@
             "description": "RPC error"
           }
         },
-        "security": []
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
       }
     }
   },
-  "x-protocol-sha256": "6fcbf3172431a712be6c13fc580e5c2879b1d128cf1a8286a3ca63ee6a4eabab"
+  "x-protocol-sha256": "ab2611d80c30ca34eb8152fabb68a651adcd6a7f06cbb795cc2ce8bbf3f8dc81"
 }

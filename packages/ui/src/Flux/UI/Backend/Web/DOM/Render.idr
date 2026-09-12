@@ -261,7 +261,7 @@ renderHTML (WInput s val onChange) st _ inputMap = do
   -- real typing to `onChange`. Seen firsthand mid-testing: an unrelated
   -- autofill suggestion got submitted as a real todo.
   let accessibleName = case s.label of Nothing => "Text input"; Just label => label
-  pure $ "<input type='text' aria-label='" ++ escapeHTML accessibleName ++ "' id='flux-ui-input-" ++ show eid ++ "' autocomplete='off'" ++ styleAttr css ++ " " ++
+  pure $ "<input type='" ++ (if s.secret then "password" else "text") ++ "' aria-label='" ++ escapeHTML accessibleName ++ "' id='flux-ui-input-" ++ show eid ++ "' autocomplete='off'" ++ styleAttr css ++ " " ++
          "value='" ++ escapeHTML val ++ "' " ++
          "data-flux-ui-input='" ++ show eid ++ "'/>"
 

@@ -363,7 +363,7 @@ mutual
   -- text + cursor
   cFill "#c9d1d9" ctx
   cFont m.fontSz False False m.font ctx
-  cText val (cx m ir.col) (cy m ir.row + m.cellH * 0.75) (cw m ir.w) ctx
+  cText (inputDisplay s val) (cx m ir.col) (cy m ir.row + m.cellH * 0.75) (cw m ir.w) ctx
   -- blinking cursor placeholder (always on for now)
   let cursorX = cx m ir.col + cast (length val) * m.cellW * 0.6
   cFill "#58a6ff" ctx

@@ -48,11 +48,12 @@ record Style where
   fillH     : Bool             -- stretch to fill available width
   fillV     : Bool             -- stretch to fill available height
   label     : Maybe String     -- box/panel title
+  secret    : Bool             -- mask input rendering; never changes edit values
 
 public export
 defaultStyle : Style
 defaultStyle = MkStyle Nothing Nothing False False False
-               NoBorder 0 0 Nothing Nothing False False Nothing
+               NoBorder 0 0 Nothing Nothing False False Nothing False
 
 -- ─── Style helpers ───────────────────────────────────────────────────────────
 
@@ -73,6 +74,14 @@ public export sPadH    : Nat        -> Style -> Style ; sPadH    n s = { padH   
 public export sPadV    : Nat        -> Style -> Style ; sPadV    n s = { padV    := n    } s
 public export sPad     : Nat        -> Style -> Style
 sPad n s = { padH := n, padV := n } s
+
+public export
+sSecret : Style -> Style
+sSecret s = { secret := True } s
+
+public export
+inputDisplay : Style -> String -> String
+inputDisplay s value = if s.secret then pack (map (const '*') (unpack value)) else value
 
 public export sFillH : Style -> Style ; sFillH s = { fillH := True } s
 public export sFillV : Style -> Style ; sFillV s = { fillV := True } s

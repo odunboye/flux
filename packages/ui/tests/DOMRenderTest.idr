@@ -3,6 +3,7 @@ module Main
 import System
 import Flux.UI.Widget
 import Flux.UI.Backend.Web.DOM.Render
+import Flux.UI.Backend.Terminal.WidgetRender
 
 startsWith : List Char -> List Char -> Bool
 startsWith [] _ = True
@@ -50,4 +51,10 @@ main = do
   assert "group semantics" (contains "role='group'" html)
   assert "focus indicator CSS" (contains ":focus-visible" fluxUICSS)
   assert "reduced motion CSS" (contains "prefers-reduced-motion" fluxUICSS)
+  let password : Widget Nat = WInput (sSecret (sTitle "Password" defaultStyle)) "secret 🚀" (const 0)
+  (masked, _, _) <- renderPage password
+  assert "password input semantics" (contains "type='password'" masked)
+  let terminal = renderWidget password (MkWRect 0 0 30 1)
+  assert "terminal password is masked" (contains "********" terminal && not (contains "secret" terminal))
+  assert "shared canvas/terminal mask preserves character count" (inputDisplay (sSecret defaultStyle) "secret 🚀" == "********")
   putStrLn "DOM renderer tests passed"

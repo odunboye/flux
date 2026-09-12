@@ -113,7 +113,7 @@ const output = path.resolve(__dirname, "../../.workspace/landing");
       .filter({ hasText: "Can I use Flux in production?" })
       .click();
     await expect(
-      page.getByText("Not yet. Task endpoints", { exact: false }),
+      page.getByText("Not yet. The starter has private", { exact: false }),
     ).toBeVisible();
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     for (const width of [1440, 1024, 768, 390, 320]) {
@@ -163,7 +163,7 @@ const output = path.resolve(__dirname, "../../.workspace/landing");
       .filter({ hasText: "Can I use Flux in production?" })
       .click();
     await expect(
-      fallback.getByText("Not yet. Task endpoints", { exact: false }),
+      fallback.getByText("Not yet. The starter has private", { exact: false }),
     ).toBeVisible();
     console.log(
       "PASS Flux landing: HTTP/security, desktop/mobile, keyboard tabs/menu, clipboard success/failure, reduced motion and no-JS fallback",

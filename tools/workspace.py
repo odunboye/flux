@@ -148,7 +148,12 @@ def test(manifest, without_db):
         build('test/test.ipkg')
         run('flux-regression', ['./test/build/exec/flux-test'])
         # Install native dependencies first; Flux UI's packaged demo is not JS.
+        # Native-only edits otherwise leave pack's installed bridge stale.
+        (ROOT / 'platform/flux-client.ipkg').touch()
+        run('install-client-native', ['pack', '--no-prompt', 'install', 'flux-client'])
+        run('client-native-security', [sys.executable, 'platform/client/test/native.py'])
         build('platform/example/client-native-test.ipkg')
+        build('platform/crud/native-auth-test.ipkg')
         # pack's dependency freshness checks do not track native C changes.
         # Refresh the manifest timestamp (not contents) to force prebuild/install
         # even in a warm pack cache; plain `pack install` can otherwise be a no-op.

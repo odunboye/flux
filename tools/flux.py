@@ -21,7 +21,7 @@ import workspace
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_FILES = ['Main.idr', 'TodoUI.idr', 'MainWeb.idr', 'server.ipkg', 'ui.ipkg',
-                  'schema.json', 'flux.json', 'index.html', 'app.css']
+                  'schema.json', 'flux.json', 'index.html', 'app.css', 'OWNERSHIP_MIGRATION.md']
 
 
 def run(args, **kwargs):
@@ -332,6 +332,7 @@ def main():
                     raise ValueError('Missing tool: ' + tool)
             run(['pkg-config', '--atleast-version=3.0.0', 'openssl'], timeout=10)
             run(['pkg-config', '--atleast-version=1.0.18', 'libsodium'], timeout=10)
+            run(['pkg-config', '--atleast-version=7.85.0', 'libcurl'], timeout=10)
             run(['docker', 'info', '--format', '{{.ServerVersion}}'], timeout=20)
             run(['node', '-e', 'if(Number(process.versions.node.split(".")[0])<20) process.exit(1)'])
             print('PASS development prerequisites (pack collection: ' + workspace.load()['collection'] + ')')
