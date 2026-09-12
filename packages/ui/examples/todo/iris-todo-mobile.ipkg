@@ -1,0 +1,10 @@
+package iris-todo-mobile
+
+authors    = "Odun Adeboye"
+version    = 0.1.0
+brief      = "Iris Todo — Canvas/mobile build (HTML5 Canvas + Capacitor)"
+
+depends    = iris
+sourcedir  = "src"
+executable = "iris-todo-mobile"
+main       = MainMobile

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <!-- Disable user scaling — we control zoom via canvas DPR -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0,
+                 user-scalable=no, viewport-fit=cover"/>
+  <title>Iris Todo</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' capacitor:; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https: capacitor:; object-src 'none'; base-uri 'none'"/>
+  <link rel="stylesheet" href="app.css"/>
+</head>
+<body>
+  <canvas id="iris-canvas"></canvas>
+
+  <!--
+    Capacitor bridge (auto-injected when running in a native app;
+    a no-op stub when loaded in a browser for development).
+  -->
+  <script src="capacitor-stub.js"></script>
+
+  <!--
+    The Iris canvas application.
+    runMobile() draws onto #iris-canvas and handles touch events.
+  -->
+  <!-- app.js is the compiled Idris2 JS, copied here by `make build-mobile` -->
+  <script src="app.js"></script>
+</body>
+</html>

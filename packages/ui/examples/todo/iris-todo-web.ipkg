@@ -1,0 +1,12 @@
+package iris-todo-web
+
+authors    = "Odun Adeboye"
+version    = 0.1.0
+brief      = "Iris Todo — web / DOM build  (Idris2 JavaScript backend)"
+
+depends    = iris
+sourcedir  = "src"
+executable = "iris-todo-web"
+main       = MainWeb
+
+-- No prebuild needed — JS backend doesn't use C FFI

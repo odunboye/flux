@@ -1,0 +1,18 @@
+package iris-todo
+
+authors    = "Odun Adeboye"
+version    = 0.1.0
+brief      = "Iris Todo — terminal build  (Chez Scheme backend)"
+
+depends    = iris
+sourcedir  = "src"
+executable = "iris-todo"
+main       = Main
+
+prebuild   = "mkdir -p build/exec/iris-todo_app && cc -dynamiclib ../../c/iristui.c -o build/exec/iris-todo_app/libiristui.dylib 2>/dev/null || cc -shared -fPIC ../../c/iristui.c -o build/exec/iris-todo_app/libiristui.so"
+
+modules =
+    Todo.Types
+  , Todo.Update
+  , Todo.View
+  , TodoApp

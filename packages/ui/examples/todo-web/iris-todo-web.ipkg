@@ -1,0 +1,19 @@
+package iris-todo-web
+
+authors    = "Odun Adeboye"
+version    = 0.1.0
+brief      = "Iris Todo — browser build (xterm.js + Idris2 JS backend)"
+
+-- ─── Dependencies ──────────────────────────────────────────────────────────
+-- Build order:
+--   1. cd ../..  && idris2 --install iris.ipkg
+--   2. cd ../todo && idris2 --install iris-todo.ipkg
+--   3. cd .      && make  (runs the above, then this)
+
+depends = iris, iris-todo
+
+-- ─── Source ────────────────────────────────────────────────────────────────
+
+sourcedir  = "src"
+executable = "iris-todo-web"
+main       = Main
