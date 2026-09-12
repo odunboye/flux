@@ -15,7 +15,8 @@ fromJSON toJSON transport status body code message call routes api preflight
 json obj input output value Protocol ProtocolTypes Client RpcError RpcErrorEnvelope
 Api String Bool List Int Integer Nat Either Maybe IO AppProg Handler Router
 ToJSON FromJSON Cmd HttpRequest HttpResponse HttpError TransportFailure RemoteError
-InvalidResponse baseUrl send decodeResponse toString'''.split())
+InvalidResponse baseUrl send decodeResponse toString
+Principal Authenticator subjectId authenticate rpcAuthenticatedHandler'''.split())
 TYPES = {'string': 'String', 'bool': 'Bool'}
 
 
@@ -120,8 +121,8 @@ def validate(schema):
         for key in ['request', 'response']:
             if not isinstance(ep[key], str) or ep[key] not in models:
                 raise ValueError(f'unknown {key} model')
-        if ep['access'] != 'public':
-            raise ValueError('authenticated endpoints are not implemented; refusing to expose them')
+        if ep['access'] not in ('public', 'authenticated'):
+            raise ValueError('unsupported endpoint access; refusing to expose it')
     return schema
 
 
@@ -151,12 +152,18 @@ def server(schema, digest):
         'import public Flux.Core.Router', '', '%default covering', '',
         'public export', 'record Api where', '  constructor MkApi']
     endpoints = sorted(schema['endpoints'], key=lambda ep: ep['name'])
-    lines += [f"  {ep['name']} : {ep['request']} -> AppProg {ep['response']}" for ep in endpoints]
+    protected = any(ep['access'] == 'authenticated' for ep in endpoints)
+    for ep in endpoints:
+        principal = 'Principal -> ' if ep['access'] == 'authenticated' else ''
+        lines += [f"  {ep['name']} : {principal}{ep['request']} -> AppProg {ep['response']}"]
     lines += ['', '-- Applications choose CORS policy; this supplies the preflight status.',
               'preflight : Handler', 'preflight ctx = pure (setStatus 204 ctx)',
-              '', 'export', 'routes : Api -> Router Handler', 'routes api = empty']
+              '', 'export',
+              'routes : ' + ('Authenticator -> ' if protected else '') + 'Api -> Router Handler',
+              'routes ' + ('authenticate ' if protected else '') + 'api = empty']
     for ep in endpoints:
-        lines += [f'  |> post "{ep["path"]}" (rpcHandler api.{ep["name"]})',
+        adapter = 'rpcAuthenticatedHandler authenticate' if ep['access'] == 'authenticated' else 'rpcHandler'
+        lines += [f'  |> post "{ep["path"]}" ({adapter} api.{ep["name"]})',
                   f'  |> options_ "{ep["path"]}" preflight']
     return '\n'.join(lines).rstrip() + '\n'
 
@@ -181,15 +188,19 @@ def openapi(schema, digest):
         return {'$ref': '#/components/schemas/' + name}
     paths = {}
     for ep in sorted(schema['endpoints'], key=lambda ep: ep['path']):
-        paths[ep['path']] = {'post': {'operationId': ep['name'], 'security': [],
+        paths[ep['path']] = {'post': {'operationId': ep['name'],
+            'security': [{'sessionBearer': []}] if ep['access'] == 'authenticated' else [],
             'requestBody': {'required': True, 'content': {'application/json': {'schema': ref(ep['request'])}}},
             'responses': {'200': {'description': 'Success', 'content': {'application/json': {'schema': ref(ep['response'])}}},
                           'default': {'description': 'RPC error', 'content': {'application/json': {'schema': ref('RpcErrorEnvelope')}}}}}}
     models['RpcErrorEnvelope'] = {'type': 'object', 'required': ['error'], 'properties': {
         'error': {'type': 'object', 'required': ['code', 'message'], 'properties': {
             'code': {'type': 'string'}, 'message': {'type': 'string'}}}}}
+    components = {'schemas': models}
+    if any(ep['access'] == 'authenticated' for ep in schema['endpoints']):
+        components['securitySchemes'] = {'sessionBearer': {'type': 'http', 'scheme': 'bearer'}}
     return {'openapi': '3.1.0', 'info': {'title': 'Flux protocol', 'version': '1'},
-            'x-protocol-sha256': digest, 'paths': paths, 'components': {'schemas': models}}
+            'x-protocol-sha256': digest, 'paths': paths, 'components': components}
 
 
 def generate(schema):

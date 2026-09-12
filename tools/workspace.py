@@ -161,6 +161,8 @@ def test(manifest, without_db):
             build(file)
         for file in ['platform/example/client-web-test.ipkg', 'platform/crud/client-test.ipkg', 'platform/crud/ui.ipkg']:
             build(file, js=True)
+        build('platform/auth-boundary/server.ipkg')
+        run('auth-boundary', [sys.executable, 'platform/test_auth_boundary.py'])
         run('flux-ui-wire', [sys.executable, 'platform/test_wire.py'])
         if without_db:
             outcomes.append({'name': 'database-integration', 'skipped': True})

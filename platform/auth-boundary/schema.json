@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "models": {
+    "ProbeRequest": {"claimedOwner": "string"},
+    "ProbeResponse": {"resolvedOwner": "string"}
+  },
+  "endpoints": [
+    {"name": "privateProbe", "path": "/rpc/v1/probe/private", "request": "ProbeRequest", "response": "ProbeResponse", "access": "authenticated"},
+    {"name": "publicProbe", "path": "/rpc/v1/probe/public", "request": "ProbeRequest", "response": "ProbeResponse", "access": "public"}
+  ]
+}

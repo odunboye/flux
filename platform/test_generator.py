@@ -96,11 +96,26 @@ class GeneratorTests(unittest.TestCase):
             self.assertIn(f'{name} : {{msg : Type}} -> Client ->', files['Client.idr'])
         self.assertEqual(len(json.loads(files['openapi.json'])['paths']), 6)
 
-    def test_authentication_fails_closed(self):
+    def test_authentication_requires_server_resolver(self):
         schema = copy.deepcopy(SCHEMA)
         schema['endpoints'][0]['access'] = 'authenticated'
-        with self.assertRaisesRegex(ValueError, 'refusing to expose'):
-            generate(schema)
+        files = generate(schema)
+        self.assertIn('routes : Authenticator -> Api -> Router Handler', files['Protocol.idr'])
+        self.assertIn('Principal -> CreateTodoRequest -> AppProg TodoResponse', files['Protocol.idr'])
+        self.assertIn('rpcAuthenticatedHandler authenticate api.createTodo', files['Protocol.idr'])
+        self.assertNotIn('(rpcHandler api.createTodo)', files['Protocol.idr'])
+        spec = json.loads(files['openapi.json'])
+        self.assertEqual(spec['paths']['/rpc/v1/todos/create']['post']['security'], [{'sessionBearer': []}])
+        self.assertEqual(spec['components']['securitySchemes']['sessionBearer'], {'type': 'http', 'scheme': 'bearer'})
+        self.assertNotIn('Principal', files['ProtocolTypes.idr'])
+        self.assertNotIn('Authenticator', files['Client.idr'])
+
+    def test_unknown_authentication_modes_fail_closed(self):
+        for access in ['optional', 'admin', '', None, True, {}, []]:
+            schema = copy.deepcopy(SCHEMA)
+            schema['endpoints'][0]['access'] = access
+            with self.subTest(access=access), self.assertRaisesRegex(ValueError, 'refusing to expose'):
+                generate(schema)
 
     def test_duplicate_endpoints(self):
         schema = copy.deepcopy(SCHEMA)

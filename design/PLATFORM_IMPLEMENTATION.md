@@ -38,8 +38,10 @@ untrusted input; they do not establish domain invariants.
 
 Errors use a stable `error.code` plus a safe `error.message`. Internal database
 or transport details must not become public responses. Initial endpoints are
-explicitly public. Authenticated endpoints must be rejected by generation
-until identity/authorization enforcement is implemented, not silently exposed.
+explicitly public. Authenticated generation now requires a server authenticator
+and passes only its resolved principal into protected callbacks. There is no
+public fallback. Durable identity/session storage and owner-scoped repositories
+remain pending; see `IDENTITY_IMPLEMENTATION.md`.
 
 ## Implemented first increment
 

@@ -63,17 +63,32 @@ field is required: a nullable field accepts explicit JSON null, not an omitted
 key. Model dependencies are emitted in deterministic topological order;
 recursive models, nested nullable-of-nullable types and overly deep wrapper
 nesting are rejected. Requests/responses remain named objects and endpoints
-are public POST methods under `/rpc/v1/`. IDs are decimal
+are public or authenticated POST methods under `/rpc/v1/`. IDs are decimal
 strings to preserve PostgreSQL BIGINT values exactly across JS targets.
 Single-field records always use JSON objects, never newtype unwrapping.
 Unknown object fields are ignored for additive compatibility; missing/wrongly
 typed required fields fail decoding. Domain validation belongs in callbacks.
 
 Unsupported types, duplicate declarations/JSON keys, invalid identifiers,
-unknown models, unsupported versions and authenticated endpoints fail before
-output is written. Authentication is deliberately rejected rather than
-silently generating a public route for a protected endpoint. Generation is
-schema-first; automatic extraction from arbitrary Idris types is not implemented.
+unknown models, unsupported versions and unknown access modes fail before
+output is written. Generation is schema-first; automatic extraction from
+arbitrary Idris types is not implemented.
+
+`access: "authenticated"` generates a `Principal -> Request -> AppProg Response`
+callback and requires `routes : Authenticator -> Api -> Router Handler`.
+`Authenticator` resolves a credential from the HTTP request to `Maybe Principal`;
+`Nothing` returns 401 before JSON parsing or invoking domain code. Store failures
+remain redacted errors, never a public-route fallback. Principals are server-only
+and never decoded from request JSON. OpenAPI declares bearer security for protected
+routes; public routes retain an explicit empty security requirement. Duplicate
+Authorization headers are rejected at the HTTP parser boundary.
+
+This is an **enforcement contract**, not an account/session implementation. The
+application must supply a real credential validator and perform owner-scoped SQL;
+none of the existing public Todo schemas have been converted yet. The
+`auth-boundary/` executable uses fixed **test-only** credentials to verify the
+contract over real HTTP. Never deploy that fixture. See
+[the identity implementation plan](../design/IDENTITY_IMPLEMENTATION.md).
 
 `Flux.Platform.Endpoint.rpcHandler` requires JSON and bounds request bodies to
 64 KiB. Install `rpcErrorRenderer` on the enclosing App for typed, redacted

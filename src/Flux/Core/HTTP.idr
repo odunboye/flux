@@ -208,7 +208,7 @@ startLine bs =
     _       => Left InvalidRequest
 
 ||| Parses one request's headers, folding them into a `Headers` map -
-||| except for four cases rejected outright rather than silently
+||| except for security-sensitive cases rejected outright rather than silently
 ||| resolved, all real request-smuggling/confusion shapes behind a proxy
 ||| that disagrees with this parser (RFC 9112 §5.1/§6.3, §3.2):
 ||| whitespace between the header name and its colon (a lenient parser
@@ -227,6 +227,8 @@ startLine bs =
 ||| as duplicate Content-Length, and a real cache-poisoning/virtual-host-
 ||| confusion vector in practice - a *missing* Host on HTTP/1.1 is
 ||| rejected separately, in `assemble`, once the version is known).
+||| Duplicate Authorization is also rejected: intermediaries and applications
+||| must not select different credentials from one request.
 export
 headers : Headers -> List ByteString -> Either HTTPErr Headers
 headers hs []     = Right hs
@@ -242,6 +244,7 @@ headers hs (h::t) =
                ("transfer-encoding", _)   => Left InvalidRequest
                ("content-length", Just _) => Left InvalidRequest
                ("host", Just _)           => Left InvalidRequest
+               ("authorization", Just _)  => Left InvalidRequest
                _                          => headers (insert name val hs) t
     _                => Left InvalidRequest
 
