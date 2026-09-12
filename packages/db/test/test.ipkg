@@ -1,0 +1,15 @@
+package nebula-test
+version = 0.1.0
+authors = "Odun Adeboye"
+
+-- packages to add to search path
+depends = nebula
+        , idris2-pg
+        , elab-util
+
+-- main file (i.e. file to load at REPL)
+main = Main
+
+-- name of executable
+executable = "nebula-test"
+sourcedir = "src"
