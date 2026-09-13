@@ -41,7 +41,7 @@
         aria-label="Main navigation"
         data-open="false"
       >
-        <a href="#platform">Platform</a><a href="#workflow">How it works</a
+        <a href="#platform">Features</a><a href="#workflow">How it works</a
         ><a href="#readiness">Roadmap</a>
         <a href="https://github.com/odunboye/flux" class="source-link"
           >GitHub <span aria-hidden="true">↗</span></a
@@ -72,8 +72,8 @@
           <div class="hero-actions">
             <a class="button" href="#start"
               >Build your first app <span aria-hidden="true">→</span></a
-            ><a class="text-link" href="#workflow"
-              >See the workflow <span aria-hidden="true">↘</span></a
+            ><a class="text-link" href="#platform"
+              >Explore the features <span aria-hidden="true">↘</span></a
             >
           </div>
           <p class="hero-note">Flux UI. PostgreSQL. One modular workspace.</p>
@@ -197,17 +197,18 @@
             aria-labelledby="server-tab"
           >
             <p class="code-caption">
-              A real handler from the todo application.
+              A real owner-scoped handler from the starter.
             </p>
-            <pre><code><span class="token-comment">-- Your logic. A typed contract.</span>
-<span class="token-function">createTodo</span> : TodoRepository
-          -&gt; CreateTodoRequest
-          -&gt; AppProg TodoView
-createTodo repo request = <span class="token-keyword">do</span>
-  requireTitle request.title
-  <span class="token-keyword">map</span> wireTodo
-    (dbIO (repo.crud.insert
-      (MkNewTodo request.title <span class="token-value">False</span>)))</code></pre>
+            <pre><code><span class="token-comment">-- Identity comes from the server, not JSON.</span>
+<span class="token-function">getTodo</span> : Pool -&gt; Principal
+       -&gt; TodoIdRequest
+       -&gt; AppProg FindTodoResponse
+getTodo pool principal request = <span class="token-keyword">do</span>
+  tid &lt;- requireId request.id
+  rows pool
+    <span class="token-value">"SELECT id,title,done FROM private_todos WHERE owner_id=$1 AND id=$2"</span>
+    [Just principal.subjectId, Just tid]
+    &gt;&gt;= found</code></pre>
           </div>
           <div
             id="client-code"
@@ -226,9 +227,9 @@ createTodo repo request = <span class="token-keyword">do</span>
           -&gt; Cmd msg
 
 <span class="token-comment">-- Use it in your update function:</span>
-createTodo client
+createTodo (withBearer session.token client)
   (MkCreateTodoRequest model.draft)
-  Created</code></pre>
+  (Finished model.epoch . Created)</code></pre>
           </div>
           <div class="code-footer">
             <span class="status-dot" aria-hidden="true"></span> No handwritten
@@ -245,75 +246,270 @@ createTodo client
         <div class="wrap">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">SMALL PIECES. A BIGGER PICTURE.</p>
+              <p class="eyebrow">THE FEATURES, NOT JUST THE FRAMEWORK.</p>
               <h2 id="platform-title">
-                A stack that works<br />better together.
+                More of your app.<br /><span class="muted"
+                  >Already connected.</span
+                >
               </h2>
             </div>
             <p>
-              Keep the pieces you need. Each layer has a clear responsibility,
-              with packages you can use independently.
+              Typed APIs, persistent data, real accounts and an Idris interface.
+              Explore what you can build with the features available in the Flux
+              preview.
             </p>
           </div>
-          <div class="feature-grid">
-            <article class="feature feature-lilac">
-              <div class="feature-icon" aria-hidden="true">↔</div>
-              <h3>Typed across the wire.</h3>
-              <p>
-                Shared models, generated RPC commands and structured errors.
-                Exact BIGINT identifiers stay strings, all the way to the
-                browser.
-              </p>
-              <span class="feature-label">GENERATED CONTRACTS</span>
-            </article>
-            <article class="feature feature-dark">
-              <div class="feature-icon" aria-hidden="true">▤</div>
-              <h3>Data with a history.</h3>
-              <p>
-                Pooled PostgreSQL repositories and explicit, reviewed SQL
-                migrations. Transactional changes, recorded checksums and safe
-                replay.
-              </p>
+          <nav class="feature-jumps" aria-label="Explore Flux features">
+            <a href="#feature-data"
+              >Database <span aria-hidden="true">↘</span></a
+            >
+            <a href="#feature-auth"
+              >Authentication <span aria-hidden="true">↘</span></a
+            >
+            <a href="#feature-ui"
+              >Interface <span aria-hidden="true">↘</span></a
+            >
+            <a href="#feature-contracts"
+              >Contracts <span aria-hidden="true">↘</span></a
+            >
+            <a href="#developer-features"
+              >Developer tools <span aria-hidden="true">↘</span></a
+            >
+          </nav>
+          <div class="feature-spotlights">
+            <article id="feature-data" class="spotlight spotlight-data">
               <span class="feature-label">FLUX DB + POSTGRESQL</span>
-            </article>
-            <article class="feature feature-light">
-              <div class="feature-icon" aria-hidden="true">✳</div>
-              <h3>Interfaces with intent.</h3>
+              <h3>A database layer.<br />Not another translation layer.</h3>
               <p>
-                Flux UI brings model, update and view together. Generated commands
-                stay inside its effect lifecycle — including cancellation.
+                Work with pooled PostgreSQL connections, parameterized SQL and
+                explicit transactions. Evolve your data with reviewed migrations
+                and checksummed history, not silent schema changes.
               </p>
+              <div
+                class="migration-preview"
+                role="group"
+                aria-label="Illustration of the starter's migration history"
+              >
+                <div class="preview-heading">
+                  <span>Migration history</span><span>SQL → PostgreSQL</span>
+                </div>
+                <ol>
+                  <li>
+                    <span class="migration-number">001</span
+                    ><span>Create todos</span
+                    ><span class="applied"
+                      >Applied <span aria-hidden="true">✓</span></span
+                    >
+                  </li>
+                  <li>
+                    <span class="migration-number">002</span
+                    ><span>Accounts &amp; sessions</span
+                    ><span class="applied"
+                      >Applied <span aria-hidden="true">✓</span></span
+                    >
+                  </li>
+                  <li>
+                    <span class="migration-number">003</span
+                    ><span>Private ownership</span
+                    ><span class="applied"
+                      >Applied <span aria-hidden="true">✓</span></span
+                    >
+                  </li>
+                </ol>
+                <div class="preview-footnote">
+                  Reviewed SQL. Preserved history. Explicit upgrades.
+                </div>
+              </div>
+              <a class="text-link" href="#start"
+                >Build with real persistence
+                <span aria-hidden="true">→</span></a
+              >
+            </article>
+            <article id="feature-auth" class="spotlight spotlight-auth">
+              <span class="feature-label">FLUX AUTH</span>
+              <h3>Your users.<br />Their own space.</h3>
+              <p>
+                Argon2id password hashing, durable accounts and revocable bearer
+                sessions. The private starter scopes every task query to the
+                verified user, including pagination.
+              </p>
+              <div
+                class="identity-preview"
+                role="group"
+                aria-label="Illustration: a verified account can access its own tasks, not another account's tasks"
+              >
+                <div class="identity-person">
+                  <span class="avatar" aria-hidden="true">A</span>
+                  <div>
+                    <strong>Account A</strong><small>Verified session</small>
+                  </div>
+                  <span class="identity-check" aria-hidden="true">✓</span>
+                </div>
+                <div class="permission-row">
+                  <span>Own task</span
+                  ><span class="permission-yes">Allowed</span>
+                </div>
+                <div class="permission-row">
+                  <span>Another account’s task</span
+                  ><span class="permission-no">Not found</span>
+                </div>
+              </div>
+              <a class="text-link" href="#start"
+                >Try the private task app <span aria-hidden="true">→</span></a
+              >
+            </article>
+            <article id="feature-ui" class="spotlight spotlight-ui">
               <span class="feature-label">FLUX UI</span>
-            </article>
-            <article class="feature feature-light">
-              <div class="feature-icon" aria-hidden="true">⌁</div>
-              <h3>Effects have an owner.</h3>
+              <h3>Your interface.<br />Still Idris.</h3>
               <p>
-                The server runtime makes task lifetimes, socket ownership and
-                shutdown explicit. Background work isn’t an afterthought.
+                Model, update, view. Build the browser UI with typed commands
+                and lifecycle-aware effects. The starter keeps sessions in
+                memory and prevents late replies from crossing account
+                boundaries.
               </p>
-              <span class="feature-label">OWNED RUNTIME</span>
+              <div
+                class="ui-preview"
+                role="group"
+                aria-label="Flux UI flow: an event updates the model and renders the view; commands deliver results"
+              >
+                <div class="ui-flow">
+                  <span>Event</span><b aria-hidden="true">→</b
+                  ><span>Update</span><b aria-hidden="true">→</b
+                  ><span>View</span>
+                </div>
+                <div class="ui-return">
+                  <span aria-hidden="true">↳</span> Typed command
+                  <span aria-hidden="true">→</span> Result
+                </div>
+                <div class="ui-note">
+                  <span class="status-dot" aria-hidden="true"></span> No
+                  handwritten JavaScript business model.
+                </div>
+              </div>
+              <a class="text-link" href="#workflow"
+                >See how the pieces connect <span aria-hidden="true">→</span></a
+              >
             </article>
-            <article class="feature feature-light">
-              <div class="feature-icon" aria-hidden="true">&gt;_</div>
-              <h3>From idea to localhost.</h3>
+            <article
+              id="feature-contracts"
+              class="spotlight spotlight-contracts"
+            >
+              <span class="feature-label">GENERATED CONTRACTS</span>
+              <h3>One contract.<br />Both sides in agreement.</h3>
               <p>
-                Create an app, generate the contract, build both sides and start
-                a local session. One repository-local CLI brings the workflow
-                together.
+                Define a versioned schema. Generate shared Idris models, server
+                adapters, client commands and OpenAPI. Typed errors and exact
+                BIGINT strings travel with the contract.
               </p>
-              <span class="feature-label">PROJECT TOOLING</span>
+              <div
+                class="contract-preview"
+                role="group"
+                aria-label="A schema generates models, server adapters, client commands and OpenAPI"
+              >
+                <div class="schema-file">
+                  <span aria-hidden="true">{ }</span><strong>schema.json</strong
+                  ><small>One source of truth</small>
+                </div>
+                <ul class="generated-files">
+                  <li><span aria-hidden="true">↳</span> Shared models</li>
+                  <li><span aria-hidden="true">↳</span> Server adapters</li>
+                  <li><span aria-hidden="true">↳</span> Client commands</li>
+                  <li><span aria-hidden="true">↳</span> OpenAPI</li>
+                </ul>
+              </div>
+              <a class="text-link" href="#workflow"
+                >Explore the generated workflow
+                <span aria-hidden="true">→</span></a
+              >
             </article>
-            <article class="feature feature-green">
-              <div class="feature-icon" aria-hidden="true">✓</div>
-              <h3>Beyond the happy path.</h3>
+          </div>
+
+          <div class="feature-subheading">
+            <div>
+              <p class="eyebrow">THE DETAILS THAT MAKE A DIFFERENCE</p>
+              <h3 id="developer-features">More tools. Less assembly.</h3>
+            </div>
+            <span class="availability"
+              ><span class="status-dot" aria-hidden="true"></span> Available in
+              the preview</span
+            >
+          </div>
+          <div class="capability-grid">
+            <article class="capability">
+              <span class="capability-icon" aria-hidden="true">⌁</span>
+              <h4>Owned runtime</h4>
               <p>
-                Real Chromium and PostgreSQL checks exercise CRUD, pagination,
-                errors and interrupted writes — with independent persistence
-                verification.
+                Explicit task and socket lifetimes, deadlines and graceful
+                shutdown. Work has an owner.
               </p>
-              <span class="feature-label">INTEGRATION, NOT JUST MOCKS</span>
             </article>
+            <article class="capability">
+              <span class="capability-icon" aria-hidden="true">◇</span>
+              <h4>Verified database TLS</h4>
+              <p>
+                PostgreSQL TLS 1.3 with certificate-chain and hostname
+                verification. No unverified fallback.
+              </p>
+            </article>
+            <article class="capability">
+              <span class="capability-icon" aria-hidden="true">↔</span>
+              <h4>Native RPC clients</h4>
+              <p>
+                In-process libcurl with verified HTTPS and bounded responses. No
+                credential arguments or temporary request files.
+              </p>
+            </article>
+            <article class="capability">
+              <span class="capability-icon" aria-hidden="true">♡</span>
+              <h4>Health checks</h4>
+              <p>
+                Liveness, readiness and a registry for application checks. Make
+                dependency health explicit.
+              </p>
+            </article>
+            <article class="capability">
+              <span class="capability-icon" aria-hidden="true">≡</span>
+              <h4>Request tracing</h4>
+              <p>
+                Request IDs, response timing and batched access logs. Useful
+                context without logging sensitive bodies.
+              </p>
+            </article>
+            <article class="capability">
+              <span class="capability-icon" aria-hidden="true">&gt;_</span>
+              <h4>Local project CLI</h4>
+              <p>
+                Create a starter, generate code, build both sides and apply
+                reviewed migrations from the workspace.
+              </p>
+            </article>
+            <article class="capability">
+              <span class="capability-icon" aria-hidden="true">✓</span>
+              <h4>Integration checks</h4>
+              <p>
+                Real Chromium and PostgreSQL tests for isolation, revocation,
+                pagination and interrupted writes.
+              </p>
+            </article>
+            <article class="capability">
+              <span class="capability-icon" aria-hidden="true">{ }</span>
+              <h4>Working examples</h4>
+              <p>
+                Start small with routing and typed JSON. Follow the complete
+                private app through SQL, accounts and UI.
+              </p>
+            </article>
+          </div>
+          <div class="feature-boundary">
+            <p>
+              <strong>Built in the open. Clear about the boundaries.</strong>
+              These are implemented capabilities, not a production-readiness
+              guarantee. Managed jobs, application caching, uploads, realtime
+              and production deployment are future work.
+            </p>
+            <a class="text-link" href="#readiness"
+              >What’s still ahead <span aria-hidden="true">→</span></a
+            >
           </div>
         </div>
       </section>
@@ -335,8 +531,9 @@ createTodo client
           <div class="prerequisites">
             <strong>Before you start</strong
             ><span
-              >Install pack, Python 3, Node 20+, curl and Docker. Run these
-              commands from a Flux checkout.</span
+              >Install pack, Python 3, Node 20+ and Docker, plus native build
+              dependencies. The doctor checks OpenSSL, libsodium and libcurl.
+              Run these commands from a Flux checkout.</span
             >
           </div>
           <a class="text-link" href="https://github.com/odunboye/flux"
@@ -391,14 +588,15 @@ createTodo client
             <span class="readiness-label ready">IMPLEMENTED</span>
             <p>
               Generated CRUD · Flux UI todo UI · PostgreSQL pooling · SQL
-              migrations · Local project CLI · Verified PostgreSQL TLS · Account/session APIs · Private tasks and login UI
+              migrations · Local project CLI · Verified PostgreSQL TLS ·
+              Account/session APIs · Private tasks and login UI
             </p>
           </div>
           <div>
             <span class="readiness-label next">NEXT FOUNDATIONS</span>
             <p>
-              Broader identity services · Backup and restore ·
-              Standalone SDK packaging · Production deployment
+              Broader identity services · Backup and restore · Standalone SDK
+              packaging · Production deployment
             </p>
           </div>
           <details>
@@ -417,9 +615,10 @@ createTodo client
               Is the CLI a hosted platform?<span aria-hidden="true">+</span>
             </summary>
             <p>
-              No. The CLI runs inside the Flux workspace on macOS or Linux.
-              There is no managed cloud, automatic deployment or hot reload.
-              Source changes require a rebuild and restart.
+              No. The CLI runs inside the Flux workspace on macOS or Linux. It
+              is development tooling, not a managed cloud or automatic
+              production deployment service. Follow the repository guides for
+              the current local development workflow.
             </p>
           </details>
         </div>

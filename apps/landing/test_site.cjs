@@ -55,8 +55,14 @@ const output = path.resolve(__dirname, "../../.workspace/landing");
     page.on("request", (request) => requests.push(request.url()));
     await page.goto(base);
     await expect(page).toHaveTitle("Flux — One language. Both sides.");
-    await expect(page.locator(".feature-label").filter({ hasText: /^FLUX UI$/ })).toHaveCount(1);
-    await expect(page.locator(".feature-label").filter({ hasText: /^FLUX DB \+ POSTGRESQL$/ })).toHaveCount(1);
+    await expect(
+      page.locator(".feature-label").filter({ hasText: /^FLUX UI$/ }),
+    ).toHaveCount(1);
+    await expect(
+      page
+        .locator(".feature-label")
+        .filter({ hasText: /^FLUX DB \+ POSTGRESQL$/ }),
+    ).toHaveCount(1);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
       "Full possibility.",
     );
@@ -72,6 +78,29 @@ const output = path.resolve(__dirname, "../../.workspace/landing");
       ),
       "all local anchors exist",
     );
+    await expect(page.locator(".feature-spotlights > article")).toHaveCount(4);
+    await expect(page.locator(".capability-grid > article")).toHaveCount(8);
+    for (const name of [
+      "Owned runtime",
+      "Verified database TLS",
+      "Native RPC clients",
+      "Health checks",
+      "Request tracing",
+      "Local project CLI",
+      "Integration checks",
+      "Working examples",
+    ]) {
+      await expect(
+        page.getByRole("heading", { name, exact: true }),
+      ).toBeVisible();
+    }
+    await expect(page.locator(".feature-boundary")).toContainText(
+      "future work",
+    );
+    await expect(page.locator("#server-code")).toContainText("Principal");
+    await expect(page.locator("#server-code")).toContainText(
+      "owner_id=$1 AND id=$2",
+    );
     const server = page.getByRole("tab", { name: /Server/ });
     const client = page.getByRole("tab", { name: /Client/ });
     await expect(server).toHaveAttribute("aria-selected", "true");
@@ -80,6 +109,15 @@ const output = path.resolve(__dirname, "../../.workspace/landing");
       path: path.join(output, "full-page.png"),
       fullPage: true,
     });
+    await page
+      .locator("#platform")
+      .screenshot({ path: path.join(output, "features-desktop.png") });
+    await page
+      .getByRole("navigation", { name: "Explore Flux features" })
+      .getByRole("link", { name: /Authentication/ })
+      .press("Enter");
+    await expect(page).toHaveURL(base + "/#feature-auth");
+    await expect(page.locator("#feature-auth")).toBeInViewport();
     await server.focus();
     await page.keyboard.press("ArrowRight");
     await expect(client).toBeFocused();
@@ -124,18 +162,31 @@ const output = path.resolve(__dirname, "../../.workspace/landing");
         ),
         "horizontal overflow at " + width,
       );
+      assert(
+        await page
+          .locator(
+            ".spotlight, .migration-preview, .identity-preview, .ui-preview, .contract-preview, .capability",
+          )
+          .evaluateAll((nodes) =>
+            nodes.every((node) => node.scrollWidth <= node.clientWidth + 1),
+          ),
+        "feature content overflows its card at " + width,
+      );
     }
     await page.setViewportSize({ width: 390, height: 844 });
     const menu = page.getByRole("button", { name: /Menu/ });
-    await expect(page.getByRole("navigation")).toBeHidden();
+    const mainNavigation = page.getByRole("navigation", {
+      name: "Main navigation",
+    });
+    await expect(mainNavigation).toBeHidden();
     await menu.click();
-    await expect(page.getByRole("navigation")).toBeVisible();
+    await expect(mainNavigation).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(menu).toBeFocused();
-    await expect(page.getByRole("navigation")).toBeHidden();
+    await expect(mainNavigation).toBeHidden();
     await menu.click();
     await page
-      .getByRole("navigation")
+      .getByRole("navigation", { name: "Main navigation" })
       .getByRole("link", { name: "How it works" })
       .click();
     await expect(menu).toHaveAttribute("aria-expanded", "false");
@@ -148,6 +199,9 @@ const output = path.resolve(__dirname, "../../.workspace/landing");
     );
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await page.screenshot({ path: path.join(output, "mobile.png") });
+    await page
+      .locator("#platform")
+      .screenshot({ path: path.join(output, "features-mobile.png") });
     assert.deepEqual(errors, [], "no JavaScript or CSP errors");
     const plain = await browser.newContext({
       javaScriptEnabled: false,
@@ -155,7 +209,27 @@ const output = path.resolve(__dirname, "../../.workspace/landing");
     });
     const fallback = await plain.newPage();
     await fallback.goto(base);
-    await expect(fallback.getByRole("navigation")).toBeVisible();
+    await expect(
+      fallback.getByRole("navigation", { name: "Main navigation" }),
+    ).toBeVisible();
+    await expect(fallback.locator(".feature-spotlights > article")).toHaveCount(
+      4,
+    );
+    await expect(fallback.locator(".capability-grid > article")).toHaveCount(8);
+    await fallback
+      .getByRole("navigation", { name: "Explore Flux features" })
+      .getByRole("link", { name: /Database/ })
+      .click();
+    await expect(fallback.locator("#feature-data")).toBeInViewport();
+    // Wait for the native smooth anchor scroll to finish before a second
+    // automated scroll to the FAQ; visibility alone can pass mid-animation.
+    await expect
+      .poll(async () =>
+        Math.abs(
+          (await fallback.locator("#feature-data").boundingBox()).y - 36,
+        ),
+      )
+      .toBeLessThan(2);
     await expect(fallback.locator("#server-code")).toBeVisible();
     await expect(fallback.locator("#client-code")).toBeVisible();
     await fallback
@@ -165,6 +239,9 @@ const output = path.resolve(__dirname, "../../.workspace/landing");
     await expect(
       fallback.getByText("Not yet. The starter has private", { exact: false }),
     ).toBeVisible();
+    console.log(
+      "PASS feature catalog: four showcases, eight capabilities, keyboard/no-JS anchors, honest scope and card bounds at 320–1440px",
+    );
     console.log(
       "PASS Flux landing: HTTP/security, desktop/mobile, keyboard tabs/menu, clipboard success/failure, reduced motion and no-JS fallback",
     );
