@@ -39,6 +39,18 @@ Add `flux.mobile.json` beside an application's `flux.json` (or pass an explicit
 }
 ```
 
+For networked applications, use `"format": 2` and add an explicit
+`"apiOrigin": "https://your-api.example.com"`. This is an origin, not a route:
+no HTTP, userinfo, path/trailing slash, query, fragment or noncanonical default
+port. There is no insecure loopback exception. Format 1 remains a packaging-only
+preview and cannot initialize `Flux.Mobile.Client.mobileClient`.
+
+Format 2 requires exactly one CSP meta element with `default-src 'self'`,
+`script-src 'self'`, `object-src 'none'`, `base-uri 'none'` and `form-action 'none'`.
+The explicit format-2 opt-in binds `connect-src` to only the configured HTTPS API;
+other directives are preserved, and duplicate directives/script overrides are
+rejected. Runtime configuration is immutable and initializes before the app.
+
 `ui` is optional and otherwise comes from `flux.json`. Other keys are required;
 unknown and duplicate keys are rejected. Paths resolve relative to `--project`,
 even with an external config file. `entry` is a compiled, standalone Idris browser
@@ -107,12 +119,13 @@ Its bundled UI boots in Chromium with registered plugins, and both native projec
 sync successfully. Unsigned iOS Simulator Debug and Android Debug APK builds pass.
 These are packaging/build checks, **not device-level behavioral certification**.
 
-The current Chequra entry still uses a relative API origin. In a native WebView
-that points at local assets, not the hosted financial API. Before enabling native
-sign-in, add an explicit HTTPS API endpoint, appropriate server origin/CORS policy
-and CSP, plus secure session persistence and lifecycle handling. Never rewrite
-requests or weaken CSP silently in the packager. No hosted backend or payment/card
-service was created by this integration.
+The ordinary Chequra web entry uses a relative API origin. Networked mobile apps
+must use a separate entry calling `Flux.Mobile.Client.mobileClient`, with explicit
+format-2 configuration and server origin/CORS policy. The transport rejects
+redirects (including POST-preserving redirects), omits cookies and caches, bounds
+streamed responses and never retries a request. Secure native persistence and
+hosted deployment remain separate work. No hosted backend or payment/card service
+is created by this integration.
 
 Secure storage, camera, biometrics, app lifecycle/back/deep-link plugin bindings,
 notifications, permission flows and device accessibility testing are subsequent

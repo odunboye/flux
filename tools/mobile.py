@@ -13,6 +13,7 @@ import tempfile
 import tomllib
 import uuid
 import mobile_check
+import mobile_policy
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLING = ROOT / 'packages/mobile/tooling'
@@ -71,8 +72,14 @@ def configuration(project, override=None, require_entry=True):
     file = Path(override).resolve(strict=True) if override else project / 'flux.mobile.json'
     cfg = read_json(file)
     required = {'format', 'appId', 'appName', 'capacitor', 'webDir', 'entry', 'assets'}
-    if not isinstance(cfg, dict) or not required <= set(cfg) or set(cfg) - required - {'ui'} or type(cfg['format']) is not int or cfg['format'] != 1:
-        raise ValueError('Expected format-1 flux.mobile.json with appId, appName, capacitor, webDir, entry and assets')
+    if not isinstance(cfg, dict) or type(cfg.get('format')) is not int or cfg['format'] not in [1, 2]:
+        raise ValueError('Expected format-1 or format-2 flux.mobile.json')
+    if cfg['format'] == 2:
+        required = required | {'apiOrigin'}
+    if not required <= set(cfg) or set(cfg) - required - {'ui'}:
+        raise ValueError('Invalid mobile configuration keys; format 2 requires apiOrigin')
+    if cfg['format'] == 2:
+        mobile_policy.api_origin(cfg['apiOrigin'])
     if not isinstance(cfg['appId'], str) or not re.fullmatch(r'[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*){2,}', cfg['appId']):
         raise ValueError('appId must be a reverse-domain identifier')
     if not isinstance(cfg['appName'], str) or not cfg['appName'].strip() or not re.fullmatch(r'[\w .()-]{1,80}', cfg['appName']):
@@ -105,6 +112,8 @@ def snapshot(web, entry, cfg, cap):
         raise ValueError('assets must include index.html')
     # The initial contract deliberately accepts one known application entry.
     html = files['index.html'].decode('utf-8')
+    if cfg['format'] == 2:
+        html = mobile_policy.bind_csp(html, cfg['apiOrigin'])
     pattern = r'<script\s+(?:type=[\"\']module[\"\']\s+)?src=[\"\']app\.js[\"\']\s*></script>'
     if len(re.findall(pattern, html)) != 1:
         raise ValueError('index.html must contain exactly one app.js entry script')
@@ -113,7 +122,8 @@ def snapshot(web, entry, cfg, cap):
     fingerprint = digest(json.dumps(cfg, sort_keys=True).encode() + source +
         b''.join(name.encode() + b'\0' + digest(data).encode() for name, data in sorted(files.items())) +
         (cap / 'package-lock.json').read_bytes() + (cap / 'js/bridge.mjs').read_bytes() + (cap / 'js/register.mjs').read_bytes() +
-        (TOOLING / 'package-lock.json').read_bytes() + (TOOLING / 'bundle.mjs').read_bytes())
+        (TOOLING / 'package-lock.json').read_bytes() + (TOOLING / 'bundle.mjs').read_bytes() +
+        (TOOLING / 'rpc.mjs').read_bytes() + Path(mobile_policy.__file__).read_bytes())
     return files, source, fingerprint
 
 
@@ -199,7 +209,12 @@ def build(project, override=None):
         # Compile a frozen copy, not a concurrently changing application entry.
         frozen = stage / 'application.js'
         frozen.write_bytes(source)
-        run(['node', TOOLING / 'bundle.mjs', cap / 'js/register.mjs', frozen, public / 'app.js'], TOOLING)
+        boot = stage / 'mobile-config.mjs'
+        boot.write_text('import {createRpcTransport} from ' + json.dumps(str(TOOLING / 'rpc.mjs')) + ';\n' +
+            'const config = Object.freeze(' + json.dumps({'format': cfg['format'], 'apiOrigin': cfg.get('apiOrigin')}) + ');\n' +
+            'Object.defineProperty(globalThis, "FluxMobile", {value: config});\n' +
+            ('Object.defineProperty(globalThis, "FluxMobileTransport", {value: createRpcTransport(config.apiOrigin)});\n' if cfg['format'] == 2 else ''))
+        run(['node', TOOLING / 'bundle.mjs', cap / 'js/register.mjs', frozen, public / 'app.js', boot], TOOLING)
         hashes = {file.relative_to(public).as_posix(): digest(file.read_bytes()) for file in sorted(public.rglob('*')) if file.is_file()}
         shutil.move(str(public), str(release))
         atomic_json(directory / 'build.json', {'format': 1, 'release': release.name, 'fingerprint': fingerprint, 'files': hashes})

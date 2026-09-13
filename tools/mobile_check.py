@@ -29,6 +29,7 @@ def check(capacitor):
     packages = {
         'capacitor': capacitor / 'capacitor.ipkg',
         'flux-ui': ROOT / 'packages/ui/flux-ui.ipkg',
+        'flux-client': ROOT / 'platform/flux-client.ipkg',
         'flux-mobile': ROOT / 'packages/mobile/flux-mobile.ipkg',
         'flux-mobile-test': ROOT / 'packages/mobile/tests/test.ipkg',
     }

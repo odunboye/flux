@@ -41,6 +41,24 @@ class MobileTests(unittest.TestCase):
         self.assertEqual(mobile.built(self.project)[2], release)
         self.assertFalse((self.project / 'node_modules').exists())
 
+    def test_format_two_config_precedes_application_and_binds_csp(self):
+        from test_mobile_policy import HTML
+        self.cfg.update(format=2, apiOrigin='https://api.example.test'); self.save()
+        (self.web / 'index.html').write_text(HTML)
+        (self.project / 'application.js').write_text('if(globalThis.FluxMobile.apiOrigin!=="https://api.example.test" || !globalThis.FluxMobileTransport) throw Error("configuration order");')
+        release = mobile.build(self.project)
+        subprocess.run(['node', str(release / 'app.js')], check=True, timeout=10)
+        self.assertIn('connect-src https://api.example.test', (release / 'index.html').read_text())
+        self.assertEqual(mobile.built(self.project)[2], release)
+
+    def test_format_two_requires_explicit_secure_configuration(self):
+        self.cfg.update(format=2, apiOrigin='http://localhost:8080'); self.save()
+        with self.assertRaisesRegex(ValueError, 'HTTPS'):
+            mobile.build(self.project)
+        self.cfg['apiOrigin'] = 'https://api.example.test'; self.save()
+        with self.assertRaisesRegex(ValueError, 'CSP'):
+            mobile.build(self.project)
+
     def test_failed_build_preserves_last_good(self):
         mobile.build(self.project)
         manifest = self.project / '.workspace/mobile/build.json'

@@ -39,6 +39,16 @@ to the console for each finished command; it does not shut down the Flux app.
 The bundled Capacitor registration must load before the application. Installing
 the Idris package alone does not register native JavaScript plugins.
 
+## Origin-bound RPC
+
+`Flux.Mobile.Client.mobileClient` constructs a client only when a format-2 mobile
+bundle provides an explicit canonical HTTPS `apiOrigin`. It never falls back to
+the WebView origin. POSTs are restricted to that origin's `/rpc/v1/` routes;
+redirects, cookies, caches, unsupported headers and automatic retries are disabled.
+Responses are bounded while streaming, and cancellation suppresses late delivery.
+Use this transport for mobile authentication and ledger RPC, not native HTTP
+plugins which bypass browser origin policy.
+
 ## Packaging and CLI
 
 See the [mobile integration design](../../design/MOBILE_CAPACITOR.md).
