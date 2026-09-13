@@ -5,6 +5,7 @@ import TestHTTP
 import TestHTTPProperties
 import TestJSON
 import TestMiddleware
+import TestRpcCors
 import TestLogging
 import TestConfig
 import TestCookies
@@ -58,6 +59,8 @@ main = do
   configOk     <- runTests "Config" configTests
   middlewareTests <- TestMiddleware.runAllTests
   middlewareOk    <- runTests "Middleware" middlewareTests
+  corsTests       <- TestRpcCors.runAllTests
+  corsOk          <- runTests "RPC CORS" corsTests
   cookiesOk       <- runTests "Cookies" TestCookies.runAllTests
   sessionTests    <- TestSession.runAllTests
   sessionOk       <- runTests "Session" sessionTests
@@ -67,7 +70,7 @@ main = do
   healthOk        <- runTests "Health" healthTests
 
   if routerOk && httpOk && httpPropOk && jsonOk && middlewareOk && loggingOk && configOk
-     && cookiesOk && sessionOk && staticOk && healthOk
+     && cookiesOk && sessionOk && staticOk && healthOk && corsOk
     then do
       putStrLn "All tests passed!"
       exitSuccess

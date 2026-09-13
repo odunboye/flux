@@ -34,6 +34,7 @@ modules = Flux.Core.Runtime
         , Flux.Middleware.Cookies
         , Flux.Middleware.Session
         , Flux.Middleware.Static
+        , Flux.Middleware.RpcCors
         , Flux
 
 -- main file (i.e. file to load at REPL) - this is a library, not a
