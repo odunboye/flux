@@ -5,8 +5,21 @@ import json
 from pathlib import Path
 import subprocess
 import tempfile
+import workspace
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def run(args, cwd=ROOT, timeout=300):
+    command = [str(a) for a in args]
+    process = subprocess.Popen(command, cwd=cwd, start_new_session=True)
+    try:
+        code = process.wait(timeout=timeout)
+        if code:
+            raise subprocess.CalledProcessError(code, command)
+    except BaseException:
+        workspace.stop_group(process)
+        raise
 
 
 def check(capacitor):
@@ -26,9 +39,9 @@ def check(capacitor):
             lines += [f'[custom.all.{name}]', 'type = "local"',
                       'path = ' + json.dumps(str(file.parent)), 'ipkg = ' + json.dumps(file.name)]
         Path(directory, 'pack.toml').write_text('\n'.join(lines) + '\n')
-        subprocess.run(['pack', '--no-prompt', 'build', str(packages['flux-mobile-test'])], cwd=directory, check=True, timeout=300)
-    subprocess.run(['node', '--unhandled-rejections=strict', str(ROOT / 'packages/mobile/tests/runtime.mjs'),
-                    str(capacitor), str(ROOT / 'packages/mobile/tests/build/exec/flux-mobile-test.js')], check=True, timeout=30)
+        run(['pack', '--no-prompt', 'build', str(packages['flux-mobile-test'])], cwd=directory)
+    run(['node', '--unhandled-rejections=strict', str(ROOT / 'packages/mobile/tests/runtime.mjs'),
+         str(capacitor), str(ROOT / 'packages/mobile/tests/build/exec/flux-mobile-test.js')], timeout=30)
 
 
 if __name__ == '__main__':

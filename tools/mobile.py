@@ -149,7 +149,7 @@ def exclusive(project):
 
 
 def run(args, cwd):
-    subprocess.run([str(a) for a in args], cwd=cwd, check=True, timeout=300)
+    mobile_check.run(args, cwd)
 
 
 def compile_ui(project, override=None):
@@ -304,6 +304,8 @@ def main(argv=None):
                     host, cli = sync(args.project, args.platform, args.config)
                     if args.command != 'sync':
                         run(['node', cli, args.command, args.platform], host)
+    except KeyboardInterrupt:
+        parser.exit(130, 'Stopped mobile operation. Native SDK effects are not rolled back.\n')
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         parser.exit(1, (type(error).__name__ if isinstance(error, subprocess.SubprocessError) else str(error)) + '\n')
 

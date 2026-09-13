@@ -88,7 +88,9 @@ and store submission are application responsibilities.
 - Failure leaves the previous build pointer intact; temporary stages clean up.
 - Sync rejects stale sources/configuration and tampered releases, including
   directory symlinks. Unknown output/native-host directories are never adopted.
-- An OS-backed project lock prevents concurrent CLI operations.
+- An OS-backed project lock prevents concurrent CLI operations. Compiler/bundler/
+  SDK subprocesses have owned process groups; failure, timeout and interruption
+  stop those groups before releasing the lock. Shared SDK daemons are not owned.
 - Native projects live in `.workspace/mobile/native/{ios,android}`. Their source
   files are not regenerated wholesale. Managed npm files/configuration cannot be
   silently overwritten; the owned web tree is staged before replacement.

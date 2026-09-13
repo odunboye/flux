@@ -153,6 +153,25 @@ class MobileTests(unittest.TestCase):
         self.assertFalse(locations[0].exists())
         self.assertEqual((self.project / 'pack.toml').read_text(), original)
 
+    def test_tool_timeout_stops_owned_process_group(self):
+        with patch.object(mobile.mobile_check.subprocess, 'Popen') as popen, \
+             patch.object(mobile.mobile_check.workspace, 'stop_group') as stop:
+            process = popen.return_value
+            process.wait.side_effect = subprocess.TimeoutExpired(['fixture'], 300)
+            with self.assertRaises(subprocess.TimeoutExpired):
+                mobile.run(['fixture'], self.project)
+            self.assertTrue(popen.call_args.kwargs['start_new_session'])
+            stop.assert_called_once_with(process)
+
+    def test_tool_interrupt_stops_owned_process_group(self):
+        with patch.object(mobile.mobile_check.subprocess, 'Popen') as popen, \
+             patch.object(mobile.mobile_check.workspace, 'stop_group') as stop:
+            process = popen.return_value
+            process.wait.side_effect = KeyboardInterrupt()
+            with self.assertRaises(KeyboardInterrupt):
+                mobile.run(['fixture'], self.project)
+            stop.assert_called_once_with(process)
+
     def test_dispatch_does_not_intercept_normal_commands(self):
         with patch.object(mobile, 'main') as main:
             self.assertFalse(mobile.dispatch(['build']))
