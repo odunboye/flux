@@ -53,17 +53,46 @@ recipes in `examples/src/Recipes/`, then follow the complete application.
 ```sh
 ./flux doctor
 ./flux build
-./flux dev --disposable-db --no-build
+./flux dev --watch --disposable-db --no-build
 # Open http://127.0.0.1:8090
 ```
+
+`--watch` refreshes CSS without resetting UI state, rebuilds changed Idris targets,
+and reloads browsers after successful publication. Failed builds leave the previous
+application running and show compiler diagnostics. See the
+[live-reload guide](design/DEV_RELOAD.md) for configuration and limitations.
+`--hot` additionally supports [model-preserving DOM replacement](design/DEV_HMR.md)
+for applications opting into `runWebHot` with a versioned state codec.
 
 This creates a disposable PostgreSQL database and removes it on exit. For
 persistent data, configure `PG*` explicitly and omit `--disposable-db`.
 The [application/CLI guide](platform/crud/README.md) covers `new`, `generate`,
-`build`, `migrate` and `dev`, plus the real browser/database acceptance tests.
+`check`, `build`, `migrate`, `dev` and native `run`, plus real browser/database acceptance tests.
 The starter has private, owner-scoped tasks and an Idris registration/login UI.
 It is a local multi-user preview, not a production-readiness promise; deployable
 HTTPS, operations and backup/restore remain separate work.
+
+## External applications and native run
+
+The same CLI works outside this repository; no application-specific launcher is
+needed. Install this checkout's command with `./flux install-cli`, ensure its bin
+directory is on PATH, then:
+
+```sh
+cd /path/to/application
+flux sync
+flux generate
+flux check
+flux build
+flux dev --hot --disposable-db
+flux run --disposable-db
+```
+
+Format-2 `flux.json` declares source/public layout, namespaces, local dependencies
+and native asset integration. `run` launches a verified built native web server,
+not the development proxy. Existing format-1 examples still work with `dev`.
+See the [application CLI guide](design/APPLICATION_CLI.md) for migration, explicit
+project selection, installer collision handling and database/artifact ownership.
 
 ## HTTP server reference
 

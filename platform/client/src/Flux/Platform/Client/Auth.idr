@@ -37,6 +37,11 @@ export
 login : {msg : Type} -> Client -> String -> String -> (Either RpcError Session -> msg) -> Cmd msg
 login client username password = call client "/rpc/v1/auth/login" (credentials username password)
 
+||| Read-only validation of the bearer token. Never trust stored account metadata.
+export
+me : {msg : Type} -> Client -> (Either RpcError Account -> msg) -> Cmd msg
+me client = call client "/rpc/v1/auth/me" (JObject [])
+
 export
 logout : {msg : Type} -> Client -> (Either RpcError JSON -> msg) -> Cmd msg
 logout client = call client "/rpc/v1/auth/logout" (JObject [])

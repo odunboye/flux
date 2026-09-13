@@ -14,6 +14,7 @@ import tomllib
 import uuid
 import mobile_check
 import mobile_policy
+import mobile_native
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLING = ROOT / 'packages/mobile/tooling'
@@ -62,8 +63,8 @@ def inside(root, relative):
 def library(path):
     path = Path(path).resolve(strict=True)
     package = read_json(path / 'package.json')
-    if not isinstance(package, dict) or package.get('version') != '0.2.0' or not (path / 'js/register.mjs').is_file():
-        raise ValueError('Expected hardened idris2-capacitor 0.2.0')
+    if not isinstance(package, dict) or package.get('version') not in ['0.2.0', '0.3.0'] or not (path / 'js/register.mjs').is_file():
+        raise ValueError('Expected hardened idris2-capacitor 0.2.0 or 0.3.0')
     return path
 
 
@@ -121,9 +122,12 @@ def snapshot(web, entry, cfg, cap):
     source = entry.read_bytes()
     fingerprint = digest(json.dumps(cfg, sort_keys=True).encode() + source +
         b''.join(name.encode() + b'\0' + digest(data).encode() for name, data in sorted(files.items())) +
-        (cap / 'package-lock.json').read_bytes() + (cap / 'js/bridge.mjs').read_bytes() + (cap / 'js/register.mjs').read_bytes() +
+        (cap / 'package-lock.json').read_bytes() +
+        b''.join(p.relative_to(cap).as_posix().encode() + b'\0' + digest(inside(cap, p.relative_to(cap).as_posix()).read_bytes()).encode()
+                 for p in sorted((cap / 'js').glob('*.mjs'))) +
+        b''.join(name.encode() + b'\0' + digest(data).encode() for name, data in mobile_native.plugin_files(cap).items()) +
         (TOOLING / 'package-lock.json').read_bytes() + (TOOLING / 'bundle.mjs').read_bytes() +
-        (TOOLING / 'rpc.mjs').read_bytes() + Path(mobile_policy.__file__).read_bytes())
+        (TOOLING / 'rpc.mjs').read_bytes() + Path(mobile_policy.__file__).read_bytes() + Path(mobile_native.__file__).read_bytes())
     return files, source, fingerprint
 
 
@@ -256,17 +260,16 @@ def sync(project, platform, override=None):
     else:
         host.mkdir()
         atomic_json(host / 'owner.json', owner)
-    for name in ['package.json', 'package-lock.json']:
-        target = inside(host, name)
-        expected = (TOOLING / name).read_bytes()
-        if target.exists() and target.read_bytes() != expected:
-            raise ValueError('Native host dependency files differ; refusing to overwrite ' + name)
-        target.write_bytes(expected)
     native_config = {'appId': cfg['appId'], 'appName': cfg['appName'], 'webDir': 'www'}
+    quiet_config = dict(native_config, loggingBehavior='none')
     target = inside(host, 'capacitor.config.json')
-    if target.exists() and read_json(target) != native_config:
+    if target.exists() and read_json(target) not in [native_config, quiet_config]:
         raise ValueError('Native identity/configuration changed; refusing to overwrite the existing host')
-    atomic_json(target, native_config)
+    atomic_json(target, quiet_config)
+    cap = library(project / cfg['capacitor'])
+    mobile_native.dependencies(host, cap, TOOLING, run, inside, atomic_json)
+    # SDK input changes during npm staging must not silently change this release.
+    built(project, override)
     public = inside(host, 'www')
     with tempfile.TemporaryDirectory(prefix='web-stage-', dir=host) as temporary:
         new = Path(temporary) / 'www'

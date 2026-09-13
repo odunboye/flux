@@ -100,7 +100,7 @@ prim_setHTML : String -> PrimIO ()
 -- `<input>` in focus gets its normal native text-editing behavior;
 -- nothing focused (the traditional TUI-nav-on-a-page case) keeps the
 -- old scroll-prevention behavior.
-%foreign "javascript:lambda: _w => { if(window.__fluxUIQueuesReady) return; window.__fluxUIQueuesReady=true; const q=window.__fluxUIEvents=window.__fluxUIEvents||[]; const controller=new AbortController();window.__fluxUIAbort=controller;const on=(target,name,fn,opts={})=>target.addEventListener(name,fn,{...opts,signal:controller.signal}); const enc=s=>Array.from(String(s)).map(c=>c.codePointAt(0)).join('.'); const b=v=>v?'1':'0'; const mods=e=>[b(e.shiftKey),b(e.ctrlKey),b(e.altKey),b(e.metaKey)].join('|'); const push=s=>q.push(s); const key=(a,e)=>push('f1|K|'+a+'|'+enc(e.key)+'|'+enc(e.code||e.key)+'|'+mods(e)+'|'+(Array.from(e.key).length===1?e.key.codePointAt(0):'none')); on(document,'keydown',e=>{ const inField=document.activeElement&&document.activeElement.tagName==='INPUT'; if(!inField&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault(); key(e.repeat?'repeat':'down',e); }); on(document,'keyup',e=>key('up',e)); const pa={pointerdown:'down',pointerup:'up',pointermove:'move',pointerenter:'enter',pointerleave:'leave',pointercancel:'cancel'}; const pb=n=>n===0?'primary':n===1?'middle':n===2?'secondary':n===3?'back':n===4?'forward':'none'; Object.keys(pa).forEach(name=>on(document,name,e=>push('f1|P|'+pa[name]+'|'+(['mouse','touch','pen'].includes(e.pointerType)?e.pointerType:'mouse')+'|'+Math.max(0,e.pointerId||0)+'|'+e.clientX+'|'+e.clientY+'|'+(e.movementX||0)+'|'+(e.movementY||0)+'|'+pb(e.button)+'|'+Math.max(0,Math.min(1,e.pressure||0))+'|'+mods(e)),{passive:true})); on(document,'wheel',e=>push('f1|S|'+e.clientX+'|'+e.clientY+'|'+e.deltaX+'|'+e.deltaY+'|'+e.deltaZ),{passive:true}); on(window,'resize',()=>push('f1|R|'+innerWidth+'|'+innerHeight)); on(window,'focus',()=>push('f1|F|gain')); on(window,'blur',()=>push('f1|F|lost')); on(window,'orientationchange',()=>push('f1|O|'+(innerHeight>=innerWidth?'portrait':'landscape'))); on(document,'visibilitychange',()=>push('f1|L|'+(document.hidden?'hidden':'visible'))); on(window,'pagehide',()=>push('f1|L|pause')); on(window,'pageshow',()=>push('f1|L|resume')); on(window,'popstate',()=>{push('f1|L|back');push('f1|L|location|'+enc(location.pathname+location.search+location.hash));}); on(document,'compositionstart',e=>push('f1|M|start|'+enc(e.data||''))); on(document,'compositionupdate',e=>push('f1|M|update|'+enc(e.data||''))); on(document,'compositionend',e=>push('f1|M|end|'+enc(e.data||''))); on(document,'click',e=>{const target=e.target&&e.target.closest('[data-flux-ui-click]');if(target&&document.getElementById('flux-ui-app')?.contains(target))push('C'+target.dataset.fluxUiClick);}); on(document,'input',e=>{const target=e.target&&e.target.closest('[data-flux-ui-input]');if(target&&document.getElementById('flux-ui-app')?.contains(target))push('I'+target.dataset.fluxUiInput+'\x01'+target.value);}); push('f1|L|location|'+enc(location.pathname+location.search+location.hash)); if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App){ window.Capacitor.Plugins.App.addListener('backButton',()=>push('f1|L|back')); window.Capacitor.Plugins.App.addListener('pause',()=>push('f1|L|pause')); window.Capacitor.Plugins.App.addListener('resume',()=>push('f1|L|resume')); } }"
+%foreign "javascript:lambda: _w => { if(window.__fluxUIQueuesReady) return; window.__fluxUIQueuesReady=true; const q=window.__fluxUIEvents=window.__fluxUIEvents||[]; const controller=new AbortController();window.__fluxUIAbort=controller;const on=(target,name,fn,opts={})=>target.addEventListener(name,fn,{...opts,signal:controller.signal}); const enc=s=>Array.from(String(s)).map(c=>c.codePointAt(0)).join('.'); const b=v=>v?'1':'0'; const mods=e=>[b(e.shiftKey),b(e.ctrlKey),b(e.altKey),b(e.metaKey)].join('|'); const push=s=>{if(!controller.signal.aborted)q.push(s);}; const key=(a,e)=>push('f1|K|'+a+'|'+enc(e.key)+'|'+enc(e.code||e.key)+'|'+mods(e)+'|'+(Array.from(e.key).length===1?e.key.codePointAt(0):'none')); on(document,'keydown',e=>{ const inField=document.activeElement&&document.activeElement.tagName==='INPUT'; if(!inField&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault(); key(e.repeat?'repeat':'down',e); }); on(document,'keyup',e=>key('up',e)); const pa={pointerdown:'down',pointerup:'up',pointermove:'move',pointerenter:'enter',pointerleave:'leave',pointercancel:'cancel'}; const pb=n=>n===0?'primary':n===1?'middle':n===2?'secondary':n===3?'back':n===4?'forward':'none'; Object.keys(pa).forEach(name=>on(document,name,e=>push('f1|P|'+pa[name]+'|'+(['mouse','touch','pen'].includes(e.pointerType)?e.pointerType:'mouse')+'|'+Math.max(0,e.pointerId||0)+'|'+e.clientX+'|'+e.clientY+'|'+(e.movementX||0)+'|'+(e.movementY||0)+'|'+pb(e.button)+'|'+Math.max(0,Math.min(1,e.pressure||0))+'|'+mods(e)),{passive:true})); on(document,'wheel',e=>push('f1|S|'+e.clientX+'|'+e.clientY+'|'+e.deltaX+'|'+e.deltaY+'|'+e.deltaZ),{passive:true}); on(window,'resize',()=>push('f1|R|'+innerWidth+'|'+innerHeight)); on(window,'focus',()=>push('f1|F|gain')); on(window,'blur',()=>push('f1|F|lost')); on(window,'orientationchange',()=>push('f1|O|'+(innerHeight>=innerWidth?'portrait':'landscape'))); on(document,'visibilitychange',()=>push('f1|L|'+(document.hidden?'hidden':'visible'))); on(window,'pagehide',()=>push('f1|L|pause')); on(window,'pageshow',()=>push('f1|L|resume')); on(window,'popstate',()=>{push('f1|L|back');push('f1|L|location|'+enc(location.pathname+location.search+location.hash));}); on(document,'compositionstart',e=>push('f1|M|start|'+enc(e.data||''))); on(document,'compositionupdate',e=>push('f1|M|update|'+enc(e.data||''))); on(document,'compositionend',e=>push('f1|M|end|'+enc(e.data||''))); on(document,'click',e=>{const target=e.target&&e.target.closest('[data-flux-ui-click]');if(target&&document.getElementById('flux-ui-app')?.contains(target))push('C'+target.dataset.fluxUiClick);}); on(document,'input',e=>{const target=e.target&&e.target.closest('[data-flux-ui-input]');if(target&&document.getElementById('flux-ui-app')?.contains(target))push('I'+target.dataset.fluxUiInput+'\x01'+target.value);}); push('f1|L|location|'+enc(location.pathname+location.search+location.hash)); if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App){ [['backButton','back'],['pause','pause'],['resume','resume']].forEach(([name,event])=>{Promise.resolve(window.Capacitor.Plugins.App.addListener(name,()=>push('f1|L|'+event))).then(handle=>{if(controller.signal.aborted)handle.remove();else controller.signal.addEventListener('abort',()=>handle.remove(),{once:true});});}); } }"
 prim_setupQueues : PrimIO ()
 
 %foreign "javascript:lambda: _w => { if(window.__fluxUIAbort)window.__fluxUIAbort.abort();window.__fluxUIAbort=null;window.__fluxUIQueuesReady=false;window.__fluxUIEvents=[]; }"
@@ -111,7 +111,7 @@ prim_teardownQueues : PrimIO ()
 prim_pollEvent : PrimIO String
 
 -- Schedule a one-shot timeout
-%foreign "javascript:lambda: (ms, f, _w) => { const delay=document.hidden ? Math.max(ms,250) : ms; setTimeout(function(){ f(0); }, delay); }"
+%foreign "javascript:lambda: (ms, f, _w) => { const delay=document.hidden ? Math.max(ms,250) : ms; const timers=globalThis.__fluxUITimers||(globalThis.__fluxUITimers=new Set());const epoch=globalThis.__fluxUITimerEpoch||0;const id=setTimeout(function(){timers.delete(id);if(epoch===(globalThis.__fluxUITimerEpoch||0))f(0);},delay);timers.add(id); }"
 prim_setTimeout : Int -> IO () -> PrimIO ()
 
 -- ─── IO wrappers ─────────────────────────────────────────────────────────────
@@ -257,12 +257,36 @@ tickLoop app modelRef quitRef control ms = do
       Just tm => dispatchManaged app modelRef control tm
     scheduleIn ms (tickLoop app modelRef quitRef control ms)
 
--- ─── runWeb ──────────────────────────────────────────────────────────────────
+-- ─── Opt-in development hot replacement ──────────────────────────────────────
 
-||| Run a Flux UI App in the browser using real DOM rendering.
+||| Explicit wire boundary between separately compiled model representations.
+||| Bump version when the state schema/semantics are incompatible. Never transfer
+||| raw Idris objects or functions. Nothing from save defers a swap (e.g. busy).
+||| restore must validate and sanitize, and must not execute effects. Payloads
+||| stay in memory; the framework never sends or persists them.
 public export
-runWeb : UIApp mdl outMsg -> IO ()
-runWeb app = do
+record HotState model where
+  constructor MkHotState
+  version : String
+  save : model -> Maybe String
+  restore : String -> Maybe model
+
+%foreign "javascript:lambda: (version, prepare, start, _w) => {const hot=globalThis.__fluxHot;if(!hot)return 0;hot.offer({version,prepare:s=>prepare(s)(0),start:()=>start(0)});return 1;}"
+prim_hotOffer : String -> (String -> IO Int) -> IO () -> PrimIO Int
+
+%foreign "javascript:lambda: (snapshot, dispose, _w) => {globalThis.__fluxHot.attach({snapshot:()=>snapshot(0),dispose:()=>dispose(0)});}"
+prim_hotAttach : IO String -> IO () -> PrimIO ()
+
+-- A replacement which removed runWebHot must not start a second plain runtime
+-- before the development client detects the missing hot registration.
+%foreign "javascript:lambda: _w => {const hot=globalThis.__fluxHot;return hot&&hot.loading()?1:0;}"
+prim_hotLoading : PrimIO Int
+
+%foreign "javascript:lambda: _w => {globalThis.__fluxUITimerEpoch=(globalThis.__fluxUITimerEpoch||0)+1;if(globalThis.__fluxUITimers){for(const id of globalThis.__fluxUITimers)clearTimeout(id);globalThis.__fluxUITimers.clear();}const sheet=globalThis.__fluxUIStyleSheet;if(sheet)document.adoptedStyleSheets=document.adoptedStyleSheets.filter(s=>s!==sheet);delete globalThis.__fluxUIStyleSheet;delete globalThis.__fluxUIStyleRules;delete globalThis.__fluxUIApplyStyles;}"
+prim_resetDOM : PrimIO ()
+
+startWeb : UIApp mdl outMsg -> Maybe (HotState mdl) -> IO ()
+startWeb app hot = do
   -- inject stylesheet once
   injectCSS fluxUICSS
   setupQueues
@@ -290,3 +314,50 @@ runWeb app = do
   -- start loops
   scheduleIn 100 (tickLoop app modelRef quitRef control 100)
   scheduleIn 33  (renderLoop app modelRef quitRef control htmlRef idMapRef inputMapRef)
+
+  case hot of
+    Nothing => pure ()
+    Just codec => do
+      let snapshot : IO String = do
+            drainAll app modelRef quitRef control idMapRef inputMapRef
+            model <- readIORef modelRef
+            quit <- readIORef quitRef
+            if quit then pure "0" else pure $ case codec.save model of
+              Nothing => ""
+              Just payload => "1" ++ payload
+      let dispose : IO () = do
+            writeIORef quitRef True
+            cancelActiveEffects control
+            teardownQueues
+            primIO prim_resetDOM
+      primIO (prim_hotAttach snapshot dispose)
+
+||| Run normally. No HMR registration, serialization or state storage.
+public export
+runWeb : UIApp mdl outMsg -> IO ()
+runWeb app = do
+  replacing <- primIO prim_hotLoading
+  when (replacing == 0) (startWeb app Nothing)
+
+||| Opt-in hot replacement under Flux dev --hot; identical to runWeb otherwise.
+||| A restored runtime skips init commands. Re-establish required subscriptions
+||| through application-managed events, never by replaying startup writes.
+public export
+runWebHot : HotState mdl -> UIApp mdl outMsg -> IO ()
+runWebHot codec app = do
+  candidate <- newIORef (the (Maybe mdl) Nothing)
+  let prepare : String -> IO Int = \payload => case codec.restore payload of
+        Nothing => pure 0
+        Just restored => do
+          -- Preflight the new view before tearing down the active generation.
+          _ <- renderPage (app.view restored)
+          writeIORef candidate (Just restored)
+          pure 1
+  let start : IO () = do
+        restored <- readIORef candidate
+        writeIORef candidate Nothing
+        case restored of
+          Nothing => startWeb app (Just codec)
+          Just model => startWeb (MkApp (model, none) app.update app.view app.handleEvent app.tickMsg) (Just codec)
+  offered <- primIO (prim_hotOffer codec.version prepare start)
+  when (offered == 0) (runWeb app)

@@ -5,7 +5,7 @@
 ```
 Application (Chequra)
     -> Flux.Mobile commands / owned subscriptions
-    -> idris2-capacitor 0.2 typed bindings + one registered JS bridge
+    -> idris2-capacitor 0.3 typed bindings + one registered JS bridge
     -> Capacitor 8.4.3
     -> iOS / Android WebView
 ```
@@ -20,6 +20,34 @@ remote `server.url`, storage snapshot, watcher injection or automatic RPC replay
 from the application's existing local map; ordinary `pack.toml` files and server
 dependency registrations are not rewritten. Prefer a separate mobile UI ipkg if
 only the mobile target imports `Flux.Mobile`.
+
+## Native session persistence
+
+The optional adapter is now `flux-mobile 0.2.0`, requiring `capacitor >= 0.3.0`.
+`Flux.Mobile.Session` provides native-only origin-scoped storage and a strict
+versioned codec containing only token and active/revoking intent. The portable
+client's `Auth.me` validates restored identity/expiry with the backend; cached
+account metadata is never treated as authority.
+
+Native revision CAS rejects old saves after a clear or newer write. Clearing
+commits an empty revision. A revoking record must be acknowledged before remote
+logout starts; it never restores an authenticated UI or automatically replays
+logout on cold start. An interrupted local write is reconciled by a read, not by
+resubmitting login or financial RPC. Local-only clearing cannot claim server
+revocation: unreachable/lost server sessions can remain valid until expiry.
+
+The library owns the Keychain/Keystore implementation. Flux snapshots its local
+`native/session-vault` plugin into the owned native host and installs a file
+package; no registry publication, application plugin wiring or new core/server
+dependency is required. Managed manifest/plugin edits are rejected, source changes
+invalidate bundle fingerprints, and npm staging changes are detected. Known
+previous managed manifests can upgrade; arbitrary existing npm changes cannot.
+
+Hosts use `loggingBehavior: 'none'`, including debug builds. The facade checks this
+before sending storage payloads; native handlers also reject enabled logging.
+SDK debug request/response logging must never expose credentials. The exact old
+managed native configuration can upgrade to this stricter setting; other identity
+or configuration edits remain protected.
 
 ## Configuration
 
@@ -123,11 +151,11 @@ The ordinary Chequra web entry uses a relative API origin. Networked mobile apps
 must use a separate entry calling `Flux.Mobile.Client.mobileClient`, with explicit
 format-2 configuration and server origin/CORS policy. The transport rejects
 redirects (including POST-preserving redirects), omits cookies and caches, bounds
-streamed responses and never retries a request. Secure native persistence and
-hosted deployment remain separate work. No hosted backend or payment/card service
+streamed responses and never retries a request. Native session persistence is
+implemented as described above; hosted deployment remains separate work. No hosted backend or payment/card service
 is created by this integration.
 
-Secure storage, camera, biometrics, app lifecycle/back/deep-link plugin bindings,
+Camera, biometrics, app lifecycle/back/deep-link plugin bindings,
 notifications, permission flows and device accessibility testing are subsequent
 capabilities—not implied by the five existing plugins. One-shot cancellation
 suppresses delivery but cannot undo a started native action. Monitoring restarts
@@ -136,10 +164,25 @@ must be explicit and must not replay writes.
 ## Tests
 
 ```sh
-python3 -m unittest discover -s tools -p test_mobile.py
+python3 -m unittest discover -s tools -p 'test_mobile*.py'
 flux mobile check --capacitor /path/to/idris2-capacitor
 node packages/mobile/tests/browser.cjs /path/to/mobile/releases/ID
 ```
+
+For actual native vault behavior, with the SDK runtimes already installed:
+
+```sh
+python3 packages/mobile/tests/native_probe.py --capacitor /path/to/idris2-capacitor
+```
+
+This creates new scratch devices/apps, never uses existing user devices, and
+removes its fixtures and forwards. The iOS 26.5 Simulator probe uses local ad-hoc
+signing (unsigned apps cannot be assumed to access Keychain). Android 14/API 34
+uses a disposable emulator with its own system PIN; that OS version requires a
+secure screen lock for unlocked-device keys. Tests cover cold persistence,
+origin isolation, native revision CAS/clear, reinstall reset, and Android
+ciphertext/AAD tampering, corrupt data, and locked-device denial. This is not a
+physical-device or biometric certification. SDK caches remain as normal.
 
 The library separately tests compiled Idris against actual browser plugins.
 Pinned core/native/CLI 8.4.3 deliberately avoids the current 8.5.x CLI's vulnerable

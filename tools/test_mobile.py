@@ -79,6 +79,15 @@ class MobileTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'integrity'):
             mobile.built(self.project)
 
+    def test_native_plugin_sources_invalidate_a_bundle(self):
+        plugin = self.cap / 'native/session-vault'; plugin.mkdir(parents=True)
+        (plugin / 'package.json').write_text(json.dumps({'name': '@idris2/capacitor-session-vault', 'version': '0.1.0'}))
+        (plugin / 'Vault.swift').write_text('first revision')
+        mobile.build(self.project)
+        (plugin / 'Vault.swift').write_text('second revision')
+        with self.assertRaisesRegex(ValueError, 'stale'):
+            mobile.built(self.project)
+
     def test_directory_symlink_cannot_escape_release(self):
         release = mobile.build(self.project)
         (release / 'outside').symlink_to(self.cap, target_is_directory=True)
@@ -127,6 +136,7 @@ class MobileTests(unittest.TestCase):
             self.assertEqual(run.call_count, 3)  # npm ci, cap add, cap sync
             self.assertEqual(run.call_args.args[0][-2:], ['sync', 'android'])
         self.assertEqual(json.loads((host / 'capacitor.config.json').read_text())['webDir'], 'www')
+        self.assertEqual(json.loads((host / 'capacitor.config.json').read_text())['loggingBehavior'], 'none')
         self.cfg['appId'] = 'com.example.other'; self.save(); mobile.build(self.project)
         with patch.object(mobile, 'run') as run:
             with self.assertRaisesRegex(ValueError, 'identity'):

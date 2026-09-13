@@ -2,6 +2,7 @@ module Main
 
 import Protocol
 import Flux.Auth
+import Flux.Server.Assets
 import Config
 import Flux.DB.Migration
 import Flux.DB.PG
@@ -114,7 +115,8 @@ main = do
                       (listTodos pool) (toggleTodo pool) (updateTodo pool)
       let todos = routes (authenticator identity) api
       let accounts = authRoutes identity
+      assets <- webAssetsFromEnv
       let application = app |> withErrorRenderer rpcErrorRenderer
-                            |> withRoutes (MkRouter (accounts.routes ++ todos.routes))
+                            |> withRoutes (MkRouter (accounts.routes ++ todos.routes ++ assets.routes))
       runProg (runServerArgs (runApp application) (drop 1 args))
       closePool pool

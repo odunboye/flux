@@ -1,4 +1,5 @@
 import json
+import os
 import contextlib
 import io
 import http.client
@@ -21,6 +22,9 @@ class FluxTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
+        previous_cwd = Path.cwd()
+        os.chdir(self.root)
+        self.addCleanup(os.chdir, previous_cwd)
         original = flux.ROOT
         manifest = workspace.load()
         for path in set(manifest['packages'].values()) | {
@@ -34,6 +38,12 @@ class FluxTests(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.before = (self.root / 'workspace.json').read_bytes()
+        # CLI lifecycle tests mock execution, but stage real fixture artifacts.
+        project = self.root / 'platform/crud'
+        native = project / 'build/exec/platform-crud-server_app/platform-crud-server.so'
+        native.parent.mkdir(parents=True)
+        native.write_bytes(b'fixture native artifact')
+        (project / 'build/exec/flux-todo-web').write_bytes(b'fixture UI artifact')
 
     def test_proxy_forwards_one_bounded_bearer_and_no_cookies(self):
         received = []
@@ -119,7 +129,7 @@ class FluxTests(unittest.TestCase):
         workspace.check(workspace.load())
 
     def test_project_paths_cannot_escape(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(OSError):
             flux.project_config('../outside')
         path = self.root / 'platform/crud/flux.json'
         config = json.loads(path.read_text())
@@ -156,7 +166,8 @@ class FluxTests(unittest.TestCase):
                             session()
                     else:
                         session()
-                name = calls[0][calls[0].index('--name') + 1]
+                launch = next(cmd for cmd in calls if cmd[1] == 'run')
+                name = launch[launch.index('--name') + 1]
                 self.assertEqual(calls[-1], ['docker', 'rm', '-f', '-v', name])
 
     def test_disposable_removal_failure_is_reported(self):
@@ -175,7 +186,8 @@ class FluxTests(unittest.TestCase):
                             with flux.database(True) as env:
                                 if body_fails:
                                     raise ValueError('session failed')
-                    name = calls[0][calls[0].index('--name') + 1]
+                    launch = next(cmd for cmd in calls if cmd[1] == 'run')
+                    name = launch[launch.index('--name') + 1]
                     self.assertEqual(calls[-1], ['docker', 'rm', '-f', '-v', name])
                     message = str(caught.exception)
                     self.assertIn(name, message)
@@ -202,6 +214,33 @@ class FluxTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, 1)
         self.assertIn(calls[-1][-1], stderr.getvalue())
         self.assertIn('daemon refused removal', stderr.getvalue())
+
+    def test_watch_build_targets_and_generated_exclusions(self):
+        project, config = flux.project_config('platform/crud')
+        hooks = flux.watch_hooks(project, config)
+        class Runner:
+            def __init__(self): self.calls = []
+            def run(self, args, **kwargs): self.calls.append(args)
+        runner = Runner()
+        hooks.build({'css'}, runner)
+        self.assertEqual(runner.calls, [])
+        hooks.build({'ui'}, runner)
+        self.assertTrue(any('javascript' in call for call in runner.calls))
+        self.assertFalse(any(str(project / config['server']) in call for call in runner.calls))
+        runner.calls.clear()
+        hooks.build({'schema'}, runner)
+        self.assertTrue(any(str(project / config['server']) in call for call in runner.calls))
+        self.assertTrue(any('javascript' in call for call in runner.calls))
+        self.assertIn(project / 'Client.idr', hooks.exclude())
+
+    def test_cli_watch_passes_framework_hooks(self):
+        calls = []
+        with patch.object(flux, 'run', side_effect=self.docker_stub(calls)), \
+             patch.object(flux, 'dev') as dev, patch.object(flux.signal, 'signal'), \
+             patch.object(sys, 'argv', ['flux', 'dev', '--watch', '--no-build', '--disposable-db']):
+            flux.main()
+        self.assertIn('watch', dev.call_args.kwargs)
+        self.assertEqual(calls[-1][1], 'rm')
 
     def test_database_requires_explicit_configuration(self):
         with patch.dict('os.environ', {}, clear=True):

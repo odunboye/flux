@@ -137,6 +137,8 @@ def test(manifest, without_db):
     try:
         run('workspace-unit', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_workspace.py'])
         run('cli-unit', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_flux.py'])
+        run('dev-watch', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_devwatch.py'])
+        run('dev-hot', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_hot.py'])
         run('ui-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_ui_names.py'])
         run('db-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_db_names.py'])
         run('package-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_package_names.py'])

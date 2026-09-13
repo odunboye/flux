@@ -3,6 +3,8 @@
 import argparse
 import hashlib
 import json
+import os
+import tempfile
 from pathlib import Path
 import re
 
@@ -203,13 +205,20 @@ def openapi(schema, digest):
             'x-protocol-sha256': digest, 'paths': paths, 'components': components}
 
 
-def generate(schema):
+def generate(schema, namespace=''):
+    if not isinstance(namespace, str) or (namespace and not re.fullmatch(r'[A-Z][A-Za-z0-9_]*(?:\.[A-Z][A-Za-z0-9_]*)*', namespace)):
+        raise ValueError('invalid generated module namespace')
     validate(schema)
     canonical = json.dumps(schema, sort_keys=True, separators=(',', ':'))
     digest = hashlib.sha256(canonical.encode()).hexdigest()
-    return {'ProtocolTypes.idr': wire_types(schema, digest), 'Protocol.idr': server(schema, digest),
-            'Client.idr': client(schema, digest),
-            'openapi.json': json.dumps(openapi(schema, digest), sort_keys=True, indent=2) + '\n'}
+    output = {'ProtocolTypes.idr': wire_types(schema, digest), 'Protocol.idr': server(schema, digest),
+              'Client.idr': client(schema, digest),
+              'openapi.json': json.dumps(openapi(schema, digest), sort_keys=True, indent=2) + '\n'}
+    if namespace:
+        for name in ['ProtocolTypes.idr', 'Protocol.idr', 'Client.idr']:
+            output[name] = re.sub(r'^(module|import(?: public)?) (ProtocolTypes|Protocol|Client)$',
+                                  lambda match: match[1] + ' ' + namespace + '.' + match[2], output[name], flags=re.M)
+    return output
 
 
 def unique_object(pairs):
@@ -226,19 +235,33 @@ def main():
     parser.add_argument('schema', type=Path)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--check', action='store_true', help='fail if generated files differ; never write')
+    parser.add_argument('--namespace', default='', help='Idris module namespace, e.g. Generated')
+    parser.add_argument('--openapi', type=Path, help='separate OpenAPI output path')
     args = parser.parse_args()
     try:
         if args.schema.stat().st_size > 1024 * 1024:
             raise ValueError('schema exceeds 1 MiB')
-        generated = generate(json.loads(args.schema.read_text(), object_pairs_hook=unique_object))
-        if args.check:
-            for name, text in generated.items():
-                if not (args.out / name).is_file() or (args.out / name).read_text() != text:
+        generated = generate(json.loads(args.schema.read_text(), object_pairs_hook=unique_object), args.namespace)
+        targets = {name: (args.openapi if name == 'openapi.json' and args.openapi else args.out / name)
+                   for name in generated}
+        resolved = [path.resolve() for path in targets.values()]
+        if args.schema.resolve() in resolved or len(set(resolved)) != len(resolved):
+            raise ValueError('generated outputs overlap each other or the schema')
+        for name, text in generated.items():
+            target = targets[name]
+            if args.check:
+                if not target.is_file() or target.read_text() != text:
                     raise ValueError(f'generated output is stale: {name}')
-        else:
-            args.out.mkdir(parents=True, exist_ok=True)
-            for name, text in generated.items():
-                (args.out / name).write_text(text)
+            else:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as output:
+                    temp = Path(output.name)
+                    try:
+                        output.write(text.encode())
+                        output.flush()
+                        os.replace(temp, target)
+                    finally:
+                        temp.unlink(missing_ok=True)
     except (ValueError, OSError, RecursionError) as error:
         parser.exit(1, f'Generation failed: {error}\n')
 

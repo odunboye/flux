@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Flux workspace application CLI (development preview, standard-library only)."""
+"""Flux workspace/external application CLI (preview, standard-library only)."""
 import argparse
 import contextlib
 import http.client
@@ -16,8 +16,10 @@ import sys
 import tempfile
 import time
 import uuid
+from urllib.parse import parse_qs
 
 import workspace
+import application
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_FILES = ['Main.idr', 'TodoUI.idr', 'MainWeb.idr', 'server.ipkg', 'ui.ipkg',
@@ -38,43 +40,45 @@ def run(args, **kwargs):
         return subprocess.CompletedProcess(args, process.returncode, output, errors)
 
 
-def project_config(path):
-    project = (ROOT / path).resolve()
-    project.relative_to(ROOT)
-    config = json.loads((project / 'flux.json').read_text())
-    if (not isinstance(config, dict) or set(config) != {'format', 'schema', 'server', 'ui'}
-            or type(config['format']) is not int or config['format'] != 1):
-        raise ValueError('Unsupported flux.json; expected format, schema, server and ui')
-    for key in ['schema', 'server', 'ui']:
-        if not isinstance(config[key], str) or not config[key]:
-            raise ValueError(f'Expected a relative filename for {key}')
-        if Path(config[key]).is_absolute():
-            raise ValueError(f'Expected a relative filename for {key}')
-        child = (project / config[key]).resolve()
-        child.relative_to(project)
-        if not child.is_file():
-            raise ValueError(f'Missing project {key}')
-    return project, config
+def project_config(path=None):
+    if path is not None:
+        project = Path(path).expanduser().resolve()
+        if project.name == 'flux.json' and project.is_file():
+            project = project.parent
+    else:
+        cwd = Path.cwd().resolve()
+        project = next((p for p in [cwd, *cwd.parents] if (p / 'flux.json').is_file()), None)
+        if project is None and cwd == ROOT.resolve():
+            project = ROOT / 'platform/crud'  # backwards-compatible workspace default
+        if project is None:
+            raise ValueError('No flux.json found; enter an application or use --project <path>')
+    return project, application.load(project)
 
 
-def generate(project, config, check=False):
-    run([sys.executable, str(ROOT / 'platform/generate.py'), str(project / config['schema']),
-         '--out', str(project)] + (['--check'] if check else []))
+def generate(project, config, check=False, execute=None):
+    execute = execute or run
+    output = application.generated_config(config)
+    command = [sys.executable, str(ROOT / 'platform/generate.py'), str(project / config['schema']),
+               '--out', str(project / output['directory'])]
+    if output['namespace']:
+        command += ['--namespace', output['namespace']]
+    if output['openapi'] != str(Path(output['directory']) / 'openapi.json'):
+        command += ['--openapi', str(project / output['openapi'])]
+    execute(command + (['--check'] if check else []), cwd=application.build_cwd(project, config, ROOT))
 
 
 def build(project, config):
+    application.check_dependencies(project, config, ROOT)
     generate(project, config, check=True)
-    run(['pack', '--no-prompt', 'build', str(project / config['server'])], cwd=ROOT)
-    run(['pack', '--no-prompt', 'install', 'flux-ui'], cwd=ROOT)
-    run(['pack', '--no-prompt', '--cg', 'javascript', 'build', str(project / config['ui'])], cwd=ROOT)
+    cwd = application.build_cwd(project, config, ROOT)
+    run(['pack', '--no-prompt', 'build', str(project / config['server'])], cwd=cwd)
+    run(['pack', '--no-prompt', 'install', 'flux-ui'], cwd=cwd)
+    run(['pack', '--no-prompt', '--cg', 'javascript', 'build', str(project / config['ui'])], cwd=cwd)
+    artifact = application.release(project, config, atomic_write)
+    print('Built application artifact: ' + str(artifact), flush=True)
 
 
-def executable(project, manifest):
-    text = (project / manifest).read_text()
-    match = re.search(r'^executable\s*=\s*([a-zA-Z0-9_-]+)\s*$', text, re.M)
-    if not match:
-        raise ValueError('Expected a simple executable name in ' + manifest)
-    return match[1]
+executable = application.executable
 
 
 def atomic_write(path, data):
@@ -146,6 +150,20 @@ def database(disposable):
     def docker(*args):
         return run(['docker', *args], timeout=60, text=True, stdout=subprocess.PIPE,
                    stderr=subprocess.PIPE).stdout.strip()
+    def diagnostic(error):
+        detail = getattr(error, 'stderr', None) or getattr(error, 'stdout', None)
+        if detail is None:
+            detail = type(error).__name__ if isinstance(error, subprocess.SubprocessError) else str(error)
+        if isinstance(detail, bytes):
+            detail = detail.decode(errors='replace')
+        return detail.strip().replace(password, '[redacted]')
+    # If Docker is unavailable, no container creation was attempted and there is
+    # nothing to remove. Do not mask that failure with a misleading cleanup error.
+    try:
+        docker('info', '--format', '{{.ServerVersion}}')
+    except (OSError, subprocess.SubprocessError) as error:
+        raise RuntimeError('Docker daemon unavailable before database startup: ' + diagnostic(error)) from error
+    primary = None
     try:
         docker('run', '--rm', '-d', '--name', name, '-p', '127.0.0.1::5432',
                '-e', 'POSTGRES_USER=fluxdev', '-e', 'POSTGRES_PASSWORD=' + password,
@@ -162,37 +180,38 @@ def database(disposable):
         print(f'Disposable development database {name}: removed on exit; no persistent data.', flush=True)
         yield dict(os.environ, PGHOST='127.0.0.1', PGPORT=port, PGUSER='fluxdev',
                    PGPASSWORD=password, PGDATABASE='fluxdev')
+    except BaseException as error:
+        primary = error
+        raise
     finally:
         try:
             docker('rm', '-f', '-v', name)
         except (OSError, subprocess.SubprocessError) as error:
-            diagnostic = getattr(error, 'stderr', None) or getattr(error, 'stdout', None) or str(error)
-            if isinstance(diagnostic, bytes):
-                diagnostic = diagnostic.decode(errors='replace')
-            # Use RuntimeError so main reports this diagnostic rather than
-            # redacting it as a generic subprocess error. Only removal output
-            # is included here, never the launch arguments containing a password.
+            original = (' Original startup/session failure: ' + diagnostic(primary)) if primary is not None else ''
             raise RuntimeError(
                 f'Failed to remove disposable database container {name}; data may remain. '
-                f'Retry: docker rm -f -v {name}. Docker: {diagnostic.strip()}'
+                f'Retry: docker rm -f -v {name}. Docker: {diagnostic(error)}' + original
             ) from error
 
 
 def server_command(project, config, env):
     name = executable(project, config['server'])
-    app = project / 'build/exec' / (name + '_app')
+    app = application.output(project, config, 'server') / (name + '_app')
     binary = app / (name + '.so')
     if not binary.is_file():
-        raise ValueError('Server not built; run flux.py build first')
+        raise ValueError('Server not built; run flux build first')
     return str(binary), dict(env, IDRIS2_INC_SRC=str(app), LD_LIBRARY_PATH=str(app),
                              DYLD_LIBRARY_PATH=str(app))
 
 
-def handler(project, config, backend):
-    assets = {'/': (project / 'index.html', 'text/html; charset=utf-8'),
-              '/app.css': (project / 'app.css', 'text/css; charset=utf-8'),
-              '/app.js': (project / 'build/exec' / executable(project, config['ui']), 'text/javascript; charset=utf-8')}
+def handler(project, config, backend, live=None):
+    assets = application.asset_paths(project, config)
     class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, format, *args):
+            if live is not None and getattr(self, 'path', '').partition('?')[0] == '/__flux_dev/status':
+                return
+            super().log_message(format, *args)
+
         def setup(self):
             super().setup()
             self.connection.settimeout(15)
@@ -207,7 +226,36 @@ def handler(project, config, backend):
             self.wfile.write(data)
 
         def do_GET(self):
-            asset = assets.get(self.path)
+            if live is not None:
+                # Diagnostics are local source information. Protect GET too,
+                # including against DNS rebinding; never emit permissive CORS.
+                expected = 'http://127.0.0.1:' + str(self.server.server_port)
+                if self.headers.get('Host') != expected.removeprefix('http://') or self.headers.get('Origin') not in [None, expected]:
+                    self.reply(403, b'Cross-origin development request denied', 'text/plain')
+                    return
+                path = self.path.partition('?')[0]
+                if path == '/__flux_dev/status':
+                    self.reply(200, json.dumps(live.status()).encode(), 'application/json')
+                    return
+                if path in ['/__flux_dev/client.js', '/__flux_dev/client.css'] or (live.hot and path == '/__flux_dev/hot.js'):
+                    name = path.rsplit('/', 1)[1]
+                    mime = 'text/javascript' if name.endswith('.js') else 'text/css'
+                    self.reply(200, (Path(__file__).parent / 'dev' / name).read_bytes(), mime)
+                    return
+                query = parse_qs(self.path.partition('?')[2])
+                if path == '/app.js' and 'flux_hmr' in query:
+                    if any(len(query.get(key, [])) != 1 for key in ['flux_hmr', 'flux_reload', 'flux_session']):
+                        self.reply(400, b'Invalid hot revision', 'text/plain')
+                        return
+                    value = live.asset(path, query['flux_hmr'][0], query['flux_reload'][0], query['flux_session'][0])
+                else:
+                    value = live.asset(path)
+                if value is None:
+                    self.reply(404, b'Not found', 'text/plain')
+                else:
+                    self.reply(200, value[0], value[1])
+                return
+            asset = assets.get(self.path.partition('?')[0])
             if asset is None:
                 self.reply(404, b'Not found', 'text/plain')
                 return
@@ -237,7 +285,10 @@ def handler(project, config, backend):
             forwarded = {'Content-Type': 'application/json'}
             if credentials:
                 forwarded['Authorization'] = credentials[0]
-            conn = http.client.HTTPConnection('127.0.0.1', backend, timeout=12)
+            # Capture the generation once. A cutover cannot redirect/replay an
+            # already admitted write onto another backend.
+            target = live.backend() if live is not None else backend
+            conn = http.client.HTTPConnection('127.0.0.1', target, timeout=12)
             try:
                 data = self.rfile.read(length)
                 if len(data) != length:
@@ -256,7 +307,68 @@ def handler(project, config, backend):
     return Handler
 
 
-def dev(project, config, env, port):
+@contextlib.contextmanager
+def staging_session():
+    stages = []
+    def stage(project, cfg):
+        directory, config = application.stage(project, cfg)
+        stages.append(directory)
+        return directory, config
+    try:
+        yield stage
+    finally:
+        for directory in stages:
+            shutil.rmtree(directory)
+
+
+def watch_hooks(project, config, hot=False, stage=None):
+    """Configuration-driven policy for both workspace and external applications."""
+    from devwatch import DevHooks, WatchPath, package_sources, refresh_native
+    stage = stage or application.stage
+
+    def current():
+        return project_config(project)[1]
+
+    def sources():
+        cfg = current()
+        packages = {name: ROOT / path for name, path in workspace.load()['packages'].items()}
+        paths = package_sources(project, cfg, packages)
+        public = cfg.get('public', {'directory': '.', 'files': ['index.html', 'app.css']})
+        if public['directory'] != '.':
+            paths.append(WatchPath(project / public['directory'], 'assets'))
+        else:
+            paths += [WatchPath(path, 'css' if path.suffix == '.css' else 'reload')
+                      for path in application.public_files(project, cfg).values()]
+        return paths + [WatchPath(project / 'flux.json', 'schema'),
+                        WatchPath(project / 'pack.toml', 'both'),
+                        WatchPath(ROOT / 'pack.toml', 'both'), WatchPath(ROOT / 'workspace.json', 'both'),
+                        WatchPath(ROOT / 'platform/generate.py', 'schema')]
+
+    def rebuild(kinds, runner):
+        cfg = current()
+        application.check_dependencies(project, cfg, ROOT)
+        if 'native' in kinds:
+            refresh_native(sources())
+        if not kinds & {'ui', 'server', 'both', 'schema'}:
+            return
+        if 'schema' in kinds:
+            generate(project, cfg, execute=runner.run)
+        generate(project, cfg, check=True, execute=runner.run)
+        cwd = application.build_cwd(project, cfg, ROOT)
+        if kinds & {'server', 'both', 'schema'}:
+            runner.run(['pack', '--no-prompt', 'build', str(project / cfg['server'])], cwd=cwd)
+        if kinds & {'ui', 'both', 'schema'}:
+            runner.run(['pack', '--no-prompt', 'install', 'flux-ui'], cwd=cwd)
+            runner.run(['pack', '--no-prompt', '--cg', 'javascript', 'build', str(project / cfg['ui'])], cwd=cwd)
+
+    return DevHooks(sources, rebuild, lambda: stage(project, current()), hot=hot,
+                    exclude=lambda: application.generated_files(project, current()))
+
+
+def dev(project, config, env, port, watch=None):
+    if watch is not None:
+        from devwatch import watch_dev
+        return watch_dev(project, config, env, port, watch)
     binary, env = server_command(project, config, env)
     for asset in ['index.html', 'app.css', 'build/exec/' + executable(project, config['ui'])]:
         if not (project / asset).is_file():
@@ -299,25 +411,115 @@ def dev(project, config, env, port):
                 raise RuntimeError('API shutdown exceeded deadline')
 
 
+def run_application(project, config, env, port):
+    if not config.get('run', {}).get('web', False):
+        raise ValueError('flux run requires format 2 run.web=true and Flux.Server.Assets integration; use dev for legacy API-only apps')
+    directory, built_config = application.built_release(project, config)
+    binary, runtime_env = server_command(directory, built_config, dict(env, FLUX_PUBLIC_DIR=str(directory / '.public')))
+    if port == 0:
+        with socket.socket() as sock:
+            sock.bind(('127.0.0.1', 0))
+            port = sock.getsockname()[1]
+    process = subprocess.Popen([binary, str(port), '128'], cwd=directory, env=runtime_env, start_new_session=True)
+    try:
+        for _ in range(300):
+            if process.poll() is not None:
+                raise RuntimeError('Native application exited during startup')
+            conn = http.client.HTTPConnection('127.0.0.1', port, timeout=.2)
+            try:
+                conn.request('GET', '/')
+                response = conn.getresponse()
+                if response.status == 200 and response.getheader('X-Flux-Assets') == '1':
+                    break
+            except (OSError, http.client.HTTPException):
+                pass
+            finally:
+                conn.close()
+            time.sleep(.1)
+        else:
+            raise RuntimeError('Native application readiness failed; integrate Flux.Server.Assets and rebuild')
+        print(f'Flux application URL: http://127.0.0.1:{port} (native, no dev proxy)', flush=True)
+        code = process.wait()
+        if code:
+            raise RuntimeError('Native application exited unsuccessfully')
+    finally:
+        try:
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=40)
+                except subprocess.TimeoutExpired:
+                    raise RuntimeError('Native application shutdown exceeded deadline')
+        finally:
+            workspace.stop_group(process)
+
+
+def install_cli(directory, force=False):
+    import shlex
+    directory = Path(directory).expanduser().resolve()
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory / 'flux'
+    if target == (ROOT / 'flux').resolve():
+        print('The checkout already provides this launcher: ' + str(target))
+        return
+    if target.is_dir():
+        raise ValueError('Refusing to replace a directory with a CLI launcher: ' + str(target))
+    backup = None
+    launcher = ('#!/bin/sh\nexec ' + shlex.quote(str(ROOT / 'flux')) + ' "$@"\n').encode()
+    if target.exists() or target.is_symlink():
+        if target.is_file() and target.read_bytes() == launcher:
+            target.chmod(0o755)
+            print('Flux CLI already installed: ' + str(target))
+            return
+        if not force:
+            raise ValueError('A different flux command exists at ' + str(target) + '; use --force to back it up and replace it')
+        backup = directory / ('flux.backup-' + uuid.uuid4().hex)
+        target.rename(backup)
+        print('Previous launcher backed up: ' + str(backup))
+    try:
+        atomic_write(target, launcher)
+        target.chmod(0o755)
+    except BaseException:
+        target.unlink(missing_ok=True)
+        if backup is not None:
+            backup.rename(target)
+        raise
+    print('Installed Flux CLI: ' + str(target) + '; ensure this directory is on PATH')
+
+
 def main():
     # Optional mobile tooling is isolated from server/web dependencies.
     import mobile
     if mobile.dispatch(sys.argv[1:]):
         return
     parser = argparse.ArgumentParser(prog='flux', description=__doc__)
-    parser.add_argument('--project', default='platform/crud', help='workspace-relative application directory')
+    parser.add_argument('--project', help='application directory (relative to cwd or absolute); otherwise discover flux.json')
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('new').add_argument('name')
     commands.add_parser('doctor')
     commands.add_parser('mobile', help='optional Capacitor compile/build/sync/run tooling')
     commands.add_parser('generate').add_argument('--check', action='store_true')
     commands.add_parser('build')
+    commands.add_parser('check')
+    commands.add_parser('sync')
+    commands.add_parser('test')
+    installer = commands.add_parser('install-cli')
+    installer.add_argument('--bin-dir', default='~/.local/bin')
+    installer.add_argument('--force', action='store_true')
+    launch = commands.add_parser('run', help='start the built native web application; no development proxy or watcher')
+    launch.add_argument('--disposable-db', action='store_true')
+    launch.add_argument('--port', type=int, default=8090)
     migrate = commands.add_parser('migrate')
     migrate.add_argument('--disposable-db', action='store_true')
     serve = commands.add_parser('dev')
     serve.add_argument('--disposable-db', action='store_true')
     serve.add_argument('--no-build', action='store_true')
+    serve.add_argument('--watch', action='store_true', help='watch sources, rebuild safely and live-reload browsers')
+    serve.add_argument('--hot', action='store_true', help='opt-in state-preserving DOM UI replacement (implies --watch)')
     serve.add_argument('--port', type=int, default=8090)
+    # Accept --project both before and after the subcommand.
+    for command in commands.choices.values():
+        command.add_argument('--project', default=argparse.SUPPRESS)
     args = parser.parse_args()
     def interrupt(signum, frame):
         # A second Ctrl-C must not interrupt ownership cleanup halfway through.
@@ -327,6 +529,9 @@ def main():
     signal.signal(signal.SIGINT, interrupt)
     signal.signal(signal.SIGTERM, interrupt)
     try:
+        if args.command == 'install-cli':
+            install_cli(args.bin_dir, args.force)
+            return
         if args.command == 'new':
             new_project(args.name)
             return
@@ -343,21 +548,57 @@ def main():
             print('PASS development prerequisites (pack collection: ' + workspace.load()['collection'] + ')')
             return
         project, config = project_config(args.project)
-        if args.command == 'generate':
+        if args.command == 'sync':
+            if application.managed(project, config, ROOT):
+                atomic_write(project / 'pack.toml', application.pack_config(project, config, ROOT).encode())
+                print('Synchronized application dependencies: ' + str(project / 'pack.toml'))
+            else:
+                raise ValueError('This application uses the Flux workspace map; use tools/workspace.py sync from the Flux root')
+        elif args.command == 'generate':
+            application.check_dependencies(project, config, ROOT)
             generate(project, config, args.check)
+        elif args.command == 'check':
+            application.check_dependencies(project, config, ROOT)
+            application.public_files(project, config)
+            generate(project, config, check=True)
+            print('PASS Flux application configuration, dependencies, browser boundary and generated code')
         elif args.command == 'build':
             build(project, config)
+        elif args.command == 'test':
+            if not config.get('tests'):
+                raise ValueError('No tests configured in flux.json')
+            for command in config['tests']:
+                run(command, cwd=project)
         else:
-            if args.command == 'dev' and not args.no_build:
-                build(project, config)
-            with database(args.disposable_db) as env:
+            if hasattr(args, 'port') and not 0 <= args.port <= 65535:
+                raise ValueError('Port must be between 0 and 65535')
+            if args.command == 'dev':
+                application.check_dependencies(project, config, ROOT)
+                if not args.no_build:
+                    build(project, config)
+            if config.get('database', 'postgres') == 'none' and args.disposable_db:
+                raise ValueError('--disposable-db is not valid for database=none')
+            context = database(args.disposable_db) if config.get('database', 'postgres') == 'postgres' else contextlib.nullcontext(dict(os.environ))
+            # Reject absent/stale run artifacts before allocating a database.
+            if args.command == 'run':
+                if not config.get('run', {}).get('web', False):
+                    raise ValueError('flux run requires format 2 run.web=true and native Flux.Server.Assets integration')
+                application.built_release(project, config)
+            with context as env:
                 if args.command == 'migrate':
                     binary, env = server_command(project, config, env)
                     run([binary, '--migrate-only'], cwd=project, env=env, timeout=120)
+                elif args.command == 'run':
+                    run_application(project, config, env, args.port)
                 else:
-                    if not 0 <= args.port <= 65535:
-                        raise ValueError('Port must be between 0 and 65535')
-                    dev(project, config, env, args.port)
+                    env = dict(env)
+                    env.pop('FLUX_PUBLIC_DIR', None)
+                    with staging_session() as stage:
+                        directory, staged_config = stage(project, config)
+                        if args.watch or args.hot:
+                            dev(directory, staged_config, env, args.port, watch=watch_hooks(project, config, hot=args.hot, stage=stage))
+                        else:
+                            dev(directory, staged_config, env, args.port)
     except KeyboardInterrupt:
         print('Stopped Flux development session.')
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:

@@ -54,7 +54,7 @@ weaker libpq modes and CA/plaintext conflicts fail closed. This does not provide
 HTTP HTTPS: use a reviewed HTTPS deployment before exposing credentials remotely.
 Do not commit secrets.
 
-The CLI serves only the HTML, stylesheet and compiled JS, proxying `/rpc/v1/`
+Development serves only the selected HTML, stylesheet and compiled JS, proxying `/rpc/v1/`
 to the loopback API. Source, configuration and other repository files are not
 served. The page uses same-origin requests and a strict CSP without inline
 scripts/styles. The proxy rejects cross-origin writes and bounds bodies and
@@ -90,13 +90,31 @@ scaffolding. `migrate` applies the same explicit frozen SQL/history checks as
 startup and exits without opening an HTTP listener. It does not plan, roll back
 or automatically derive destructive schema changes.
 
-`dev` builds once unless `--no-build` is given. It has no file watcher/hot reload;
-rebuild and restart after source changes. `--port 0` selects an available UI
-port and prints the URL. Both API and UI bind loopback. Subprocesses have bounded
-waits and owned process-group cleanup; SIGINT/SIGTERM initiates clean shutdown.
+`dev` builds once unless `--no-build` is given. Add `--watch` for CSS refresh,
+Idris rebuild/browser reload, compiler-error overlays and supervised API cutover:
 
-This CLI is repository-local (`./flux`), for macOS/Linux workspaces, not a
-published globally installed command or a standalone SDK project generator.
+```sh
+./flux dev --watch --disposable-db --no-build
+```
+
+The last successful application stays available on compilation errors. Full
+reload resets in-memory authentication; CSS-only refresh preserves it. Rebuilds
+reuse the same database and never replay RPC writes. See the
+[live-reload guide](../../design/DEV_RELOAD.md) for change classification, hooks,
+readiness, migration caveats and tests. `--port 0` selects an available UI port.
+Both API and UI bind loopback. SIGINT/SIGTERM initiates owned cleanup.
+
+Install the checkout's CLI with `./flux install-cli` to use `flux` from external
+applications; cwd/ancestor discovery and `--project <path>` select `flux.json`.
+Format 1 remains compatible; format 2 adds source/public layout, namespaces,
+managed dependency maps and native assets. See the
+[application CLI guide](../../design/APPLICATION_CLI.md). This is a checkout-backed
+macOS/Linux command, not a published package-manager SDK or external generator.
+
+The starter now mounts `Flux.Server.Assets` (flux >= 0.3.0). After `build`, use
+`./flux run --disposable-db` to serve the verified immutable artifact through the
+native Flux server directly, without a proxy, watcher or development scripts.
+The same explicit PG configuration and owned cleanup rules apply.
 Authenticated PostgreSQL TLS and durable accounts/revocable sessions are
 available alongside private tasks and login UI. Deployment remains a separate
 milestone. Native RPC uses in-process libcurl, never shell arguments or temporary

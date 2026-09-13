@@ -1,5 +1,5 @@
 package flux
-version = 0.2.0
+version = 0.3.0
 authors = "Odun Adeboye"
 -- maintainers =
 -- license =
@@ -26,6 +26,7 @@ modules = Flux.Core.Runtime
         , Flux.Middleware.Internal.Stripe
         , Flux.Middleware.Internal.Random
         , Flux.Middleware.JSON
+        , Flux.Server.Assets
         , Flux.Server.Config
         , Flux.Server.Logging
         , Flux.Server.Health

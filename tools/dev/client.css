@@ -1,0 +1,5 @@
+/* Separate from the application stylesheet; CSP does not need unsafe-inline. */
+#flux-dev-status{position:fixed;z-index:2147483647;bottom:12px;right:12px;max-width:min(720px,calc(100vw - 48px));max-height:45vh;overflow:auto;padding:12px 16px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#f8fafc;font:13px/1.5 ui-monospace,monospace;text-align:left;box-shadow:0 4px 18px #0004}
+#flux-dev-status[hidden]{display:none}
+#flux-dev-status.flux-dev-error{border-color:#ef4444}
+#flux-dev-status pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;margin:8px 0 0}

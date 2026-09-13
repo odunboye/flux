@@ -3,6 +3,17 @@
 All notable changes to Flux UI are recorded here. The project follows Semantic
 Versioning within the normal compatibility limits of a pre-1.0 release.
 
+## 0.4.0 — opt-in development DOM HMR
+
+- Added `HotState` and `runWebHot` to `Flux.UI.Backend.Web.DOM.Run`.
+- Explicit versioned state codecs reconstruct models across compiled bundles;
+  incompatible or unsupported applications fall back to full reload.
+- Hot disposal cancels managed effects, rejects stale callbacks, removes event
+  listeners and retires timer/style resources. Restores do not replay init Cmds.
+- Flux `dev --hot` (implies watch) and Chequra's in-memory state codec exercise
+  the protocol. Normal `runWeb` and other backends remain unchanged.
+- See [the HMR guide](../../design/DEV_HMR.md) for opt-in requirements and tests.
+
 ## Unreleased — private application inputs
 
 - `sSecret` marks a `WInput` as a password: DOM uses `type=password`; terminal

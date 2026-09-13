@@ -1,7 +1,7 @@
 package flux-mobile
-version = 0.1.0
+version = 0.2.0
 authors = "Odun Adeboye"
 brief = "Optional Capacitor commands and owned subscriptions for Flux UI"
-depends = flux-ui >= 0.3.0, capacitor >= 0.2.0, async-js, flux-client
+depends = flux-ui >= 0.3.0, capacitor >= 0.3.0, async-js, flux-client
 sourcedir = "src"
-modules = Flux.Mobile, Flux.Mobile.Client
+modules = Flux.Mobile, Flux.Mobile.Client, Flux.Mobile.Session
