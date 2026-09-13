@@ -39,6 +39,12 @@ to the console for each finished command; it does not shut down the Flux app.
 The bundled Capacitor registration must load before the application. Installing
 the Idris package alone does not register native JavaScript plugins.
 
+## Packaging and CLI
+
+See the [mobile integration design](../../design/MOBILE_CAPACITOR.md).
+`flux mobile setup/check/compile/build/sync/open/run` provide opt-in tooling and
+owned application releases without changing the normal workspace map.
+
 ## Verification
 
 From the Flux root:
