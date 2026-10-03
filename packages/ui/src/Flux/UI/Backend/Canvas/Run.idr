@@ -55,10 +55,10 @@ prim_setupSemanticEvents : PrimIO ()
 -- One ordered, versioned event queue shared by every browser/Capacitor source.
 -- Pointer and keyboard input remain platform-neutral; applications decide
 -- how gestures map to messages.
-%foreign "javascript:lambda: (sel,_w) => { if(window.__fluxUICanvasEventsReady)return; window.__fluxUICanvasEventsReady=true; const q=window.__fluxUICanvasEvents=window.__fluxUICanvasEvents||[]; const controller=new AbortController();window.__fluxUICanvasAbort=controller;const on=(target,name,fn,opts={})=>target.addEventListener(name,fn,{...opts,signal:controller.signal}); const enc=s=>Array.from(String(s)).map(c=>c.codePointAt(0)).join('.'); const b=v=>v?'1':'0'; const mods=e=>[b(e.shiftKey),b(e.ctrlKey),b(e.altKey),b(e.metaKey)].join('|'); const push=s=>q.push(s); const canvas=document.querySelector(sel); const pos=e=>{const r=canvas?canvas.getBoundingClientRect():{left:0,top:0};return [e.clientX-r.left,e.clientY-r.top];}; const key=(name,code=name)=>push('f1|K|down|'+enc(name)+'|'+enc(code)+'|0|0|0|0|'+(Array.from(name).length===1?name.codePointAt(0):'none')); on(document,'keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();push('f1|K|'+(e.repeat?'repeat':'down')+'|'+enc(e.key)+'|'+enc(e.code||e.key)+'|'+mods(e)+'|'+(Array.from(e.key).length===1?e.key.codePointAt(0):'none'));}); on(document,'keyup',e=>push('f1|K|up|'+enc(e.key)+'|'+enc(e.code||e.key)+'|'+mods(e)+'|'+(Array.from(e.key).length===1?e.key.codePointAt(0):'none'))); const pa={pointerdown:'down',pointerup:'up',pointermove:'move',pointerenter:'enter',pointerleave:'leave',pointercancel:'cancel'}; const pb=n=>n===0?'primary':n===1?'middle':n===2?'secondary':n===3?'back':n===4?'forward':'none'; Object.keys(pa).forEach(name=>canvas&&on(canvas,name,e=>push('f1|P|'+pa[name]+'|'+(['mouse','touch','pen'].includes(e.pointerType)?e.pointerType:'mouse')+'|'+Math.max(0,e.pointerId||0)+'|'+pos(e)[0]+'|'+pos(e)[1]+'|'+(e.movementX||0)+'|'+(e.movementY||0)+'|'+pb(e.button)+'|'+Math.max(0,Math.min(1,e.pressure||0))+'|'+mods(e)),{passive:true})); canvas&&on(canvas,'wheel',e=>push('f1|S|'+e.clientX+'|'+e.clientY+'|'+e.deltaX+'|'+e.deltaY+'|'+e.deltaZ),{passive:true}); on(window,'resize',()=>push('f1|R|'+innerWidth+'|'+innerHeight)); on(window,'focus',()=>push('f1|F|gain')); on(window,'blur',()=>push('f1|F|lost')); on(window,'orientationchange',()=>push('f1|O|'+(innerHeight>=innerWidth?'portrait':'landscape'))); on(document,'visibilitychange',()=>push('f1|L|'+(document.hidden?'hidden':'visible'))); on(window,'pagehide',()=>push('f1|L|pause')); on(window,'pageshow',()=>push('f1|L|resume')); on(window,'popstate',()=>{push('f1|L|back');push('f1|L|location|'+enc(location.pathname+location.search+location.hash));}); on(document,'compositionstart',e=>push('f1|M|start|'+enc(e.data||''))); on(document,'compositionupdate',e=>push('f1|M|update|'+enc(e.data||''))); on(document,'compositionend',e=>push('f1|M|end|'+enc(e.data||'')));  push('f1|L|location|'+enc(location.pathname+location.search+location.hash)); if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App){window.Capacitor.Plugins.App.addListener('backButton',()=>push('f1|L|back'));window.Capacitor.Plugins.App.addListener('pause',()=>push('f1|L|pause'));window.Capacitor.Plugins.App.addListener('resume',()=>push('f1|L|resume'));} }"
+%foreign "javascript:lambda: (sel,_w) => { if(window.__fluxUICanvasEventsReady)return; window.__fluxUICanvasEventsReady=true; const q=window.__fluxUICanvasEvents=window.__fluxUICanvasEvents||[]; const controller=new AbortController();window.__fluxUICanvasAbort=controller;const on=(target,name,fn,opts={})=>target.addEventListener(name,fn,{...opts,signal:controller.signal}); const enc=s=>Array.from(String(s)).map(c=>c.codePointAt(0)).join('.'); const b=v=>v?'1':'0'; const mods=e=>[b(e.shiftKey),b(e.ctrlKey),b(e.altKey),b(e.metaKey)].join('|'); const push=s=>{if(!controller.signal.aborted)q.push(s);}; const canvas=document.querySelector(sel); const pos=e=>{const r=canvas?canvas.getBoundingClientRect():{left:0,top:0};return [e.clientX-r.left,e.clientY-r.top];}; const key=(name,code=name)=>push('f1|K|down|'+enc(name)+'|'+enc(code)+'|0|0|0|0|'+(Array.from(name).length===1?name.codePointAt(0):'none')); on(document,'keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();push('f1|K|'+(e.repeat?'repeat':'down')+'|'+enc(e.key)+'|'+enc(e.code||e.key)+'|'+mods(e)+'|'+(Array.from(e.key).length===1?e.key.codePointAt(0):'none'));}); on(document,'keyup',e=>push('f1|K|up|'+enc(e.key)+'|'+enc(e.code||e.key)+'|'+mods(e)+'|'+(Array.from(e.key).length===1?e.key.codePointAt(0):'none'))); const pa={pointerdown:'down',pointerup:'up',pointermove:'move',pointerenter:'enter',pointerleave:'leave',pointercancel:'cancel'}; const pb=n=>n===0?'primary':n===1?'middle':n===2?'secondary':n===3?'back':n===4?'forward':'none'; Object.keys(pa).forEach(name=>canvas&&on(canvas,name,e=>push('f1|P|'+pa[name]+'|'+(['mouse','touch','pen'].includes(e.pointerType)?e.pointerType:'mouse')+'|'+Math.max(0,e.pointerId||0)+'|'+pos(e)[0]+'|'+pos(e)[1]+'|'+(e.movementX||0)+'|'+(e.movementY||0)+'|'+pb(e.button)+'|'+Math.max(0,Math.min(1,e.pressure||0))+'|'+mods(e)),{passive:true})); canvas&&on(canvas,'wheel',e=>push('f1|S|'+e.clientX+'|'+e.clientY+'|'+e.deltaX+'|'+e.deltaY+'|'+e.deltaZ),{passive:true}); on(window,'resize',()=>push('f1|R|'+innerWidth+'|'+innerHeight)); on(window,'focus',()=>push('f1|F|gain')); on(window,'blur',()=>push('f1|F|lost')); on(window,'orientationchange',()=>push('f1|O|'+(innerHeight>=innerWidth?'portrait':'landscape'))); on(document,'visibilitychange',()=>push('f1|L|'+(document.hidden?'hidden':'visible'))); on(window,'pagehide',()=>push('f1|L|pause')); on(window,'pageshow',()=>push('f1|L|resume')); on(window,'popstate',()=>{push('f1|L|back');push('f1|L|location|'+enc(location.pathname+location.search+location.hash));}); on(document,'compositionstart',e=>push('f1|M|start|'+enc(e.data||''))); on(document,'compositionupdate',e=>push('f1|M|update|'+enc(e.data||''))); on(document,'compositionend',e=>push('f1|M|end|'+enc(e.data||'')));  push('f1|L|location|'+enc(location.pathname+location.search+location.hash)); if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App){[['backButton','back'],['pause','pause'],['resume','resume']].forEach(([name,event])=>{Promise.resolve(window.Capacitor.Plugins.App.addListener(name,()=>push('f1|L|'+event))).then(handle=>{if(controller.signal.aborted)handle.remove();else controller.signal.addEventListener('abort',()=>handle.remove(),{once:true});});});} }"
 prim_setupEvents : String -> PrimIO ()
 
-%foreign "javascript:lambda: (sel,_w) => { if(window.__fluxUICanvasAbort)window.__fluxUICanvasAbort.abort();window.__fluxUICanvasAbort=null;window.__fluxUICanvasEventsReady=false;window.__fluxUISemanticEventsReady=false;window.__fluxUICanvasEvents=[];const canvas=document.querySelector(sel);const overlay=canvas&&canvas.nextElementSibling;if(overlay&&overlay.classList.contains('flux-ui-canvas-semantics'))overlay.remove(); }"
+%foreign "javascript:lambda: (sel,_w) => { if(window.__fluxUICanvasAbort)window.__fluxUICanvasAbort.abort();window.__fluxUICanvasAbort=null;window.__fluxUICanvasEventsReady=false;window.__fluxUISemanticEventsReady=false;window.__fluxUICanvasEvents=[];const canvas=document.querySelector(sel);const overlay=canvas&&canvas.nextElementSibling;if(overlay&&overlay.classList.contains('flux-ui-canvas-semantics'))overlay.remove();if(globalThis.__fluxUICanvasSheet){document.adoptedStyleSheets=document.adoptedStyleSheets.filter(s=>s!==globalThis.__fluxUICanvasSheet);delete globalThis.__fluxUICanvasSheet;delete globalThis.__fluxUICanvasRules;delete globalThis.__fluxUICanvasApplyStyles;} }"
 prim_teardownEvents : String -> PrimIO ()
 
 %foreign "javascript:lambda: _w => (window.__fluxUICanvasEvents&&window.__fluxUICanvasEvents.length>0)?window.__fluxUICanvasEvents.shift():''"
@@ -203,6 +203,21 @@ tickLoop app modelRef quitRef control ms = do
 
 -- ─── Main render / event loop (requestAnimationFrame) ────────────────────────
 
+finishCanvas : String -> AnyPtr -> CanvasMetric -> Nat -> Nat -> RuntimeControl
+            -> IORef (List (HitTarget msg)) -> IORef PointerCaptures -> IO ()
+finishCanvas selector ctx metric cols rows control targetsRef captureRef = do
+  cancelActiveEffects control
+  writeIORef targetsRef []
+  writeIORef captureRef []
+  primIO (prim_teardownEvents selector)
+  primIO (prim_setFill "#0d1117" ctx)
+  primIO (prim_fillRect 0.0 0.0 (cast cols * metric.cellW) (cast rows * metric.cellH) ctx)
+  primIO (prim_setFill "#3fb950" ctx)
+  primIO (prim_setFont (metric.fontSz * 1.2) True False metric.font ctx)
+  primIO (prim_fillText "👋 Bye! Refresh to restart."
+          (metric.cellW * 2.0) (metric.cellH * 3.0) 0.0 ctx)
+
+covering
 rafLoop : UIApp mdl outMsg -> String -> AnyPtr -> CanvasMetric
         -> IORef mdl -> IORef Bool -> RuntimeControl -> IORef (List (HitTarget outMsg))
         -> IORef PointerCaptures -> IO ()
@@ -214,29 +229,23 @@ rafLoop app selector ctx metric modelRef quitRef control targetsRef captureRef =
   let rows = max 1 (cast (cast pixelHeight / metric.cellH))
   quit <- readIORef quitRef
   if quit
-    then do
-      primIO (prim_teardownEvents selector)
-      -- goodbye frame
-      primIO (prim_setFill "#0d1117" ctx)
-      primIO (prim_fillRect 0.0 0.0
-              (cast cols * metric.cellW) (cast rows * metric.cellH) ctx)
-      primIO (prim_setFill "#3fb950" ctx)
-      primIO (prim_setFont (metric.fontSz * 1.2) True False metric.font ctx)
-      primIO (prim_fillText "👋 Bye! Refresh to restart."
-              (metric.cellW * 2.0) (metric.cellH * 3.0) 0.0 ctx)
+    then finishCanvas selector ctx metric cols rows control targetsRef captureRef
     else do
       drainEvents app metric modelRef quitRef control targetsRef captureRef
       quit2 <- readIORef quitRef
-      when (not quit2) $ do
-        mdl <- readIORef modelRef
-        let widget = app.view mdl
-        let targets = interactiveLayout metric widget cols rows
-        writeIORef targetsRef targets
-        primIO (prim_setSemantics selector
-          (semanticOverlay metric.cellW metric.cellH targets))
-        renderToCanvas metric widget cols rows ctx
-        primIO (prim_raf (rafLoop app selector ctx metric modelRef quitRef control
-                              targetsRef captureRef))
+      if quit2
+        then finishCanvas selector ctx metric cols rows control targetsRef captureRef
+        else do
+          mdl <- readIORef modelRef
+          let widget = app.view mdl
+          let targets = interactiveLayout metric widget cols rows
+          writeIORef targetsRef targets
+          primIO (prim_setSemantics selector
+            (semanticOverlay metric.cellW metric.cellH targets))
+          renderToCanvas metric widget cols rows ctx
+          primIO (prim_raf (rafLoop app selector ctx metric modelRef quitRef control
+                                targetsRef captureRef))
+
 
 -- ─── runCanvas ───────────────────────────────────────────────────────────────
 

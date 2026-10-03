@@ -119,9 +119,16 @@ setStatus code ctx = { statusCode := code } ctx
 stripCRLF : String -> String
 stripCRLF = pack . filter (\c => c /= '\r' && c /= '\n') . unpack
 
+||| Set a response header only when its name is a valid HTTP token. Invalid
+||| names leave the context unchanged; they are never repaired or trimmed.
+||| CR/LF are stripped from values for compatibility. encodeResponse separately
+||| rejects malformed names/ASCII-control values at the final wire boundary.
 export
 setHeader : String -> String -> Context -> Context
-setHeader k v ctx = { respHeaders $= insert k (stripCRLF v) } ctx
+setHeader k v ctx =
+  if validHeaderName k
+    then { respHeaders $= insert k (stripCRLF v) } ctx
+    else ctx
 
 export
 setHeaders : List (String, String) -> Context -> Context

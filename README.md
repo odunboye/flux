@@ -347,35 +347,17 @@ env-var-backed key/value store independent of any of this (`test/src/TestConfig.
 
 ## Logging
 
-`Flux.Server.Logging` ships two sinks. `mkLogger` writes every line
-immediately (`putStrLn`) — simplest, but every worker thread's requests
-contend on the same stdout, and that contention becomes the whole
-server's bottleneck once more than one async worker thread is genuinely
-running requests in parallel (measured: a request-ID+session-only
-middleware stack held ~22.4k req/s at 4 worker threads; adding one
-`mkLogger` call per request dropped that to ~484 req/s). `BatchedLogger`
-buffers formatted lines and flushes them periodically
-(`flushLoop`/`flushNow`) off the request path, but still *builds* the
-formatted string on the request-handling thread — under real concurrency
-that's still a bottleneck (throughput as low as ~300-500 req/s at 2-4
-threads), because Chez's multi-threaded allocator/GC contends heavily on
-concurrent string-building specifically, not on the shared buffer itself
-(striping the buffer 16 ways, the same fix that worked for request-ID/
-session counters, did not fix this).
+`Flux.Server.Logging` provides immediate and batched sinks. `mkLogger` writes
+formatted lines immediately. `BatchedLogger` buffers already formatted strings;
+`flushLoop`/`flushNow` publish them later. `BatchedAccessLog`, paired with
+`requestAccessLog`, buffers `HTTPLogContext` records and defers formatting to
+`flushAccessLog`, reducing work on connection owner loops.
 
-`BatchedAccessLog` (paired with `Flux.Middleware.Timing.requestAccessLog`)
-is the one to actually use for the per-request access log: it buffers the
-*raw* `HTTPLogContext` record and defers all string formatting to
-`flushAccessLog`, which runs on a single background thread. Measured
-directly in Chez (no Idris2 involved): appending a built string to a
-shared cell scales 4.5M → 568K → 194K → 181K ops/sec at 1/2/4/8 threads;
-appending a small fixed-size record instead (no string built at all)
-scales 20.1M → 21.0M → 13.0M → 4.8M — 25-90x better at every thread
-count, and it actually improves from 1 to 2 threads instead of
-immediately collapsing. Both batched loggers share the same tradeoff:
-whatever's buffered when the process dies (crash, `kill -9`, power loss)
-is lost — up to one flush interval's worth. Not acceptable for an audit
-trail; fine for an access log.
+All sinks eventually share the output destination. Measure logging overhead with
+your application and current runtime; historical upstream-scheduler throughput
+numbers are not current Flux performance claims. Batched logs can lose up to a
+flush interval of data on a crash or forced exit. Durable audit trails need a
+separate persistence strategy.
 
 ## Health checks
 
@@ -433,6 +415,18 @@ cookie/header value from other data (an echoed value, an upstream API
 response) previously could inject a stray `;`-attribute or an entire
 extra header line into its own response. Silently stripped rather than
 rejected, so `setHeader`/`cookie` stay plain, non-fallible functions.
+
+Response header names must be nonempty ASCII HTTP tokens, as defined by
+[RFC 9110 sections 5.1 and 5.6.2](https://www.rfc-editor.org/rfc/rfc9110.html#section-5.6.2).
+`validHeaderName` exposes this check. `setHeader`/`setHeaders` ignore invalid
+names without trimming or repairing them. At the final wire boundary,
+`encodeResponse` also omits entries with malformed names or ASCII control
+characters in values (HTAB is permitted). This protects direct encoder calls,
+`ok`, cookie output and direct updates to the public `Context` record. Existing
+`setHeader` CR/LF stripping is retained; direct encoder calls omit the entire
+malformed entry. Valid header case, ordering and repeated fields are preserved.
+These checks establish field syntax safety, not field-specific semantics; the
+application still owns the meaning of a valid header.
 
 Session IDs are 128 bits of real OS entropy, hex-encoded — not a
 guessable counter. `Flux.Middleware.Internal.Random` reads directly from
@@ -628,49 +622,40 @@ pack build test/test.ipkg
 ./test/build/exec/flux-test
 ```
 
-206 tests across 11 suites (router, HTTP wire parsing, HTTP wire parsing
-*properties*, JSON, middleware, logging, config, cookies, sessions,
-static files, health) — mostly pure/unit-style with no real socket or
-database involved, though a handful (the `runApp` error-catching tests,
-`readBody`'s success/failure/keep-alive tests in `TestMiddleware.idr`,
-the `Connection`-header/`willClose` tests in the same file, and
-`TestHTTPProperties.idr`'s `request` round-trip and pipelining-desync
-tests) do run the real `Async`/`Pull` scheduler end to end against a
-synthetic in-memory body/request, rather than simulating it. Nothing
-here goes over an actual TCP connection.
+The framework executable currently reports 219 named checks across router,
+HTTP parsing, parser properties, JSON, middleware, RPC CORS, logging, config,
+cookies, sessions, static files and health suites. Most are pure; body handling,
+error rendering and stream checks run the owned `Task`/`Pull` interpreter with
+synthetic requests. This executable does not open real TCP connections.
 
-`test/src/TestHTTPProperties.idr` is [`idris2-hedgehog`](https://github.com/stefan-hoeck/idris2-hedgehog)
-(property-based testing, QuickCheck-style, with integrated shrinking)
-against `Flux.Core.HTTP`'s wire parser (`method`/`version`/`startLine`/
-`headers`/`splitQuery`/`parseQuery`/`request`) - added specifically
-because that parser is exactly the same shape of hand-rolled, stateful
-parsing code as the JSON parser that had three real, compounding bugs
-this session (see "JSON"), none of which any hand-picked example ever
-caught. It's already paid for itself once: a first, naive "headers
-round-trip exactly" property failed within 45 generated cases on a
-header value that was pure whitespace (`" "`, parsed back as `""`) - on
-inspection, Flux was behaving *correctly* (RFC 7230 strips a header
-value's surrounding whitespace, so an all-whitespace value legitimately
-becomes empty), but the property's own assumption was too naive. Fixing
-it to expect `trim v` instead of `v` is what's in the suite now - a
-precise, correct specification the hand-picked examples never had to
-state explicitly. One real limitation found building this: hedgehog's
-`property`/`forAll` do-block runs in a purely generator-based monad with
-no `IO` support at all, so it can't run anything needing the real async
-runtime (`request` itself) - worked around for those specific cases via
-`Hedgehog.Gen.sample`, drawing random input in plain `IO` and asserting
-in an ordinary loop instead, at the cost of hedgehog's automatic
-shrinking on a failing case.
+[HTTP property tests](test/src/TestHTTPProperties.idr) use Hedgehog generators
+and shrinking for pure parsers. Full request/stream checks sample generators in
+IO; those cases do not have automatic shrinking. Response-header regressions
+cover every ASCII name character, malformed names, control values, direct
+encoder calls and public context-record updates.
 
-`.github/workflows/ci.yml` runs on every push/PR: building `flux.ipkg`
-and running `flux-test`, building `examples/examples.ipkg`, and a live
-smoke test that starts the actual example server and drives it over a
-real HTTP connection (routing, `readBody`, JSON, pagination, 404 vs 405,
-static files) - the one thing the unit suite above doesn't cover. Still
-not covered by either: live keep-alive/close/host-binding behavior
-specifically (the `curl -v`/`wrk` checks used throughout this session)
-and anything requiring sustained load (the benchmarking in "Concurrency"
-above) - both remain manual.
+[Root CI](.github/workflows/ci.yml) runs on pushes to `main` and pull requests:
+
+- Workspace/package and browser dependency-boundary checks, selected CLI tests
+  and shell checks.
+- Library/unit builds, example builds and a live HTTP smoke test.
+- Flux UI checks, browser bundles, Chromium acceptance and native terminal smoke
+  through `tools/ci-suite.sh ui`.
+- Generated-client/native-transport, authentication, migration, CRUD and CLI
+  integration through `tools/ci-suite.sh platform`, using disposable databases.
+
+The configured jobs define intended coverage; their existence is not a claim
+that a particular remote run passed. Additional owned-runtime protocol and
+shutdown probes can be run after building the examples:
+
+```sh
+python3 test/runtime_protocol_test.py
+```
+
+Runtime/native suites and extended load/soak checks have separate commands in
+[the runtime guide](packages/runtime/README.md). They are not all part of root CI.
+Native mobile device certification, production operations, long-duration soak
+and workload-specific performance remain separate validation work.
 
 ## Features
 
@@ -714,18 +699,17 @@ above) - both remain manual.
 - [x] Env-var config loading (`Config`), wired into the running server
       via `runServerFromConfig` (`host`/`workers`/`maxBodySize`/`timeout`)
       — see "Config"
-- [x] Two logging strategies (immediate vs batched/format-on-flush), with
-      measured concurrency tradeoffs for each — see "Logging"
-- [x] Graceful shutdown on SIGINT/SIGTERM, on both Linux and macOS, with
-      a bounded drain (30s) so a connection stuck forever can't block
-      exit indefinitely — see "Graceful shutdown"
-- [x] An idle-connection timeout mitigating a known upstream scheduler
-      race (see "The rare connection-leak race and its mitigation")
+- [x] Immediate and batched/format-on-flush logging; measure overhead
+      with the current runtime and application — see "Logging"
+- [x] Graceful shutdown on SIGINT/SIGTERM with a 30-second drain and
+      an independent 35-second standalone watchdog on Linux/macOS — see "Graceful shutdown"
+- [x] An idle-connection timeout enforced by the owned runtime to bound
+      inactive connections
 - [x] Request body access from a router `Handler` (`readBody`), with a
       real keep-alive-preserving continuation on success — see
       "Middleware & Context"
-- [x] CI (`.github/workflows/ci.yml`): builds, unit tests, and one live
-      HTTP smoke test on every push/PR — see "Running the tests"
+- [x] CI (`.github/workflows/ci.yml`): workspace, builds, unit tests, live
+      HTTP smoke, UI/browser and full-stack integration on main pushes/PRs — see "Running the tests"
 - [x] Property-based tests (`idris2-hedgehog`) against the HTTP wire
       parser — see "Running the tests"
 - [ ] TLS/HTTPS — put a reverse proxy in front for TLS termination; this
@@ -737,31 +721,22 @@ above) - both remain manual.
 A consolidated list of every gap documented above, for anyone deciding
 whether this is production-ready for their use case:
 
-- **`MaxHeaderSize` (64KB) is still not configurable** through either
+- **`MaxHeaderSize` (65,535 bytes) is still not configurable** through either
   `ServerConfig` (no field for it) or any other entry point - the one
   request-size limit `runServerFromConfig` doesn't let you change.
 - **`parseIPv4` only accepts a literal dotted-quad** ("127.0.0.1",
   "0.0.0.0") - no hostnames, no DNS resolution, no IPv6. `ServerConfig.host`
   set to anything else falls back to `127.0.0.1` with a stderr warning.
-- **A throughput cliff beyond 1 async worker thread**, caused by an
-  unfixed fiber-pinning bug in the underlying `idris2-async` scheduler.
-  A fix exists and its throughput improvement is confirmed, but it's
-  blocked on a separate, not-yet-root-caused cancelation-stall bug of
-  its own - see "Concurrency: async worker threads". Stay at the
-  default (1) unless you've benchmarked your own workload past it.
-- **A rare, not-root-caused connection-leak race** in the same upstream
-  scheduler. Mitigated in two layers - bounded to roughly one
-  idle-timeout window via `idleTimeout`, and shutdown specifically
-  additionally bounded via `serveConnections`'s `drainTimeout` so a
-  connection stuck this way can't block `SIGTERM` past 30s - not
-  eliminated either way; see "The rare connection-leak race and its
-  mitigation".
-- **Memory growth under sustained load**, independent of the above leak
-  (reproduced with zero leaked connections) - real (both RSS and Chez's
-  own live-heap size grow, not just an allocator artifact), but
-  decelerating and plateauing within the ~10-15 minute windows tested;
-  not confirmed over hours-scale continuous operation - see "Memory
-  growth under sustained load".
+- **Current-runtime performance requires workload-specific measurement.** The
+  old `idris2-async` fiber-pinning and connection-leak investigations do not
+  describe `flux-runtime`. The [recorded runtime verification](test/reports/runtime-completion/README.md)
+  includes macOS arm64 and Linux amd64-under-emulation results with explicit
+  limits: native Linux application performance was not established, and the
+  prior two-hour HTTP soak was not repeated after the recorded crypto change.
+  No general throughput or long-running memory-stability guarantee follows.
+- **Cancellation is cooperative.** Owned scopes join children and native work
+  before release; arbitrary blocking IO can delay cleanup. The standalone
+  watchdog bounds process shutdown, while embedded APIs never force exit.
 - **No disk-space health check.** `diskCheck` was removed rather than
   shipped broken - see "Health checks" for the upstream `statvfs`
   linking bug behind that. `memoryCheck` is real, but Linux-only.
@@ -774,10 +749,10 @@ whether this is production-ready for their use case:
   Production deployment and broader identity-provider features remain future work.
 - **No TLS.** Terminate TLS in a reverse proxy; this project speaks
   plain HTTP only.
-- **CI covers unit tests, both builds, and one live smoke test - not
-  everything.** Live keep-alive/close/host-binding behavior and anything
-  requiring sustained load (benchmarking) are still manual-only - see
-  "Running the tests".
+- **CI and operational validation differ.** Root CI includes UI/browser and
+  full-stack database integration in addition to unit/build/live-smoke jobs.
+  Extended soak, all runtime/native stress checks, native mobile devices and
+  deployment/backup/restore validation are separate; see "Running the tests".
 - **New dependencies for JSON.** Swapping Flux's own hand-rolled (and
   buggy) JSON parser for `json-simple`/`ilex-json` (see "JSON") means
   this is no longer a dependency-free part of the framework - a

@@ -394,12 +394,40 @@ request maxBodySize req =
   |> lines
   |> assemble maxBodySize
 
+-- RFC 9110 sections 5.1 and 5.6.2: field names are nonempty ASCII tokens.
+-- Do not trim or repair names: that could turn an invalid name into a trusted
+-- framing or security header with different semantics.
+||| True only for a nonempty HTTP field-name token (ASCII letters, digits,
+||| and !#$%&'*+-.^_`|~). Case is preserved; Unicode names are invalid.
+export
+validHeaderName : String -> Bool
+validHeaderName name =
+  case unpack name of
+    [] => False
+    chars => all valid chars
+  where
+    valid : Char -> Bool
+    valid c = (c >= 'A' && c <= 'Z') ||
+              (c >= 'a' && c <= 'z') ||
+              (c >= '0' && c <= '9') ||
+              elem c (unpack "!#$%&'*+-.^_`|~")
+
+-- Final boundary for direct encoder callers and public Context record updates.
+-- HTAB is allowed in values; other ASCII controls (including CR/LF/NUL/DEL)
+-- are not. Leave field-specific value grammar to the application.
+validResponseHeader : (String, String) -> Bool
+validResponseHeader (name, value) =
+  validHeaderName name && all (\c => c == '\t' || (c >= ' ' && c /= '\DEL')) (unpack value)
+
+||| Encode response headers, omitting malformed names or values containing ASCII
+||| controls other than HTAB. Valid entries retain order, case and duplicates.
+||| This check also protects callers that bypass middleware setters.
 export
 encodeResponse : (status : Nat) -> List (String,String) -> ByteString
 encodeResponse status hs =
   fastConcat $ intersperse "\r\n" $ map fromString $
     "HTTP/1.1 \{show status}" ::
-    map (\(x,y) => "\{x}: \{y}") hs ++
+    map (\(x,y) => "\{x}: \{y}") (filter validResponseHeader hs) ++
     ["\r\n"]
 
 export

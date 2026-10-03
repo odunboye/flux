@@ -3,6 +3,30 @@
 All notable changes to Flux UI are recorded here. The project follows Semantic
 Versioning within the normal compatibility limits of a pre-1.0 release.
 
+## Unreleased — runner lifecycle cleanup
+
+- Canvas quit during event dispatch now removes listeners, overlay and generated
+  styles, clears hit targets/capture and runs cooperative cleanup. Capacitor
+  listener handles are retired even when registration resolves after shutdown.
+- Terminal registers cooperative cleanup on its owner loop and runs it on quit
+  or Ctrl+C; queued/late messages and commands after quit are ignored.
+- Cleanup returned after a synchronous quit/suspend callback is discharged
+  immediately instead of being retained on a retired runtime.
+- Added Chromium teardown checks and terminal cancellation/PTY regressions.
+- Raw Task/StreamTask IO remains non-preemptible; cooperative starters must return
+  promptly. No new promise to forcibly cancel arbitrary IO is made.
+
+## Unreleased — supported application guidance
+
+- Added implemented architecture, runner capability matrix and links to evidence
+  for specific guarantees; moved the historical proposal to `FUTURE_DESIGN.md`.
+- Added a portable counter with terminal, DOM and Canvas entry points.
+- Made the default executable a credential-free `UIApp` counter; preserved the
+  old terminal agent under `examples/legacy-agent`.
+- Marked compatibility/PAL APIs explicitly and documented terminal cancellation
+  differences. Existing library APIs remain available.
+- Corrected stale wrapping/scroll documentation to match implemented widgets.
+
 ## 0.4.0 — opt-in development DOM HMR
 
 - Added `HotState` and `runWebHot` to `Flux.UI.Backend.Web.DOM.Run`.

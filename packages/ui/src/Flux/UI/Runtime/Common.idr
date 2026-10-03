@@ -101,7 +101,14 @@ execCmdManaged command send control = do
       StreamTask action => action guarded
       CancellableTask start => do
         cancel <- start guarded
-        modifyIORef control.cancellations (cancel ::)
+        -- A synchronous callback may quit or suspend before start returns.
+        -- Ownership of the returned cleanup must still be discharged.
+        stopped <- readIORef control.quit
+        suspended <- readIORef control.paused
+        current <- readIORef control.generation
+        if stopped || suspended || current /= generation
+          then cancel
+          else modifyIORef control.cancellations (cancel ::)
       QuitApp => do
         writeIORef control.quit True
         cancelActiveEffects control

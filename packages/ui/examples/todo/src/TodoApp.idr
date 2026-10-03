@@ -9,8 +9,7 @@
 |||
 |||   main = runTUI    todoApp   -- terminal
 |||   main = runWeb    todoApp   -- browser
-|||   main = runDesktop todoApp  -- desktop  (future)
-|||   main = runMobile  todoApp  -- mobile   (future)
+|||   main = runMobile  todoApp  -- Canvas/WebView
 module TodoApp
 
 import Flux.UI.App

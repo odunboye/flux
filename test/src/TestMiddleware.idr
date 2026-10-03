@@ -79,6 +79,14 @@ testSetHeaderStripsCRLF =
   let ctx = setHeader "X-Custom" "value\r\nX-Injected: evil" (emptyContext dummyRequest)
    in lookup "X-Custom" ctx.respHeaders == Just "valueX-Injected: evil"
 
+export
+testSetHeaderRejectsInvalidNames : Bool
+testSetHeaderRejectsInvalidNames =
+  let ctx = setHeaders [("X-Keep", "original"), ("X-Valid", "ok"),
+              ("X-Keep\r\nInjected", "evil"), ("Content-Length ", "999"),
+              ("", "empty"), ("X-é", "unicode")] (emptyContext dummyRequest)
+   in SortedMap.toList ctx.respHeaders == [("X-Keep", "original"), ("X-Valid", "ok")]
+
 -- Runs an HTTPPull for real, via the async runtime, concatenating
 -- everything it emits and discarding its result (a BodyOutcome, for
 -- runApp's output specifically - not needed to check what got emitted) -
@@ -96,6 +104,17 @@ runOnce stream = do
       (ignore (foreach (\v => liftIO (modifyIORef ref (v ::))) stream))
   chunks <- readIORef ref
   pure (fastConcat (reverse chunks))
+
+-- Bypass setters through the exported record: wire encoding must still defend
+-- the real rendered response without dropping its valid framing or body.
+export
+testRenderRejectsInjectedRecordHeaders : IO Bool
+testRenderRejectsInjectedRecordHeaders = do
+  let ctx = { respHeaders := fromList [("X\r\nContent-Length", "999"),
+              ("X-Bad-Value", "a\r\nInjected: evil"), ("X-Good", "yes")] }
+              (send (fromString "ok") (emptyContext dummyRequest))
+  response <- runOnce (render False ctx)
+  pure $ toString response == "HTTP/1.1 200\r\nX-Good: yes\r\nContent-Length: 2\r\n\r\nok"
 
 export
 testRunAppCatchesAppError : IO Bool
@@ -407,8 +426,11 @@ runAllTests = do
   connClosesDefaultV10Result <- testResponseCarriesConnectionCloseByDefaultOnV10
   connOmitsV10KeepAliveResult <- testResponseOmitsConnectionCloseWhenV10AsksKeepAlive
   connForcedByReadBodyFailureResult <- testReadBodyFailureForcesConnectionCloseDespiteKeepAliveRequest
+  injectedRecordResult <- testRenderRejectsInjectedRecordHeaders
   pure
-    [ ("setHeaderStripsCRLF", testSetHeaderStripsCRLF)
+    [ ("setHeaderRejectsInvalidNames", testSetHeaderRejectsInvalidNames)
+    , ("renderRejectsInjectedRecordHeaders", injectedRecordResult)
+    , ("setHeaderStripsCRLF", testSetHeaderStripsCRLF)
     , ("emptyApp", testEmptyApp)
     , ("use", testUse)
     , ("useAfter", testUseAfter)

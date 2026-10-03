@@ -1,3 +1,6 @@
+||| Legacy or experimental API; not a supported application runner.
+||| Start with Flux.UI, Flux.UI.App.UIApp and a specialized runner.
+||| See packages/ui/API_STABILITY.md and CAPABILITIES.md.
 ||| Flux.UI.Backend.Web.DOM
 ||| DOM renderer backend — Idris2 JS codegen target.
 ||| Translates Flux UI DrawCall IR into DOM mutations and CSS.

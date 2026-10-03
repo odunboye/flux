@@ -1,0 +1,6 @@
+package flux-ui-counter-canvas
+depends = flux-ui
+sourcedir = "."
+modules = Counter, MainCanvas
+main = MainCanvas
+executable = counter-canvas

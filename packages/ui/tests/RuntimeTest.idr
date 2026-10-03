@@ -75,4 +75,20 @@ main = do
   finalCancelCount <- readIORef cancelled
   assert "shutdown cancels active effects" (finalCancelCount == 2)
 
+  earlyQuit <- newIORef False
+  earlyControl <- newRuntimeControl earlyQuit
+  earlyModel <- newIORef 0
+  earlyCancel <- newIORef 0
+  execCmdManaged (CancellableTask (\send => do
+    send Stop
+    pure (modifyIORef earlyCancel S)))
+    (dispatchManaged app earlyModel earlyControl) earlyControl
+  earlyCount <- readIORef earlyCancel
+  earlyRegistered <- readIORef earlyControl.cancellations
+  assert "cleanup returned after synchronous quit runs immediately" (earlyCount == 1)
+  assert "cleanup returned after quit is not retained" (null earlyRegistered)
+  cancelActiveEffects earlyControl
+  repeatCount <- readIORef earlyCancel
+  assert "early cleanup runs exactly once" (repeatCount == 1)
+
   putStrLn "Runtime tests passed"

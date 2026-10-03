@@ -1,0 +1,7 @@
+package flux-ui-terminal-lifecycle
+depends = flux-ui
+sourcedir = "."
+modules = TerminalLifecycle
+main = TerminalLifecycle
+executable = terminal-lifecycle
+prebuild = "mkdir -p build/exec/terminal-lifecycle_app && cc -dynamiclib ../c/fluxuitui.c -o build/exec/terminal-lifecycle_app/libfluxuitui.dylib 2>/dev/null || cc -shared -fPIC ../c/fluxuitui.c -o build/exec/terminal-lifecycle_app/libfluxuitui.so"

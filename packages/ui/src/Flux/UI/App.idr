@@ -1,9 +1,9 @@
 ||| Flux.UI.App
 ||| The single universal application record used by every backend.
 |||
-||| Replacing backend-specific TUIApp / WebApp with one type means
-||| the same value can be passed to `runTUI`, `runWeb`, `runDesktop`,
-||| or `runMobile` — write once, run anywhere.
+||| Supported runners: Terminal.Run.runTUI, Web.DOM.Run.runWeb and
+||| Canvas.Run.runCanvas (runMobile uses the Canvas/WebView path).
+||| Rendering, input and effect lifecycle behavior differ; see CAPABILITIES.md.
 module Flux.UI.App
 
 import Flux.UI.State.TEA

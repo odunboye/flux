@@ -41,3 +41,20 @@ protocol. Persisted events must retain their protocol version.
 A supported API must be marked deprecated for at least one minor release
 before removal. `CHANGELOG.md` records additions, behavior changes,
 deprecations, and migration instructions.
+
+## Choosing application APIs
+
+Use `import Flux.UI` for `UIApp`, `Widget`, `Cmd` and platform events. It does not
+re-export legacy widget/runtime or PAL modules. Choose a specialized runner in
+your entry module. Start with [the counter](examples/counter/README.md).
+
+`State.TEA.App`, `simpleApp` and `Sub` are legacy runtime APIs; `UIApp` has no
+subscription field. `Backend.Terminal.App.TUIApp` and `Widget.TUI.*` are
+terminal-specific compatibility APIs, not the portable application contract.
+The former default agent executable is preserved under `examples/legacy-agent`;
+the default executable now uses a credential-free `UIApp` counter.
+
+See [CAPABILITIES.md](CAPABILITIES.md) before relying on runner-specific behavior.
+Desktop SDL2, embedded framebuffer and the generic PAL remain experimental.
+Their presence in the package manifest does not confer supported status.
+Future design proposals are in [FUTURE_DESIGN.md](FUTURE_DESIGN.md).

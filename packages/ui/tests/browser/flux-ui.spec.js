@@ -55,3 +55,76 @@ test('browser history produces ordered typed lifecycle events without errors', a
   expect(errors).toEqual([]);
   await expect(page.locator('#flux-ui-app')).toContainText('Flux UI Todo');
 });
+
+// The getting-started application must work through both browser runners.
+for (const host of ['index.html', 'canvas.html']) {
+  test(`counter starter updates and quits through ${host}`, async ({ page }) => {
+    await page.goto(`/examples/counter/${host}`);
+    const increment = page.getByRole('button', { name: 'Increment', exact: true });
+    const canvas = page.locator('#flux-ui-canvas');
+    const initialPixels = host === 'canvas.html' ? await canvas.evaluate(el => el.toDataURL()) : null;
+    await increment.click();
+    await page.keyboard.press('i');
+    if (host === 'index.html') {
+      await expect(page.getByText('Count: 2', { exact: true })).toBeVisible();
+    } else {
+      await expect.poll(async () => (await canvas.evaluate(el => el.toDataURL())) === initialPixels).toBe(false);
+    }
+    await page.getByRole('button', { name: 'Quit', exact: true }).click();
+    if (host === 'index.html') {
+      await page.keyboard.press('i');
+      await expect(page.getByText('Count: 2', { exact: true })).toBeVisible();
+    } else {
+      await expect(increment).toHaveCount(0);
+      const stoppedPixels = await canvas.evaluate(el => el.toDataURL());
+      await page.keyboard.press('i');
+      await page.waitForTimeout(100);
+      expect(await canvas.evaluate(el => el.toDataURL())).toBe(stoppedPixels);
+    }
+  });
+}
+
+for (const stop of ['button', 'keyboard']) {
+  test(`Canvas ${stop} quit retires effects, listeners, overlay and styles`, async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__capCallbacks = {};
+      window.__capResolve = [];
+      window.__capRemoved = 0;
+      window.Capacitor = { Plugins: { App: {
+        addListener(name, callback) {
+          window.__capCallbacks[name] = callback;
+          return new Promise(resolve => window.__capResolve.push(() => resolve({
+            remove() { window.__capRemoved++; }
+          })));
+        }
+      } } };
+    });
+    await page.goto('/tests/canvas-lifecycle.html');
+    await expect(page.getByRole('button', { name: 'Quit', exact: true })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.__lifecycleStarts)).toBe(1);
+    if (stop === 'button') await page.getByRole('button', { name: 'Quit', exact: true }).click();
+    else await page.keyboard.press('q');
+    await expect.poll(() => page.evaluate(() => window.__lifecycleCancels)).toBe(1);
+    await expect(page.locator('.flux-ui-canvas-semantics')).toHaveCount(0);
+    expect(await page.evaluate(() => ({
+      ready: window.__fluxUICanvasEventsReady,
+      controller: window.__fluxUICanvasAbort,
+      styles: !!globalThis.__fluxUICanvasSheet,
+      queued: window.__fluxUICanvasEvents.length
+    }))).toEqual({ ready: false, controller: null, styles: false, queued: 0 });
+    const canvas = page.locator('#flux-ui-canvas');
+    const stoppedPixels = await canvas.evaluate(el => el.toDataURL());
+    await page.evaluate(() => {
+      window.__lifecycleLate();
+      window.__capResolve.forEach(resolve => resolve());
+      Object.values(window.__capCallbacks).forEach(callback => callback());
+      window.dispatchEvent(new Event('resize'));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'q' }));
+    });
+    await page.waitForTimeout(150);
+    expect(await canvas.evaluate(el => el.toDataURL())).toBe(stoppedPixels);
+    expect(await page.evaluate(() => window.__lifecycleCancels)).toBe(1);
+    expect(await page.evaluate(() => window.__fluxUICanvasEvents.length)).toBe(0);
+    await expect.poll(() => page.evaluate(() => window.__capRemoved)).toBe(3);
+  });
+}

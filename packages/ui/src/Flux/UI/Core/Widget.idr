@@ -1,3 +1,6 @@
+||| Legacy or experimental API; not a supported application runner.
+||| Start with Flux.UI, Flux.UI.App.UIApp and a specialized runner.
+||| See packages/ui/API_STABILITY.md and CAPABILITIES.md.
 ||| Flux.UI.Core.Widget
 ||| The Widget type: an immutable description of a piece of UI.
 ||| Widgets are cheap to construct; the runtime holds all mutable state.
