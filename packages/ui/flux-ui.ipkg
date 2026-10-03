@@ -19,7 +19,7 @@ modules =
   , Flux.UI.App.Events
   , Flux.UI.App.EventWire
 
-  -- Core
+  -- Internal types and legacy Core.Widget/Core.Runtime (not application APIs)
   , Flux.UI.Core.Types
   , Flux.UI.Core.Widget
   , Flux.UI.Core.VTree
@@ -41,7 +41,7 @@ modules =
   , Flux.UI.Effect.Http.Web
   , Flux.UI.Effect.Keyboard
 
-  -- Platform abstraction
+  -- Platform events; Interface is an experimental PAL
   , Flux.UI.Platform.Event
   , Flux.UI.Platform.Interface
 
@@ -56,7 +56,7 @@ modules =
   , Flux.UI.Router.Types
   , Flux.UI.Router.Web
 
-  -- GUI Backends
+  -- Specialized DOM/Canvas runners; Web.DOM, SDL2 and framebuffer are experimental
   , Flux.UI.Backend.Canvas.Render
   , Flux.UI.Backend.Canvas.Layout
   , Flux.UI.Backend.Canvas.Run
@@ -82,7 +82,7 @@ modules =
   -- TUI Core
   , Flux.UI.Widget.TUI.Core
 
-  -- TUI Widgets
+  -- Terminal-specific compatibility widgets (portable apps use Flux.UI.Widget)
   , Flux.UI.Widget.TUI.Primitives
   , Flux.UI.Widget.TUI.List
   , Flux.UI.Widget.TUI.Table

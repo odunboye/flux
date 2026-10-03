@@ -39,6 +39,13 @@ def check(directory, name, banner):
             if process.poll() is not None:
                 break
         assert banner in output, output.decode(errors='replace')
+        if name == 'flux-ui-demo':
+            os.write(master, b'i')
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and b'Count: 1' not in output:
+                if select.select([master], [], [], .1)[0]:
+                    output = (output + os.read(master, 65536))[-65536:]
+            assert b'Count: 1' in output, output.decode(errors='replace')
         os.write(master, b'q')
         # Keep draining: a renderer can otherwise block on the PTY's small
         # output buffer before it gets to consume the quit key.
@@ -62,5 +69,5 @@ def check(directory, name, banner):
 
 
 if __name__ == '__main__':
-    check(ROOT, 'flux-ui-demo', b'flux-ui coding agent')
+    check(ROOT, 'flux-ui-demo', b'Count: 0')
     check(ROOT / 'examples/todo', 'flux-ui-todo', b'Flux UI Todo')

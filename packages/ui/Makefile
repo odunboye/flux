@@ -1,4 +1,4 @@
-.PHONY: build test browser-test check release-check native-check clean
+.PHONY: counter-check build test browser-test check release-check native-check clean
 
 build:
 	idris2 --build flux-ui.ipkg
@@ -23,7 +23,14 @@ test: build
 browser-test:
 	npm run test:browser
 
-check: test
+counter-check:
+	idris2 --build examples/counter/terminal.ipkg
+	idris2 --cg javascript --build examples/counter/web.ipkg
+	idris2 --cg javascript --build examples/counter/canvas.ipkg
+	node --check examples/counter/build/exec/counter-web
+	node --check examples/counter/build/exec/counter-canvas
+
+check: test counter-check
 	cd tests && idris2 --cg node -p flux-ui PublicAPITest.idr -o public-api-node
 	node ./tests/build/exec/public-api-node
 	$(MAKE) -C examples/todo check

@@ -1,3 +1,6 @@
+||| Legacy or experimental API; not a supported application runner.
+||| Start with Flux.UI, Flux.UI.App.UIApp and a specialized runner.
+||| See packages/ui/API_STABILITY.md and CAPABILITIES.md.
 ||| Flux.UI.Backend.Desktop.SDL2
 ||| SDL2 + OpenGL desktop renderer backend.
 ||| Compiles under the `--cg refc` (C) backend.

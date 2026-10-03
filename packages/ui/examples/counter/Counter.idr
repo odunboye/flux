@@ -1,7 +1,6 @@
-module Main
+module Counter
 
-import Flux.UI
-import Flux.UI.Backend.Terminal.Run
+import public Flux.UI
 
 public export
 data Msg = Increment | Exit
@@ -30,6 +29,3 @@ handleEvent _ _ = Nothing
 export
 counter : UIApp Nat Msg
 counter = MkApp (0, none) update view handleEvent Nothing
-
-main : IO ()
-main = runTUI counter

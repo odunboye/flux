@@ -1,3 +1,6 @@
+||| Legacy or experimental API; not a supported application runner.
+||| Start with Flux.UI, Flux.UI.App.UIApp and a specialized runner.
+||| See packages/ui/API_STABILITY.md and CAPABILITIES.md.
 ||| Flux.UI.Backend.Embedded.Framebuffer
 ||| Bare-metal Linux framebuffer (/dev/fb0) backend.
 ||| Designed for ARM Cortex-M4+ and Raspberry Pi.

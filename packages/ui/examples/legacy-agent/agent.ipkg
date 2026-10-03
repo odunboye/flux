@@ -1,0 +1,6 @@
+package flux-ui-legacy-agent
+depends = flux-ui
+sourcedir = "."
+modules = Main
+main = Main
+executable = flux-ui-legacy-agent

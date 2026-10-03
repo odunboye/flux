@@ -1,0 +1,6 @@
+package flux-ui-counter-terminal
+depends = flux-ui
+sourcedir = "."
+modules = Counter, Main
+main = Main
+executable = counter-terminal

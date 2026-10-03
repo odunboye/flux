@@ -5,6 +5,8 @@
 ||| Impure: Cmd (outbound effects), Sub (inbound subscriptions)
 module Flux.UI.State.TEA
 
+-- Private dependency for the compatibility App record below.
+-- Supported applications import Flux.UI.App.UIApp and Flux.UI.Widget.
 import Flux.UI.Core.Widget
 
 -- ─── Cmd ───────────────────────────────────────────────────────────────────
@@ -27,7 +29,8 @@ data Cmd : (msg : Type) -> Type where
   ||| Use this for LLM token streaming, file tailing, etc.
   StreamTask : ((msg -> IO ()) -> IO ()) -> Cmd msg
   ||| Start cooperative asynchronous work and return its cancellation action.
-  ||| The runtime invokes the action on shutdown or lifecycle suspension.
+  ||| DOM/Canvas invoke this on shutdown or lifecycle suspension.
+  ||| The terminal runner currently discards the returned cancellation action.
   CancellableTask : ((msg -> IO ()) -> IO (IO ())) -> Cmd msg
   ||| Tell the runtime to exit cleanly.
   ||| Use `quit` in your update function instead of returning `none`.
@@ -86,7 +89,8 @@ batchSub = BatchSub
 
 -- ─── App ───────────────────────────────────────────────────────────────────
 
-||| The complete description of a Flux UI application.
+||| Legacy application record for Core.Runtime; not consumed by supported runners.
+||| Use Flux.UI.App.UIApp with terminal, DOM or Canvas runners.
 |||
 ||| @model  The application state type.
 ||| @msg    The message type (user events + effect results).
@@ -104,7 +108,7 @@ record App (model : Type) (msg : Type) where
 
 -- ─── Helpers ───────────────────────────────────────────────────────────────
 
-||| Construct an App with no subscriptions.
+||| Legacy Core.Runtime helper. New applications use Flux.UI.App.MkApp.
 public export
 simpleApp : (model, Cmd msg)
           -> (msg -> model -> (model, Cmd msg))

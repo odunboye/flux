@@ -55,3 +55,30 @@ test('browser history produces ordered typed lifecycle events without errors', a
   expect(errors).toEqual([]);
   await expect(page.locator('#flux-ui-app')).toContainText('Flux UI Todo');
 });
+
+// The getting-started application must work through both browser runners.
+for (const host of ['index.html', 'canvas.html']) {
+  test(`counter starter updates and quits through ${host}`, async ({ page }) => {
+    await page.goto(`/examples/counter/${host}`);
+    const increment = page.getByRole('button', { name: 'Increment', exact: true });
+    const canvas = page.locator('#flux-ui-canvas');
+    const initialPixels = host === 'canvas.html' ? await canvas.evaluate(el => el.toDataURL()) : null;
+    await increment.click();
+    await page.keyboard.press('i');
+    if (host === 'index.html') {
+      await expect(page.getByText('Count: 2', { exact: true })).toBeVisible();
+    } else {
+      await expect.poll(async () => (await canvas.evaluate(el => el.toDataURL())) === initialPixels).toBe(false);
+    }
+    await page.getByRole('button', { name: 'Quit', exact: true }).click();
+    if (host === 'index.html') {
+      await page.keyboard.press('i');
+      await expect(page.getByText('Count: 2', { exact: true })).toBeVisible();
+    } else {
+      const stoppedPixels = await canvas.evaluate(el => el.toDataURL());
+      await page.keyboard.press('i');
+      await page.waitForTimeout(100);
+      expect(await canvas.evaluate(el => el.toDataURL())).toBe(stoppedPixels);
+    }
+  });
+}

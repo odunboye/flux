@@ -3,6 +3,17 @@
 All notable changes to Flux UI are recorded here. The project follows Semantic
 Versioning within the normal compatibility limits of a pre-1.0 release.
 
+## Unreleased — supported application guidance
+
+- Added implemented architecture, runner capability matrix and links to evidence
+  for specific guarantees; moved the historical proposal to `FUTURE_DESIGN.md`.
+- Added a portable counter with terminal, DOM and Canvas entry points.
+- Made the default executable a credential-free `UIApp` counter; preserved the
+  old terminal agent under `examples/legacy-agent`.
+- Marked compatibility/PAL APIs explicitly and documented terminal cancellation
+  differences. Existing library APIs remain available.
+- Corrected stale wrapping/scroll documentation to match implemented widgets.
+
 ## 0.4.0 — opt-in development DOM HMR
 
 - Added `HotState` and `runWebHot` to `Flux.UI.Backend.Web.DOM.Run`.

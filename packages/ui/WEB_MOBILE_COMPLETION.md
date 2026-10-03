@@ -73,10 +73,16 @@ loading. Signing and store packaging remain deployment responsibilities.
 - The Canvas semantic overlay exposes standard controls, but complex input
   features such as validation descriptions and application-defined checkbox
   labels require richer widget metadata in a future API revision.
-- Canvas stack layout is cell-based and does not yet provide general wrapping
-  or scroll-container semantics.
-- `CancellableTask` effects are cancelled on pause and shutdown and stale
-  generation callbacks are rejected after resume. Legacy `Task` actions cannot
+- Canvas stack layout is cell-based. Wrapped text and clipped scroll offsets
+  are implemented; applications manage offsets rather than receiving a general
+  native scrolling system.
+- Managed `CancellableTask` effects are cancelled during lifecycle suspension and stale
+  generation callbacks are rejected after resume. Canvas `QuitApp` can stop
+  frame scheduling before teardown runs; see [capabilities](CAPABILITIES.md).
+  Legacy `Task` actions cannot
   be forcibly interrupted; use `CancellableTask` for long-running production IO.
 - Desktop SDL2 and embedded framebuffer modules are experimental skeletons and
   are not covered by this release checklist.
+
+See [the capability matrix](CAPABILITIES.md) for terminal differences and
+[the implemented architecture](ARCHITECTURE.md) for precisely scoped guarantees.
