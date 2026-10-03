@@ -37,11 +37,6 @@ type = "local"
 path = "platform"
 ipkg = "flux-protocol.ipkg"
 
-[custom.all.flux-runtime]
-type = "local"
-path = "packages/runtime"
-ipkg = "flux-runtime.ipkg"
-
 [custom.all.flux-test]
 type = "local"
 path = "test"

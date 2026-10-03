@@ -1,9 +1,10 @@
 """Canonical platform package identities, without old-name alias packages.
 
-postgres/postgres-async/db/docker are deliberately NOT in RENAMES: unlike the
-other imported packages, each was moved back out to its own external repo
-(see workspace.json's external_packages and design/CONSOLIDATION.md), so its
-current name there is the correct one - not a legacy alias to guard against.
+postgres/postgres-async/db/docker/flux-async are deliberately NOT in RENAMES:
+unlike the other imported packages, each was moved back out to its own
+external repo (see workspace.json's external_packages and
+design/CONSOLIDATION.md), so its current name there is the correct one - not
+a legacy alias to guard against.
 """
 from pathlib import Path
 import unittest
@@ -11,7 +12,6 @@ import workspace
 
 ROOT = Path(__file__).resolve().parents[1]
 RENAMES = {
-    'flux-async': ('flux-runtime', 'packages/runtime/flux-runtime.ipkg'),
     'flux-platform': ('flux-protocol', 'platform/flux-protocol.ipkg'),
     'flux-platform-client': ('flux-client', 'platform/flux-client.ipkg'),
 }
@@ -26,10 +26,10 @@ class PackageNamingTests(unittest.TestCase):
                 self.assertEqual(manifest['packages'][new], file)
                 self.assertRegex((ROOT / file).read_text(), rf'(?m)^package {new}$')
                 self.assertFalse((ROOT / file).with_name(old + '.ipkg').exists())
-        for old in ['idris2-docker', 'flux-docker']:
+        for old in ['idris2-docker', 'flux-docker', 'flux-runtime']:
             self.assertNotIn(old, manifest['packages'])
         self.assertIn('flux-client', manifest['browser_roots'])
-        for forbidden in ['flux-runtime', 'flux-protocol', 'postgres', 'postgres-async', 'db']:
+        for forbidden in ['flux-async', 'flux-protocol', 'postgres', 'postgres-async', 'db']:
             self.assertIn(forbidden, manifest['browser_forbidden'])
 
     def test_all_package_dependencies_use_current_names(self):

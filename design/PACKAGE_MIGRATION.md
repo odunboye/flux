@@ -31,6 +31,20 @@ out to [odunboye/docker](https://github.com/odunboye/docker) and renamed
 repo either way). Don't install or depend on `flux-docker`, it no longer
 exists.
 
+**The `flux-async`/`flux-runtime` row above was later reversed too.** The
+owned runtime moved back out to its own repo,
+[odunboye/idris2-flux-async](https://github.com/odunboye/idris2-flux-async),
+since it has no Flux-specific dependencies either, the same reasoning as
+`db`/`postgres`/`docker`. It kept the `flux-async` name there - that repo had
+already been published under that name so `postgres-async` (an external git
+dependency with no visibility into this workspace's local aliases) could
+resolve its own `flux-async` dependency; Flux itself now depends on the same
+external package instead of vendoring a second copy as `flux-runtime`. See
+`design/CONSOLIDATION.md`'s package map and `workspace.json`'s
+`external_packages` for the current state. Module namespaces
+(`Flux.Async.*`/`Flux.Stream.*`) are unchanged. Don't install or depend on
+`flux-runtime`, it no longer exists.
+
 Related transport/Docker test package and executable prefixes are renamed too.
 Directories are unchanged; the canonical map is still `workspace.json`, with
 `pack.toml` generated from it. These are workspace-local packages, not a claim
@@ -63,7 +77,7 @@ From the Flux root:
 
 ```sh
 python3 tools/workspace.py check
-pack --no-prompt install flux-runtime
+pack --no-prompt install flux-async
 pack --no-prompt install postgres
 pack --no-prompt install postgres-async
 pack --no-prompt install db
@@ -77,7 +91,7 @@ multiple pack builds/installations concurrently against the same workspace and
 cache. Independent source edits, unit checks and lint checks can run in parallel;
 shared manifest integration and compiler builds are serialized.
 
-The browser closure now uses `flux-client`; `flux-runtime`, `flux-protocol`,
+The browser closure now uses `flux-client`; `flux-async`, `flux-protocol`,
 `postgres`, `postgres-async`, and the DB/server packages remain forbidden
 in that closure. Current package names/dependencies are checked in root CI.
 
