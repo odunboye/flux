@@ -2,10 +2,10 @@ module Flux.Core.HTTP
 
 import public Data.SortedMap
 import public Flux.Core.Runtime
-import Flux.Async.Server as Server
-import Flux.Async.Runner
-import Flux.Async.Standalone
-import Flux.Async.Socket as Net
+import Async.Server as Server
+import Async.Runner
+import Async.Standalone
+import Async.Socket as Net
 import Data.List1
 import Data.Linear.Ref1
 import Data.String
@@ -30,7 +30,7 @@ export covering
 fluxAwaitSignals : List Signal -> Task [] ()
 fluxAwaitSignals sigs = do
   stopping <- liftIO shutdownRequested
-  unless stopping (Flux.Async.Core.sleep 50 >> fluxAwaitSignals sigs)
+  unless stopping (Async.Core.sleep 50 >> fluxAwaitSignals sigs)
 
 export
 defaultAsyncThreads : IO (Subset Nat IsSucc)
@@ -350,7 +350,7 @@ export
 splitAtChecked : Chunk c o => Has e es => Lazy e -> Nat -> Pull f c es r -> Pull f c es (Pull f c es r)
 splitAtChecked err 0 p = pure p
 splitAtChecked err k p =
-  assert_total $ Flux.Stream.Core.uncons p >>= \case
+  assert_total $ Stream.Core.uncons p >>= \case
     Left _       => throw err
     Right (vs,q) => case splitChunkAt k vs of
       Middle pre post => cons pre (pure $ cons post q)
@@ -665,7 +665,7 @@ serveWith f limits cli = do
   activity <- newref 0
   ignore $ race
     (mpull $ handleErrors (\(Here err) => the (Pull Task Void [] ()) (stderrLn "\{err}")) $
-      servePull f cli activity limits.maxBodySize (Flux.Stream.Socket.bytes cli 0xfff))
+      servePull f cli activity limits.maxBodySize (Stream.Socket.bytes cli 0xfff))
     (watchIdle activity limits.idleConnTimeout)
 
 covering
@@ -674,7 +674,7 @@ runServerAt :
   -> (0 p : IsSucc n) => ServerLimits -> Prog [Errno] Void
 runServerAt f octets port n limits = exec $ do
   Element owners _ <- liftIO defaultAsyncThreads
-  Flux.Async.Core.bracket
+  Async.Core.bracket
     (liftIO (Net.listen (showOctets octets) (cast port) 2048) >>= socketResult)
     (\listener => ignore (Net.close listener))
     (\listener => do

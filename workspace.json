@@ -8,7 +8,6 @@
     "flux-examples": "examples/examples.ipkg",
     "flux-use-cases": "examples/use-cases.ipkg",
     "flux-landing": "website/landing.ipkg",
-    "flux-runtime": "packages/runtime/flux-runtime.ipkg",
     "flux-db-flux": "packages/db-flux/flux-db-flux.ipkg",
     "flux-protocol": "platform/flux-protocol.ipkg",
     "flux-auth": "packages/auth/flux-auth.ipkg",
@@ -22,7 +21,6 @@
   },
   "tests": {"flux": "test/test.ipkg", "todo-api": "test/test.ipkg"},
   "imports": [
-    {"path": "packages/runtime", "source": "idris2-flux-async", "commit": "bfc3ff67c3d4dd85462ba7063d6d81ad7328ccf5"},
     {"path": "packages/db-flux", "source": "nebula-flux", "commit": "51f0c818f3a86c2fde4fb59e432b69b949d923e5"},
     {"path": "examples/todo-api", "source": "todo-api", "commit": "731fbd4f6942d7073c8fc91b10da53b752c8a002"}
   ],
@@ -30,22 +28,22 @@
   "external_packages": {
     "postgres": {
       "url": "https://github.com/odunboye/postgres.git",
-      "commit": "60f4c71a28c9a74d184749e41c9da7dcb7253b4e",
+      "commit": "adfccb0183199b55b80c18ac75021f9479298c23",
       "ipkg": "postgres.ipkg",
       "test": "test/test.ipkg",
       "note": "Formerly vendored here as packages/postgres/flux-postgres (then briefly external as idris2-pg, then idris2-postgres); moved back to its own repo so it isn't Flux-only. See design/CONSOLIDATION.md."
     },
     "postgres-async": {
       "url": "https://github.com/odunboye/postgres.git",
-      "commit": "60f4c71a28c9a74d184749e41c9da7dcb7253b4e",
+      "commit": "adfccb0183199b55b80c18ac75021f9479298c23",
       "ipkg": "async/postgres-async.ipkg",
-      "note": "Formerly packages/postgres/async/flux-postgres-pool; same repo/commit as postgres, different ipkg path. Depends on flux-async below (its own name for flux-runtime) - a git dependency can only resolve its own deps against other globally-known collection/git packages, not a project-local alias."
+      "note": "Formerly packages/postgres/async/flux-postgres-pool; same repo/commit as postgres, different ipkg path. Depends on runtime below - a git dependency can only resolve its own deps against other globally-known collection/git packages, not a project-local alias."
     },
-    "flux-async": {
-      "url": "https://github.com/odunboye/idris2-flux-async.git",
-      "commit": "bfc3ff67c3d4dd85462ba7063d6d81ad7328ccf5",
-      "ipkg": "flux-async.ipkg",
-      "note": "Published so postgres-async (an external git dependency) can resolve its own 'flux-async' dependency. Same content Flux vendors locally as flux-runtime (packages/runtime); kept as two names because postgres-async predates the flux-runtime rename and nothing outside Flux knows that name."
+    "runtime": {
+      "url": "https://github.com/odunboye/runtime.git",
+      "commit": "f2fe96d719f9bbda6b71456900ee0daea5495109",
+      "ipkg": "runtime.ipkg",
+      "note": "Formerly vendored here as packages/runtime/flux-runtime, then briefly external as idris2-flux-async/flux-async (so postgres-async, an external git dependency, could resolve its own flux-async dependency); renamed there to runtime/runtime.ipkg since it has no Flux-specific dependencies, dropping the Flux.Async.*/Flux.Stream.* module prefix to Async.*/Stream.* along with it, same reasoning as db/postgres/docker. postgres-async's own dependency was updated to match - see that repo."
     },
     "db": {
       "url": "https://github.com/odunboye/db.git",
@@ -69,5 +67,5 @@
     }
   },
   "browser_roots": ["flux-client", "platform-crud-ui"],
-  "browser_forbidden": ["flux", "flux-runtime", "flux-async", "db", "flux-db-flux", "postgres", "postgres-async", "flux-protocol", "flux-auth"]
+  "browser_forbidden": ["flux", "runtime", "db", "flux-db-flux", "postgres", "postgres-async", "flux-protocol", "flux-auth"]
 }

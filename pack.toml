@@ -37,11 +37,6 @@ type = "local"
 path = "platform"
 ipkg = "flux-protocol.ipkg"
 
-[custom.all.flux-runtime]
-type = "local"
-path = "packages/runtime"
-ipkg = "flux-runtime.ipkg"
-
 [custom.all.flux-test]
 type = "local"
 path = "test"
@@ -97,12 +92,6 @@ commit = "b268eb147135351d8dc7cd3e1a90143214469a9c"
 ipkg = "docker.ipkg"
 test = "test/test.ipkg"
 
-[custom.all.flux-async]
-type = "git"
-url = "https://github.com/odunboye/idris2-flux-async.git"
-commit = "bfc3ff67c3d4dd85462ba7063d6d81ad7328ccf5"
-ipkg = "flux-async.ipkg"
-
 [custom.all.iris]
 type = "git"
 url = "https://github.com/odunboye/iris.git"
@@ -112,12 +101,18 @@ ipkg = "iris.ipkg"
 [custom.all.postgres]
 type = "git"
 url = "https://github.com/odunboye/postgres.git"
-commit = "60f4c71a28c9a74d184749e41c9da7dcb7253b4e"
+commit = "adfccb0183199b55b80c18ac75021f9479298c23"
 ipkg = "postgres.ipkg"
 test = "test/test.ipkg"
 
 [custom.all.postgres-async]
 type = "git"
 url = "https://github.com/odunboye/postgres.git"
-commit = "60f4c71a28c9a74d184749e41c9da7dcb7253b4e"
+commit = "adfccb0183199b55b80c18ac75021f9479298c23"
 ipkg = "async/postgres-async.ipkg"
+
+[custom.all.runtime]
+type = "git"
+url = "https://github.com/odunboye/runtime.git"
+commit = "f2fe96d719f9bbda6b71456900ee0daea5495109"
+ipkg = "runtime.ipkg"

@@ -9,8 +9,8 @@ every public API, or establish production readiness.
 | Platform area / intended public name | Source | Current package ID |
 | --- | --- | --- |
 | flux-server | repository root `src/` | `flux` |
-| flux-runtime | `packages/runtime/` | `flux-runtime` |
 | db | external (pinned git dependency, not vendored) | `db` |
+| flux-runtime (owned runtime) | external (pinned git dependency, not vendored) | `runtime` |
 | postgres / postgres-async | external (pinned git dependency, not vendored) | `postgres`, `postgres-async` |
 | flux-ui (UI framework) | external (pinned git dependency, not vendored) | `iris` |
 | Server/database integration | `packages/db-flux/` | `flux-db-flux` |
@@ -29,21 +29,29 @@ Persistence is also renamed outright to `flux-db` / `flux-db-flux` and
 `Flux.DB.*`. Existing databases require the explicit
 [metadata cutover](https://github.com/odunboye/db/blob/main/MIGRATION.md); old
 history must not be replayed.
-The runtime, protocol/client and Docker packages also use the current names
-above, without old-name package aliases. See the
+The protocol/client and Docker packages also use the current names above,
+without old-name package aliases. See the
 [coordinated package migration](PACKAGE_MIGRATION.md). These are workspace-local
 packages, not additional published registry entries. PostgreSQL support
 (`postgres`/`postgres-async`), the active-record/query-builder layer (`db`,
-formerly `flux-db`), and the UI framework (`iris`, formerly vendored as
-`flux-ui`) are the exceptions: all three were later moved back out to their
-own repos - `postgres` first under its original `idris2-pg`/
-`idris2-pg-async` names and then renamed there to `postgres`/`postgres-async`;
-`db` straight to its current name, dropping the `Flux.DB.*` module prefix
-along with it, since `Flux.DB.PG`/`Flux.DB.Pool` (the one genuinely
-Flux-specific part) stayed behind as `flux-db-flux`; `iris` reclaiming its
-own pre-Flux name, dropping the `Flux.UI.*` module prefix (and the
-public-facing DOM/JS/native runtime identifiers baked into it) back to
-`Iris.*` - see the package map above and `workspace.json`'s
+formerly `flux-db`), the owned runtime (`runtime`, formerly vendored as
+`flux-runtime`, then briefly external as `idris2-flux-async`/`flux-async`),
+and the UI framework (`iris`, formerly vendored as `flux-ui`) are the
+exceptions: all four were later moved back out to their own repos -
+`postgres` first under its original `idris2-pg`/`idris2-pg-async` names and
+then renamed there to `postgres`/`postgres-async`; `db` straight to its
+current name, dropping the `Flux.DB.*` module prefix along with it, since
+`Flux.DB.PG`/`Flux.DB.Pool` (the one genuinely Flux-specific part) stayed
+behind as `flux-db-flux`; the runtime first to
+[odunboye/idris2-flux-async](https://github.com/odunboye/idris2-flux-async)
+under the `flux-async` name it already published there for `postgres-async`
+to resolve, then renamed there too, to
+[odunboye/runtime](https://github.com/odunboye/runtime) (package `runtime`),
+dropping the `Flux.Async.*`/`Flux.Stream.*` module prefix to `Async.*`/
+`Stream.*` along with it; `iris` reclaiming its own pre-Flux name, dropping
+the `Flux.UI.*` module prefix (and the public-facing DOM/JS/native runtime
+identifiers baked into it) back to `Iris.*` - see the package map above and
+`workspace.json`'s
 `external_packages` - so each is a pinned external dependency, not a
 workspace-local package. Server source stays at the root.
 
@@ -150,7 +158,7 @@ With prerequisites already installed, the portable test-only command is
 
 The Iris client uses Iris lifecycle/effects, not the Chez owned server runtime.
 `flux-client` depends on Iris/json-simple and generated shared wire
-types. UI/client packages must not transitively depend on `flux`, `flux-runtime`,
+types. UI/client packages must not transitively depend on `flux`, `runtime`,
 Flux DB, PostgreSQL, or the server endpoint package. The workspace check enforces
 this across local `.ipkg` dependency declarations. Version bounds are stripped
 before graph traversal, including multiline bounds and compact comparisons

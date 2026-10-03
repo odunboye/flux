@@ -18,8 +18,7 @@ layer moved back out to its own repo, [odunboye/db](https://github.com/odunboye/
 genuinely Flux-specific HTTP-framework glue (`Flux.DB.PG`/`Flux.DB.Pool`) stays
 here as `flux-db-flux`. Existing databases must follow the
 [Flux DB metadata cutover guide](https://github.com/odunboye/db/blob/main/MIGRATION.md).
-Runtime and protocol/client packages are now `flux-runtime`, `flux-protocol`
-and `flux-client`. See the
+Protocol/client packages are now `flux-protocol` and `flux-client`. See the
 [coordinated package migration](design/PACKAGE_MIGRATION.md); suitable module
 namespaces remain unchanged. The Docker dev-workflow helper moved back out to
 its own repo, [odunboye/docker](https://github.com/odunboye/docker) (package
@@ -28,10 +27,14 @@ dependencies either. PostgreSQL transport/pooling (`postgres`/
 `postgres-async`) is no longer vendored here - it moved back to its own
 repo, [odunboye/postgres](https://github.com/odunboye/postgres), so it
 isn't Flux-only; `pack.toml` pulls it as a pinned external dependency (see
-`workspace.json`'s `external_packages`). This is not a production-readiness
-declaration.
+`workspace.json`'s `external_packages`). The owned task/socket/stream runtime
+is likewise no longer vendored here - it moved back out to
+[odunboye/runtime](https://github.com/odunboye/runtime) (package `runtime`,
+`Flux.Async.*`/`Flux.Stream.*` modules renamed to `Async.*`/`Stream.*` along
+with the move), since it has no Flux-specific dependencies either; Flux
+depends on it as a pinned external dependency the same way `postgres-async`
+does. This is not a production-readiness declaration.
 
-- `packages/runtime/`: owned tasks, sockets, streams and supervision.
 - `packages/db-flux/`: Flux's HTTP-framework glue over the external `db` and `postgres` packages.
 - `platform/`: shared protocols, generated server/client code and typed CRUD examples.
 - `examples/todo-api/`: database-backed application example.
@@ -114,7 +117,8 @@ project selection, installer collision handling and database/artifact ownership.
 
 ## HTTP server reference
 
-The existing `flux` package remains an HTTP/1.1 framework using `flux-runtime`.
+The existing `flux` package remains an HTTP/1.1 framework using `runtime`
+(the externally hosted owned-task runtime).
 Request parsing, persistent connections, streaming responses, routing and
 middleware are implemented in Idris; a small native shim provides readiness
 and standalone shutdown supervision. The sections below document this server
@@ -527,7 +531,7 @@ exist, so every static request 404s. See "Install / build" above.
 
 ## Concurrency and ownership
 
-Flux now uses `flux-runtime`; its dependency graph no longer includes
+Flux now uses `runtime` (externally hosted); its dependency graph no longer includes
 `async`, `async-posix`, `streams`, or `streams-posix`. `FLUX_EVENT_LOOPS`
 selects the number of connection owner threads and defaults to 2. Accepted
 connections are assigned round robin. A connection's tasks and continuations
@@ -540,8 +544,9 @@ exclusive database leases. Sharing one raw `DB` across requests is unsafe.
 
 Handler signatures such as `Async Poll es a` remain compatibility aliases
 for the new `Task es a`; no old scheduler is involved. Low-level socket and
-supervisor APIs changed. Use `Flux.Async.Server.serve` for embedded servers
-and explicit stop tasks. See the [runtime guide](packages/runtime/README.md).
+supervisor APIs changed. Use `Async.Server.serve` for embedded servers
+and explicit stop tasks. See the
+[runtime guide](https://github.com/odunboye/runtime/blob/main/README.md).
 
 ## Graceful shutdown
 
@@ -660,7 +665,8 @@ python3 test/runtime_protocol_test.py
 ```
 
 Runtime/native suites and extended load/soak checks have separate commands in
-[the runtime guide](packages/runtime/README.md). They are not all part of root CI.
+[the runtime guide](https://github.com/odunboye/runtime/blob/main/README.md).
+They are not all part of root CI.
 Native mobile device certification, production operations, long-duration soak
 and workload-specific performance remain separate validation work.
 
@@ -736,7 +742,7 @@ whether this is production-ready for their use case:
   set to anything else falls back to `127.0.0.1` with a stderr warning.
 - **Current-runtime performance requires workload-specific measurement.** The
   old `idris2-async` fiber-pinning and connection-leak investigations do not
-  describe `flux-runtime`. The [recorded runtime verification](test/reports/runtime-completion/README.md)
+  describe `runtime`. The [recorded runtime verification](test/reports/runtime-completion/README.md)
   includes macOS arm64 and Linux amd64-under-emulation results with explicit
   limits: native Linux application performance was not established, and the
   prior two-hour HTTP soak was not repeated after the recorded crypto change.

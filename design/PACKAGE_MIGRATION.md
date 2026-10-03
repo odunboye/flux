@@ -43,6 +43,25 @@ or depend on `flux-ui`, it no longer exists; see
 [its own MIGRATION.md](https://github.com/odunboye/iris/blob/main/MIGRATION.md)
 for its own earlier breaking renames.
 
+**The `flux-async`/`flux-runtime` row above was later reversed too, then
+renamed again.** The owned runtime moved back out to its own repo, first
+published as [odunboye/idris2-flux-async](https://github.com/odunboye/idris2-flux-async)
+under the `flux-async` name - that repo had already been published under
+that name so `postgres-async` (an external git dependency with no visibility
+into this workspace's local aliases) could resolve its own `flux-async`
+dependency - since it has no Flux-specific dependencies either, the same
+reasoning as `db`/`postgres`/`docker`. It was then renamed there too, to
+[odunboye/runtime](https://github.com/odunboye/runtime) (package `runtime`),
+once it no longer needed a Flux-specific name to disambiguate from Flux's
+vendored copy (which was removed in the same move that published it
+externally); `postgres-async`'s own dependency was updated to match. Flux
+itself depends on the same external package instead of vendoring a second
+copy as `flux-runtime`. See `design/CONSOLIDATION.md`'s package map and
+`workspace.json`'s `external_packages` for the current state. Module
+namespaces changed along with this second rename: `Flux.Async.*`/
+`Flux.Stream.*` became `Async.*`/`Stream.*`. Don't install or depend on
+`flux-runtime` or `flux-async`, neither exists any more.
+
 Related transport/Docker test package and executable prefixes are renamed too.
 Directories are unchanged; the canonical map is still `workspace.json`, with
 `pack.toml` generated from it. These are workspace-local packages, not a claim
@@ -57,7 +76,9 @@ versions. No compatibility manifests remain for the old package names.
 
 Existing suitable **module namespaces stay unchanged**:
 
-- Runtime: `Flux.Async.*`, `Flux.IO.*`, and its other existing `Flux.*` modules.
+- Runtime: `Flux.Async.*`, `Flux.IO.*`, and its other existing `Flux.*` modules
+  at the time of this batch (later renamed `Async.*`/`Stream.*` when the
+  package moved out to its own repo - see the reversal note above).
 - Protocols/client: `Flux.Platform.*`, including `Flux.Platform.Client.*`.
 - PostgreSQL: `Idris2_pg`, `Data.PG*`, `Network.*` and `Crypto.*`.
 - Docker: `Docker`.
@@ -75,7 +96,7 @@ From the Flux root:
 
 ```sh
 python3 tools/workspace.py check
-pack --no-prompt install flux-runtime
+pack --no-prompt install runtime
 pack --no-prompt install postgres
 pack --no-prompt install postgres-async
 pack --no-prompt install db
@@ -89,7 +110,7 @@ multiple pack builds/installations concurrently against the same workspace and
 cache. Independent source edits, unit checks and lint checks can run in parallel;
 shared manifest integration and compiler builds are serialized.
 
-The browser closure now uses `flux-client`; `flux-runtime`, `flux-protocol`,
+The browser closure now uses `flux-client`; `runtime`, `flux-protocol`,
 `postgres`, `postgres-async`, and the DB/server packages remain forbidden
 in that closure. Current package names/dependencies are checked in root CI.
 
