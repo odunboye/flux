@@ -12,7 +12,7 @@ Run commands from the **repository root** unless stated otherwise.
 | A greeting/localization API | [Recipes/Greetings.idr](src/Recipes/Greetings.idr) | Routes, path/query parameters, JSON and validation |
 | A quote/calculation endpoint | [Recipes/Quotes.idr](src/Recipes/Quotes.idr) | Derived JSON codecs, bounded input, integer arithmetic, typed errors |
 | A small observable service | [Recipes/Main.idr](src/Recipes/Main.idr) | Composition, request IDs, security headers, timing, environment configuration and health routes |
-| A larger HTTP API/static site | [Existing HTTP demo](src/Main.idr), [landing app](../apps/landing/README.md) | CRUD verbs, static assets, middleware, cookies and a real Flux-served website |
+| A larger HTTP API/static site | [Existing HTTP demo](src/Main.idr), [landing app](../website/README.md) | CRUD verbs, static assets, middleware, cookies and a real Flux-served website |
 | A schema-first service with Idris clients | [Protocol example](../platform/example/schema.json) | Generated server adapters, clients, nullable/list models and OpenAPI |
 | A database-backed application | [Private Todo server](../platform/crud/Main.idr) | PostgreSQL pools, parameterized SQL, reviewed migrations, keyset pagination |
 | A private multi-user application | [Todo application guide](../platform/crud/README.md) | Durable accounts, revocable sessions and principal-derived row ownership |

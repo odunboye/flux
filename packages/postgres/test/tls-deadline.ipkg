@@ -1,5 +1,0 @@
-package flux-postgres-tls-deadline-test
-depends = flux-postgres
-sourcedir = "src"
-main = TLSDeadlineTests
-executable = flux-postgres-tls-deadline-test

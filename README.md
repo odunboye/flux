@@ -6,18 +6,22 @@ clients into one modular repository. The UI now uses the `flux-ui` package and
 `Flux.UI.*` modules. Persistence is now `flux-db` / `flux-db-flux` with
 `Flux.DB.*` modules. Both are breaking renames without compatibility aliases.
 Existing databases must follow the [Flux DB metadata cutover guide](packages/db/MIGRATION.md).
-Runtime, protocol/client, PostgreSQL/pooling and Docker packages are now
-`flux-runtime`, `flux-protocol`, `flux-client`, `flux-postgres`,
-`flux-postgres-pool` and `flux-docker`. See the
+Runtime, protocol/client and Docker packages are now `flux-runtime`,
+`flux-protocol`, `flux-client` and `flux-docker`. See the
 [coordinated package migration](design/PACKAGE_MIGRATION.md); suitable module
-namespaces remain unchanged. This is not a production-readiness declaration.
+namespaces remain unchanged. PostgreSQL transport/pooling (`postgres`/
+`postgres-async`) is no longer vendored here - it moved back to its own
+repo, [odunboye/postgres](https://github.com/odunboye/postgres), so it
+isn't Flux-only; `pack.toml` pulls it as a pinned external dependency (see
+`workspace.json`'s `external_packages`). This is not a production-readiness
+declaration.
 
 - `packages/runtime/`: owned tasks, sockets, streams and supervision.
 - `packages/ui/`: Flux UI widgets, application lifecycle and platform backends.
-- `packages/db/`, `packages/postgres/`, `packages/db-flux/`: persistence and PG integration.
+- `packages/db/`, `packages/db-flux/`: persistence and PG integration, built on the external `postgres`.
 - `platform/`: shared protocols, generated server/client code and typed CRUD examples.
-- `apps/todo-api/`: database-backed application example.
-- `apps/landing/`: Flux's landing page, served by Flux itself.
+- `examples/todo-api/`: database-backed application example.
+- `website/`: Flux's landing page, served by Flux itself.
 
 See the [workspace/package map](design/CONSOLIDATION.md) and
 [typed Flux UI client guide](platform/README.md). No sibling repositories or
@@ -34,11 +38,11 @@ python3 tools/workspace.py test
 ## Run the landing page
 
 ```sh
-pack --no-prompt build apps/landing/landing.ipkg
-(cd apps/landing && ./build/exec/flux-landing 8080 128)
+pack --no-prompt build website/landing.ipkg
+(cd website && ./build/exec/flux-landing 8080 128)
 ```
 
-Open **http://127.0.0.1:8080**. See the [site guide](apps/landing/README.md)
+Open **http://127.0.0.1:8080**. See the [site guide](website/README.md)
 for the design, server configuration and browser verification.
 
 ## Learn Flux by use case

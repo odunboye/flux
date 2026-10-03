@@ -10,11 +10,11 @@ code tabs, a mobile menu and clipboard feedback.
 From the repository root:
 
 ```sh
-pack --no-prompt build apps/landing/landing.ipkg
-(cd apps/landing && ./build/exec/flux-landing 8080 128)
+pack --no-prompt build website/landing.ipkg
+(cd website && ./build/exec/flux-landing 8080 128)
 ```
 
-Open **http://127.0.0.1:8080**. Run from `apps/landing` so the server can locate
+Open **http://127.0.0.1:8080**. Run from `website` so the server can locate
 `public/`. Ctrl-C stops it. No PostgreSQL, Docker or frontend build is required
 to serve this site. Edit HTML/CSS/JS and refresh; rebuild after Idris changes.
 
@@ -67,7 +67,7 @@ There are no API, authentication, form submission or database routes here.
 With Playwright/Chromium installed from `packages/ui/package-lock.json`:
 
 ```sh
-python3 apps/landing/test_site.py
+python3 website/test_site.py
 ```
 
 The test starts the actual native server and checks HTTP status/MIME/security,

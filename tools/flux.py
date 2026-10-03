@@ -107,6 +107,8 @@ def new_project(name):
         target.parent.resolve().relative_to(ROOT)
         if target.exists() or target.is_symlink():
             raise ValueError('Application already exists; nothing overwritten')
+        if name in manifest['packages']:
+            raise ValueError('Package name already registered')
         for suffix in ['server', 'ui']:
             if name + '-' + suffix in manifest['packages']:
                 raise ValueError('Package name already registered')

@@ -1,7 +1,7 @@
 # Flux application platform — Idris clients for Flux UI
 
 A **separate package** on top of Flux, not a replacement for Flux, Flux DB, or
-flux-postgres. The client target is **Idris 2 / Flux UI**, not Dart or Flutter.
+postgres. The client target is **Idris 2 / Flux UI**, not Dart or Flutter.
 This remains an experimental protocol/client integration milestone, not a
 complete application platform or a production-ready release.
 

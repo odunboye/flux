@@ -1,7 +1,7 @@
 # Reviewed private-task cutover (migration 3)
 
 This is a breaking cutover for the **Flux Todo starter**, not an automatic
-conversion of the legacy `apps/todo-api` or protocol smoke examples.
+conversion of the legacy `examples/todo-api` or protocol smoke examples.
 
 ## Frozen history and data policy
 

@@ -1,10 +1,10 @@
 package todo-api
 version = 0.1.0
 authors = "Odun Adeboye"
-brief   = "A small Todo CRUD API built on Flux and flux-postgres"
+brief   = "A small Todo CRUD API built on Flux and postgres"
 
 depends = flux
-        , flux-postgres
+        , postgres
         , flux-docker
         , flux-db
         , flux-db-flux

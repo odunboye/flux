@@ -2,12 +2,12 @@
 
 A small Todo CRUD API demonstrating [Flux](../..) (an
 Idris2 HTTP framework) wired up to a real Postgres database via
-[flux-postgres](../../packages/postgres) (a from-scratch, primitive Postgres
+[postgres](https://github.com/odunboye/postgres) (a from-scratch, primitive Postgres
 wire-protocol client, no `libpq`), through [flux-db](../../packages/db)
-(the derivable active-record layer built on top of flux-postgres - `Row`<->
+(the derivable active-record layer built on top of postgres - `Row`<->
 record mapping, generated CRUD, a typed query builder, and a generic
 repository pattern - see "Repository pattern" below) and
-[flux-db-flux](../../packages/db-flux) (the glue lifting flux-postgres's own
+[flux-db-flux](../../packages/db-flux) (the glue lifting postgres's own
 error type into Flux's `AppProg` - split into its own package so
 `flux-db` itself has no Flux dependency).
 
@@ -38,7 +38,7 @@ connections. There is no insecure verification override or plaintext fallback.
 Only `verify-full` and `disable` are accepted; unset mode retains the local-dev
 plaintext default. A CA file without verified TLS is a configuration error.
 Tests use separate `PG_TEST_SSLMODE`/`PG_TEST_SSLROOTCERT` variables, never app TLS
-configuration. See the [driver TLS guide](../../packages/postgres/README.md#tls)
+configuration. See the [driver TLS guide](https://github.com/odunboye/postgres#tls)
 for native dependencies, deadlines and trust provisioning. This does **not** add
 accounts, authorization or task ownership: endpoints remain public.
 
@@ -321,7 +321,7 @@ ids are deterministic (`SERIAL` always starts at 1 against a fresh
 table) regardless of what the app itself, or a previous test run, left
 behind. Connection details come from their own, separate env vars -
 `PG_TEST_HOST`/`PG_TEST_PORT`/`PG_TEST_USER`/`PG_TEST_PASSWORD`/
-`PG_TEST_DB` (`Config.loadTestConfig`), matching flux-postgres's and
+`PG_TEST_DB` (`Config.loadTestConfig`), matching postgres's and
 flux-db's own test suites' convention - deliberately **not**
 `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE` (what `Main` itself
 reads via `Config.loadConfig`). The default *database name* is also

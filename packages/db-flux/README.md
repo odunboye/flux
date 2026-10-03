@@ -4,7 +4,7 @@ Package: `flux-db-flux` 0.3. Modules: `Flux.DB.PG`, `Flux.DB.Pool`.
 This is a breaking rename with no old package or namespace aliases; see
 [the migration guide](../db/MIGRATION.md).
 
-Glue lifting [flux-db](../db)/[flux-postgres](../postgres)'s
+Glue lifting [flux-db](../db)/[postgres](https://github.com/odunboye/postgres)'s
 `IO (Either PGError a)` calls into [Flux](../..) (an
 Idris2 HTTP framework)'s `AppProg`/`Handler` pipeline. `Flux.DB.PG` is the module
 (`Flux.DB.PG`) that used to live in `flux-db` itself, split out into its
@@ -16,11 +16,11 @@ in Flux and its own dependency tree just to get them.
 
 An app using `flux-db`'s active-record/query-builder layer through Flux
 would otherwise hand-write, per project, the handful of lines that turn
-flux-postgres's own `IO (Either PGError a)` return shape into a Flux
+postgres's own `IO (Either PGError a)` return shape into a Flux
 handler's `AppProg a` - run it, `throw` a `500 AppError` on `Left`. None
 of that is app-specific - no schema, no routes, no handlers - so it
 belongs in a shared library instead of being re-derived per project.
-`todo-api` (`../../apps/todo-api`) is the first real
+`todo-api` (`../../examples/todo-api`) is the first real
 consumer; this library exists so the second one doesn't re-derive it.
 
 ## Usage
@@ -43,7 +43,7 @@ listUsers db ctx = do
   pure (sendJSON users ctx)
 ```
 
-- **`dbIO : IO (Either PGError a) -> AppProg a`** - lifts any flux-postgres
+- **`dbIO : IO (Either PGError a) -> AppProg a`** - lifts any postgres
   call into a Flux handler on the runtime's bounded blocking workers,
   throwing on `Left`. Queue rejection becomes a generic 503. Fully polymorphic, so it
   covers every `IO (Either PGError a)`-shaped call in `flux-db`,
@@ -56,7 +56,7 @@ listUsers db ctx = do
   stderr instead of handed to the client. Exported directly for a
   handler that needs to run something outside `dbIO` (e.g. a manual
   `Either` match) but still wants the same failure behavior.
-- **`query`/`command`** - thin `dbIO`-based wrappers over flux-postgres's
+- **`query`/`command`** - thin `dbIO`-based wrappers over postgres's
   `queryRows`/`execCommand`, for raw SQL that doesn't fit `flux-db`'s
   active-record layer's generic helpers (a join, custom aggregation, a
   non-replace mutation, DDL).
@@ -93,21 +93,21 @@ Do not retain or fork work using a callback's borrowed DB.
 The default pool has eight connections, 128 waiters, and a five-second
 acquisition timeout. `closePool` stops admission; active callbacks finish
 before their connections close. `poolClosed` observes completed reclamation.
-Transport timeouts discard connections. See [flux-postgres](../flux-postgres/README.md)
-for timeout limits and the separate `flux-postgres-pool` package.
+Transport timeouts discard connections. See [postgres](https://github.com/odunboye/postgres)
+for timeout limits and the separate `postgres-async` package.
 
 ## Error policy and scope
 
 - **Database errors become a flat `500` from `dbIO`/`dbFail`.** Every
   `PGError` - a connection failure, a protocol error, or a genuine SQL
   error - becomes the same 500. An app that wants to turn e.g. a
-  unique-constraint violation into a `400` can inspect flux-postgres's
+  unique-constraint violation into a `400` can inspect postgres's
   `SqlError`'s raw Postgres error fields (`Data.PGTypes` - `code`,
   `constraintName`, etc.) itself and throw a more specific `AppError`
   instead of going through `dbFail`/`dbIO`.
 - A full or closed blocking worker queue becomes a 503 before any database
   callback starts. Pool acquisition errors currently follow the PGError 500 policy.
-- **Postgres-only, via `flux-db`/flux-postgres.** If `flux-db` grows a second
+- **Postgres-only, via `flux-db`/postgres.** If `flux-db` grows a second
   backend (see its own README's "Backends" section), this package would
   need to grow alongside it, or split further - not designed for yet.
 
@@ -126,6 +126,6 @@ No dedicated test suite here - `flux-db`'s own tests never exercised this
 module either, before or after the split. `todo-api`'s test suite
 exercises every function here (`dbIO`/`query`/`command`/`decodeRows`/
 `decodeOne`/`requireId`) through its handlers instead; see
-`../../apps/todo-api/test/`. Its pooled suite runs the same
+`../../examples/todo-api/test/`. Its pooled suite runs the same
 behavioral contract and verifies transaction commit/rollback through
 `Flux.DB.Pool`; its live HTTP test exercises 24 concurrent clients.

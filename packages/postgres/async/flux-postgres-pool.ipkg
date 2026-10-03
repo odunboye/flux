@@ -1,5 +1,0 @@
-package flux-postgres-pool
-version = 0.1.0
-depends = flux-postgres, flux-runtime
-sourcedir = "src"
-modules = Data.PGPool

@@ -33,6 +33,15 @@ def pack_config(manifest):
         if name in manifest.get('tests', {}):
             lines += ['test = ' + json.dumps(manifest['tests'][name])]
         lines += ['']
+    # Pinned external dependencies: not vendored, so no workspace-relative
+    # path check applies. Fetched by pack itself at the pinned commit.
+    for name, dep in sorted(manifest.get('external_packages', {}).items()):
+        lines += [f'[custom.all.{name}]', 'type = "git"',
+                  'url = ' + json.dumps(dep['url']), 'commit = ' + json.dumps(dep['commit']),
+                  'ipkg = ' + json.dumps(dep['ipkg'])]
+        if 'test' in dep:
+            lines += ['test = ' + json.dumps(dep['test'])]
+        lines += ['']
     return '\n'.join(lines).rstrip() + '\n'
 
 
@@ -78,7 +87,7 @@ def check(manifest):
         invalid = seen.intersection(manifest['browser_forbidden'])
         if invalid:
             raise ValueError(f'browser dependency boundary violated: {start} -> {sorted(invalid)}')
-    for parent in ['packages', 'platform', 'apps']:
+    for parent in ['packages', 'platform', 'examples', 'website']:
         for path in (ROOT / parent).rglob('pack.toml'):
             if not any(p in {'build', 'node_modules', '.git'} for p in path.relative_to(ROOT).parts):
                 raise ValueError(f'nested package map shadows workspace: {path.relative_to(ROOT)}')
@@ -147,8 +156,8 @@ def test(manifest, without_db):
             run('generated-' + example, [sys.executable, 'platform/generate.py', f'platform/{example}/schema.json', '--out', f'platform/{example}', '--check'])
         build('examples/use-cases.ipkg')
         run('example-use-cases', [sys.executable, 'examples/test_use_cases.py'])
-        build('apps/landing/landing.ipkg')
-        run('landing-browser', [sys.executable, 'apps/landing/test_site.py'])
+        build('website/landing.ipkg')
+        run('landing-browser', [sys.executable, 'website/test_site.py'])
         build('test/test.ipkg')
         run('flux-regression', ['./test/build/exec/flux-test'])
         # Install native dependencies first; Flux UI's packaged demo is not JS.
@@ -161,14 +170,13 @@ def test(manifest, without_db):
         # pack's dependency freshness checks do not track native C changes.
         # Refresh the manifest timestamp (not contents) to force prebuild/install
         # even in a warm pack cache; plain `pack install` can otherwise be a no-op.
-        (ROOT / 'packages/postgres/flux-postgres.ipkg').touch()
-        run('install-postgres-native', ['pack', '--no-prompt', 'install', 'flux-postgres'])
+        # postgres is an external git dependency (see workspace.json); its own
+        # native/TLS verification is that repo's responsibility, not this gate's.
         (ROOT / 'packages/auth/flux-auth.ipkg').touch()
         run('install-auth-native', ['pack', '--no-prompt', 'install', 'flux-auth'])
         run('auth-native', ['bash', 'packages/auth/test/native.sh'])
         build('packages/auth/test/test.ipkg')
         build('packages/db/test/test.ipkg')
-        build('packages/postgres/test/tls-identity.ipkg')
         for file in ['platform/example/example.ipkg', 'platform/example/pg-example.ipkg',
                      'platform/example/migrations.ipkg', 'platform/crud/server.ipkg']:
             build(file)
@@ -181,7 +189,6 @@ def test(manifest, without_db):
             outcomes.append({'name': 'database-integration', 'skipped': True})
         else:
             run('durable-auth', [sys.executable, 'packages/auth/test/integration.py'])
-            run('postgres-tls-identity', [sys.executable, 'packages/postgres/test/tls_identity_test.py'])
             run('flux-ui-pg-migrations', [sys.executable, 'platform/test_pg_wire.py'])
             run('flux-ui-crud', [sys.executable, 'platform/test_crud.py'])
             run('flux-ui-app-cli', [sys.executable, 'platform/test_app.py'])

@@ -21,7 +21,7 @@ This supersedes the historical proposal in `RUNTIME_ABSTRACTION.md`.
   if cleanup stalls. Library APIs never force process exit.
 - Native PG transport deadlines, no abandoned query threads, and rejection of
   further operations on timed-out or protocol-damaged connections.
-- `idris2-pg-async` exclusive pool: defaults of eight connections, 128 waiters,
+- `postgres-async` exclusive pool: defaults of eight connections, 128 waiters,
   and a five-second acquisition deadline. Cold authentication is serialized
   while other borrowers remain eligible to reuse returned connections.
 - `Flux.DB.Pool` pooled repositories and a whole-transaction lease helper;

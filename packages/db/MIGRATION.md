@@ -2,7 +2,7 @@
 
 Nebula is now **Flux DB**. This is an implementation move, not a compatibility
 package or namespace facade. The subsequent coordinated package rename calls
-the transport `flux-postgres`; its `Idris2_pg` module remains unchanged. See
+the transport `postgres`; its `Idris2_pg` module remains unchanged. See
 [the package migration](../../design/PACKAGE_MIGRATION.md).
 
 | Before | Now |

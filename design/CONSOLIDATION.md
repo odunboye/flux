@@ -12,11 +12,11 @@ every public API, or establish production readiness.
 | flux-runtime | `packages/runtime/` | `flux-runtime` |
 | flux-ui | `packages/ui/` | `flux-ui` |
 | flux-db | `packages/db/` | `flux-db` |
-| flux-postgres / flux-postgres-pool | `packages/postgres/`, including `async/` | `flux-postgres`, `flux-postgres-pool` |
+| postgres / postgres-async | external (pinned git dependency, not vendored) | `postgres`, `postgres-async` |
 | Server/database integration | `packages/db-flux/` | `flux-db-flux` |
 | flux-client | `platform/client/` | `flux-client` |
 | flux-protocol | `platform/` | `flux-protocol` |
-| Example application | `apps/todo-api/` | `todo-api` |
+| Example application | `examples/todo-api/` | `todo-api` |
 | Local container helper | `packages/docker/` | `flux-docker` |
 | Application CLI | repository-local `./flux` | no published package yet |
 
@@ -25,10 +25,16 @@ legacy package or namespace shim. See the [breaking migration guide](../packages
 Persistence is also renamed outright to `flux-db` / `flux-db-flux` and
 `Flux.DB.*`. Existing databases require the explicit
 [metadata cutover](../packages/db/MIGRATION.md); old history must not be replayed.
-The runtime, protocol/client, PostgreSQL/pool and Docker packages also use
-the current names above, without old-name package aliases. See the
+The runtime, protocol/client and Docker packages also use the current names
+above, without old-name package aliases. See the
 [coordinated package migration](PACKAGE_MIGRATION.md). These are workspace-local
-packages, not additional published registry entries. Server source stays at the root.
+packages, not additional published registry entries. PostgreSQL support
+(`postgres`/`postgres-async`) is the one exception: it was later moved back
+out to its own repo (odunboye/postgres), first under its original
+`idris2-pg`/`idris2-pg-async` names and then renamed there to `postgres`/
+`postgres-async` - see the package map above and `workspace.json`'s
+`external_packages` - so it's a pinned external dependency, not a
+workspace-local package. Server source stays at the root.
 
 `workspace.json` is the canonical map. `pack.toml` is generated from it; nested
 package configs were removed to prevent stale sibling/absolute paths from

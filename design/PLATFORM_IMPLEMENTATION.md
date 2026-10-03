@@ -13,7 +13,7 @@ current package IDs and the combined verification command. Flux UI now uses
 ## Boundaries
 
 - Flux: transport, request lifecycle, routing, middleware, supervision.
-- flux-postgres: PostgreSQL protocol, connection safety, transport security, pool.
+- postgres: PostgreSQL protocol, connection safety, transport security, pool.
 - Flux DB: persistence models, queries, repositories, migrations.
 - Platform package: protocol contracts, typed adapters, generated clients,
   configuration, CLI and integration. Initially incubated in `platform/` as
@@ -130,7 +130,7 @@ Durable accounts, revocable sessions and protected endpoint enforcement are now
 implemented separately in `flux-auth`. The starter now has owner-scoped SQL,
 a reviewed anonymous-data archive migration and session-generation-safe login UI.
 Native RPC uses in-process verified libcurl. Production deployment remains pending;
-legacy `apps/todo-api` and protocol smoke fixtures remain public test examples.
+legacy `examples/todo-api` and protocol smoke fixtures remain public test examples.
 Hosted Linux CI confirmation remains separate from local macOS/Linux-container evidence.
 
 Never auto-apply destructive migration changes. Migration commands must target

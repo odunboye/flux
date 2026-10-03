@@ -45,24 +45,8 @@ ipkg = "examples.ipkg"
 
 [custom.all.flux-landing]
 type = "local"
-path = "apps/landing"
+path = "website"
 ipkg = "landing.ipkg"
-
-[custom.all.flux-postgres]
-type = "local"
-path = "packages/postgres"
-ipkg = "flux-postgres.ipkg"
-test = "test/test.ipkg"
-
-[custom.all.flux-postgres-pool]
-type = "local"
-path = "packages/postgres/async"
-ipkg = "flux-postgres-pool.ipkg"
-
-[custom.all.flux-postgres-test]
-type = "local"
-path = "packages/postgres/test"
-ipkg = "test.ipkg"
 
 [custom.all.flux-protocol]
 type = "local"
@@ -106,21 +90,40 @@ ipkg = "ui.ipkg"
 
 [custom.all.todo-api]
 type = "local"
-path = "apps/todo-api"
+path = "examples/todo-api"
 ipkg = "todo-api.ipkg"
 test = "test/test.ipkg"
 
 [custom.all.todo-api-inmemory-test]
 type = "local"
-path = "apps/todo-api/test"
+path = "examples/todo-api/test"
 ipkg = "inmemory-test.ipkg"
 
 [custom.all.todo-api-pooled-test]
 type = "local"
-path = "apps/todo-api/test"
+path = "examples/todo-api/test"
 ipkg = "pooled-test.ipkg"
 
 [custom.all.todo-api-test]
 type = "local"
-path = "apps/todo-api/test"
+path = "examples/todo-api/test"
 ipkg = "test.ipkg"
+
+[custom.all.flux-async]
+type = "git"
+url = "https://github.com/odunboye/idris2-flux-async.git"
+commit = "bfc3ff67c3d4dd85462ba7063d6d81ad7328ccf5"
+ipkg = "flux-async.ipkg"
+
+[custom.all.postgres]
+type = "git"
+url = "https://github.com/odunboye/postgres.git"
+commit = "60f4c71a28c9a74d184749e41c9da7dcb7253b4e"
+ipkg = "postgres.ipkg"
+test = "test/test.ipkg"
+
+[custom.all.postgres-async]
+type = "git"
+url = "https://github.com/odunboye/postgres.git"
+commit = "60f4c71a28c9a74d184749e41c9da7dcb7253b4e"
+ipkg = "async/postgres-async.ipkg"

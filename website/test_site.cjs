@@ -1,12 +1,12 @@
 const {
   chromium,
   expect,
-} = require("../../packages/ui/node_modules/@playwright/test");
+} = require("../packages/ui/node_modules/@playwright/test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const base = process.argv[2];
-const output = path.resolve(__dirname, "../../.workspace/landing");
+const output = path.resolve(__dirname, "../.workspace/landing");
 
 (async () => {
   fs.mkdirSync(output, { recursive: true });

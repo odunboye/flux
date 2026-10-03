@@ -12,6 +12,18 @@ The main server remains `flux`; Flux UI and Flux DB keep their current names.
 | `idris2-pg-async` | `flux-postgres-pool` | `packages/postgres/async/flux-postgres-pool.ipkg` |
 | `idris2-docker` | `flux-docker` | `packages/docker/flux-docker.ipkg` |
 
+**The `idris2-pg`/`idris2-pg-async` row above was later reversed, then renamed
+again.** PostgreSQL support moved back out to its own repo
+([odunboye/postgres](https://github.com/odunboye/postgres)) so
+it isn't Flux-only, first under its original name (`idris2-pg`), then renamed
+there to `postgres` (`idris2-pg-async` to `postgres-async`) once it was its
+own repo and no longer needed the `idris2-` prefix to disambiguate from
+Flux's vendored copy. See `design/CONSOLIDATION.md`'s package map and
+`workspace.json`'s `external_packages` for the current state. This row is
+kept here as the historical record of this batch's rename, not current
+guidance - don't install or depend on `flux-postgres`/`flux-postgres-pool`,
+they no longer exist.
+
 Related transport/Docker test package and executable prefixes are renamed too.
 Directories are unchanged; the canonical map is still `workspace.json`, with
 `pack.toml` generated from it. These are workspace-local packages, not a claim
@@ -45,8 +57,8 @@ From the Flux root:
 ```sh
 python3 tools/workspace.py check
 pack --no-prompt install flux-runtime
-pack --no-prompt install flux-postgres
-pack --no-prompt install flux-postgres-pool
+pack --no-prompt install postgres
+pack --no-prompt install postgres-async
 pack --no-prompt install flux-docker
 ./flux build
 python3 tools/workspace.py test
@@ -58,7 +70,7 @@ cache. Independent source edits, unit checks and lint checks can run in parallel
 shared manifest integration and compiler builds are serialized.
 
 The browser closure now uses `flux-client`; `flux-runtime`, `flux-protocol`,
-`flux-postgres`, `flux-postgres-pool`, and the DB/server packages remain forbidden
+`postgres`, `postgres-async`, and the DB/server packages remain forbidden
 in that closure. Current package names/dependencies are checked in root CI.
 
 Original subtree source names, source commits, historical reports and prior

@@ -2,11 +2,11 @@ package flux-db
 version = 0.3.0
 authors = "Odun Adeboye"
 license = "MIT"
-brief   = "A derivable active-record/query-builder layer for flux-postgres (Row<->record mapping, derived CRUD, a typed query builder) - flux-postgres itself stays a primitive wire-protocol client only"
+brief   = "A derivable active-record/query-builder layer for postgres (Row<->record mapping, derived CRUD, a typed query builder) - postgres itself stays a primitive wire-protocol client only"
 readme  = "README.md"
 
 -- packages to add to search path
-depends = flux-postgres
+depends = postgres
         , elab-util
         , json-simple
 

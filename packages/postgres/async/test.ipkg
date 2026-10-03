@@ -1,5 +1,0 @@
-package flux-postgres-pool-test
-depends = flux-postgres, flux-postgres-pool, flux-runtime
-sourcedir = "src"
-main = PoolTests
-executable = flux-postgres-pool-test
