@@ -2,8 +2,8 @@ module Models
 
 
 import Data.PGValue
-import Flux.DB.Derive.ActiveRecord
-import Flux.DB.ObjectFromJSON
+import DB.Derive.ActiveRecord
+import DB.ObjectFromJSON
 
 import JSON.Simple.Derive
 
@@ -74,6 +74,6 @@ TodoTable = customTable Export (Just "todos") Nothing [("done", "false")]
 -- `deriveColumns` auto-generates `TodoColumns`/`MkTodoColumns`/
 -- `todoColumns` (fields `id`/`title`/`done`, each `Column Todo _`) - the
 -- typed column references `Handlers.TypedQuery`'s handlers build
--- `Flux.DB.Query` conditions/orderings from (`todoColumns.id ==. tid`,
+-- `DB.Query` conditions/orderings from (`todoColumns.id ==. tid`,
 -- `orderByAsc todoColumns.id`).
 %runElab deriveColumns "Todo"

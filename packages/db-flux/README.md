@@ -2,19 +2,19 @@
 
 Package: `flux-db-flux` 0.3. Modules: `Flux.DB.PG`, `Flux.DB.Pool`.
 This is a breaking rename with no old package or namespace aliases; see
-[the migration guide](../db/MIGRATION.md).
+[the migration guide](https://github.com/odunboye/db/blob/main/MIGRATION.md).
 
-Glue lifting [flux-db](../db)/[postgres](https://github.com/odunboye/postgres)'s
+Glue lifting [db](https://github.com/odunboye/db)/[postgres](https://github.com/odunboye/postgres)'s
 `IO (Either PGError a)` calls into [Flux](../..) (an
 Idris2 HTTP framework)'s `AppProg`/`Handler` pipeline. `Flux.DB.PG` is the module
-(`Flux.DB.PG`) that used to live in `flux-db` itself, split out into its
-own package so a consumer that only wants `flux-db`'s active-record layer
+(`Flux.DB.PG`) that used to live in `db` itself, split out into its
+own package so a consumer that only wants `db`'s active-record layer
 or typed query builder (no HTTP framework at all) doesn't have to pull
 in Flux and its own dependency tree just to get them.
 
 ## Why this exists
 
-An app using `flux-db`'s active-record/query-builder layer through Flux
+An app using `db`'s active-record/query-builder layer through Flux
 would otherwise hand-write, per project, the handful of lines that turn
 postgres's own `IO (Either PGError a)` return shape into a Flux
 handler's `AppProg a` - run it, `throw` a `500 AppError` on `Left`. None
@@ -46,8 +46,8 @@ listUsers db ctx = do
 - **`dbIO : IO (Either PGError a) -> AppProg a`** - lifts any postgres
   call into a Flux handler on the runtime's bounded blocking workers,
   throwing on `Left`. Queue rejection becomes a generic 503. Fully polymorphic, so it
-  covers every `IO (Either PGError a)`-shaped call in `flux-db`,
-  including `Flux.DB.Crud`'s CRUD helpers and `Flux.DB.Query`'s
+  covers every `IO (Either PGError a)`-shaped call in `db`,
+  including `DB.Crud`'s CRUD helpers and `DB.Query`'s
   `selectQuery`, with zero extra glue needed.
 - **`dbFail : PGError -> AppProg a`** - what `dbIO` throws on failure: a
   plain `500` with a generic, stable public message (`"internal server
@@ -57,12 +57,12 @@ listUsers db ctx = do
   handler that needs to run something outside `dbIO` (e.g. a manual
   `Either` match) but still wants the same failure behavior.
 - **`query`/`command`** - thin `dbIO`-based wrappers over postgres's
-  `queryRows`/`execCommand`, for raw SQL that doesn't fit `flux-db`'s
+  `queryRows`/`execCommand`, for raw SQL that doesn't fit `db`'s
   active-record layer's generic helpers (a join, custom aggregation, a
   non-replace mutation, DDL).
 - **`decodeRows`/`decodeOne : FromRow a => List Row -> AppProg (List a)`
   / `AppProg (Maybe a)`** - decode a `query`/raw-SQL result the same way
-  `flux-db`'s own generic helpers do, throwing a `500` if a row fails to
+  `db`'s own generic helpers do, throwing a `500` if a row fails to
   decode (a schema/type mismatch, not a client mistake) rather than a
   `400`. `decodeOne` treats `[]` as `Nothing`, not an error - for a
   query expected to return at most one row (an `UPDATE ... RETURNING`,
@@ -72,7 +72,7 @@ listUsers db ctx = do
   "id"`) - reads and parses a positive-integer path param, failing with
   `400` if it's missing, not a plain non-negative integer, or exceeds
   what a Postgres `BIGINT`/`BIGSERIAL` column can hold. `requireId`
-  matches `flux-db`'s `Table`'s own default primary-key-column-name
+  matches `db`'s `Table`'s own default primary-key-column-name
   convention and Flux's own `:id` path-segment routing convention.
 
 ## Pooled repositories
@@ -107,7 +107,7 @@ for timeout limits and the separate `postgres-async` package.
   instead of going through `dbFail`/`dbIO`.
 - A full or closed blocking worker queue becomes a 503 before any database
   callback starts. Pool acquisition errors currently follow the PGError 500 policy.
-- **Postgres-only, via `flux-db`/postgres.** If `flux-db` grows a second
+- **Postgres-only, via `db`/postgres.** If `db` grows a second
   backend (see its own README's "Backends" section), this package would
   need to grow alongside it, or split further - not designed for yet.
 
@@ -122,7 +122,7 @@ pack --no-prompt build packages/db-flux/flux-db-flux.ipkg
 
 ## Tests
 
-No dedicated test suite here - `flux-db`'s own tests never exercised this
+No dedicated test suite here - `db`'s own tests never exercised this
 module either, before or after the split. `todo-api`'s test suite
 exercises every function here (`dbIO`/`query`/`command`/`decodeRows`/
 `decodeOne`/`requireId`) through its handlers instead; see

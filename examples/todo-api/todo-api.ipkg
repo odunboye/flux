@@ -5,8 +5,8 @@ brief   = "A small Todo CRUD API built on Flux and postgres"
 
 depends = flux
         , postgres
-        , flux-docker
-        , flux-db
+        , docker
+        , db
         , flux-db-flux
         , json-simple
 

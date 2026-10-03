@@ -1,5 +1,5 @@
 ||| `listTodos`/`getTodo` reimplemented via flux-db's typed query builder
-||| (`Flux.DB.Query`'s `Column`/`Condition`/`Query`/`selectQuery`,
+||| (`DB.Query`'s `Column`/`Condition`/`Query`/`selectQuery`,
 ||| `Models`'s derived `todoColumns`) instead of `Handlers.ActiveRecord`'s
 ||| hand-written-SQL/`findById` versions - a side-by-side comparison of
 ||| flux-db's two query layers on the same two operations, kept separate
@@ -8,7 +8,7 @@
 ||| `test/src/Main.idr`'s `queryApp`.
 |||
 ||| Only these two exist here, not all six `Handlers.ActiveRecord`
-||| handlers - `Flux.DB.Query` is deliberately `SELECT`-only (see its own
+||| handlers - `DB.Query` is deliberately `SELECT`-only (see its own
 ||| doc comment/flux-db's README: no bulk `updateWhere`/`deleteWhere` by
 ||| condition, not built yet), so `createTodo`/`updateTodo`/`toggleTodo`/
 ||| `deleteTodo` (all mutations) have no typed-query-builder equivalent
@@ -21,10 +21,10 @@ import public Flux.Core.HTTP
 import Flux.Middleware.JSON
 import public Idris2_pg
 import public Data.PGTypes
-import Flux.DB.Field
-import Flux.DB.Row
-import public Flux.DB.Table
-import Flux.DB.Query
+import DB.Field
+import DB.Row
+import public DB.Table
+import DB.Query
 import Flux.DB.PG
 import Models
 

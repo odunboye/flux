@@ -23,7 +23,7 @@ import public Flux.Core.Middleware
 import Flux.Middleware.JSON
 import public Idris2_pg
 import public Data.PGTypes
-import public Flux.DB.Table
+import public DB.Table
 import public Models
 import public TodoRepository
 import public Handlers.ActiveRecord

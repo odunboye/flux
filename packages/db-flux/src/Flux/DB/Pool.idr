@@ -1,12 +1,12 @@
 module Flux.DB.Pool
 
 import public Data.PGPool
-import Flux.DB.Query
-import Flux.DB.Repository
-import Flux.DB.Crud
-import Flux.DB.Field
-import Flux.DB.Row
-import Flux.DB.Table
+import DB.Query
+import DB.Repository
+import DB.Crud
+import DB.Field
+import DB.Row
+import DB.Table
 import Idris2_pg
 
 %default covering

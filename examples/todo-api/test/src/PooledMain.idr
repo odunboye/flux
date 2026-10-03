@@ -7,7 +7,7 @@ import TodoRepository
 import Models
 import Config
 import Flux.DB.Pool
-import Flux.DB.Repository
+import DB.Repository
 import Data.PGValue
 import Data.IORef
 import System

@@ -3,13 +3,13 @@
 A small Todo CRUD API demonstrating [Flux](../..) (an
 Idris2 HTTP framework) wired up to a real Postgres database via
 [postgres](https://github.com/odunboye/postgres) (a from-scratch, primitive Postgres
-wire-protocol client, no `libpq`), through [flux-db](../../packages/db)
+wire-protocol client, no `libpq`), through [db](https://github.com/odunboye/db)
 (the derivable active-record layer built on top of postgres - `Row`<->
 record mapping, generated CRUD, a typed query builder, and a generic
 repository pattern - see "Repository pattern" below) and
 [flux-db-flux](../../packages/db-flux) (the glue lifting postgres's own
 error type into Flux's `AppProg` - split into its own package so
-`flux-db` itself has no Flux dependency).
+`db` itself has no Flux dependency).
 
 ## Run it
 
@@ -46,7 +46,7 @@ accounts, authorization or task ownership: endpoints remain public.
 
 `src/DevPostgres.idr`'s `ensureLocalPostgres` (used by both the app and
 its test suite, in place of a plain `connectDB`) wraps
-[flux-docker](../../packages/docker), a general-purpose
+[docker](https://github.com/odunboye/docker), a general-purpose
 container-management library, with Postgres-specific glue: on startup, if
 `PGHOST` is local (`127.0.0.1`/`localhost`) and `docker` is installed and
 reachable, it creates the `todo-api-pg` container if it doesn't exist yet,
@@ -112,7 +112,7 @@ curl -X DELETE localhost:8080/todos/1
 
 ## Row<->record mapping and CRUD
 
-`TodoApi.idr`'s `Todo` record uses [flux-db](../../packages/db)'s
+`TodoApi.idr`'s `Todo` record uses [db](https://github.com/odunboye/db)'s
 derivable "active-record" layer rather than hand-written `Row`
 decoding/SQL:
 
@@ -126,7 +126,7 @@ TodoTable = customTable Export (Just "todos") Nothing [("done", "false")]
 `FromRow`/`ToRow` generate `Row<->Todo` mapping per field (replacing what
 used to be a hand-written `rowToTodo`); `TodoTable` generates the table
 metadata and fixed SQL text `getTodo`/`createTodo`/`updateTodo`/
-`deleteTodo` now run through `Flux.DB.Crud`'s generic `findById`/`insert`/
+`deleteTodo` now run through `DB.Crud`'s generic `findById`/`insert`/
 `update`/`deleteById`, instead of each handler building its own SQL
 string. The `Just "todos"` override is required, not optional - the real
 Postgres table is `todos` (plural) while the Idris type is `Todo`
@@ -136,7 +136,7 @@ name) doesn't guess plurals.
 `TodoTable` also generates `createTableSql` - `Main.idr`/
 `test/src/Main.idr` both call `execCommand db (createTableSql {a = Todo})
 []` instead of running a hand-written `CREATE TABLE IF NOT EXISTS`
-string. `[("done", "false")]` is flux-db's take on
+string. `[("done", "false")]` is db's take on
 [Drift](https://github.com/simolus3/drift)'s `withDefault()` - a real
 `DEFAULT false` on `done` at the DB level (confirmed with `\d todos`:
 `done | boolean | not null | false`). It isn't load-bearing for
@@ -148,9 +148,9 @@ schema this table already had, and to prove the override is real.
 
 `insert` needs a value for `id` even though Postgres generates the real
 one (now `BIGSERIAL`, chosen by `createTableSql` to match `Integer`'s
-own pairing elsewhere in flux-db - previously a hand-written `SERIAL`),
+own pairing elsewhere in db - previously a hand-written `SERIAL`),
 so it takes a second, pk-less record instead of `Todo` itself.
-`flux-db`'s `deriveInsertable` generates that record - and its
+`db`'s `deriveInsertable` generates that record - and its
 `ToRow` instance, and the link back to `Todo` - in one line, so
 `TodoApi.idr` never hand-writes it:
 
@@ -169,7 +169,7 @@ against a raw `DB` any more, though - see "Repository pattern" below for
 what they actually go through, and why.
 
 `TodoUpdate` (the PUT body's shape) is generated the same way, via
-`flux-db`'s more general `deriveSubset` - the include-list version of
+`db`'s more general `deriveSubset` - the include-list version of
 what `deriveInsertable` does:
 
 ```idris
@@ -200,8 +200,8 @@ its derive's own source: a plain, untagged single-constructor record
 always takes this path for its one-and-only field, with no `Options`
 flag able to turn it off without also switching to sum-type-shaped
 tagging (`{"tag":...,"contents":...}`), which isn't the wire format we
-want either. `ObjectFromJSON` (now [flux-db](../../packages/db)'s, not
-local to this project - see flux-db's own README) is a from-scratch
+want either. `ObjectFromJSON` (now [db](https://github.com/odunboye/db)'s, not
+local to this project - see db's own README) is a from-scratch
 `FromJSON` derivation - pure JSON, no DB coupling - that always decodes
 as a plain object regardless of field count, built the same way (and
 composable the same way, as one more item in `deriveSubset`'s `derives`
@@ -219,17 +219,17 @@ manually purely to route around the same quirk.
 public export
 record TodoRepository where
   constructor MkTodoRepository
-  crud   : Repository Integer Todo NewTodo  -- flux-db's Flux.DB.Repository
+  crud   : Repository Integer Todo NewTodo  -- db's DB.Repository
   toggle : Integer -> IO (Either PGError (Maybe Todo))
 ```
 
-`crud` is [flux-db](../../packages/db)'s generic `Flux.DB.Repository`
+`crud` is [db](https://github.com/odunboye/db)'s generic `DB.Repository`
 (`findById`/`insert`/`update`/`deleteById`/`query`) - free once `Todo`
 has the `Table`/`FromRow`/`ToRow`/`Insertable NewTodo Todo` instances
 already derived above. `toggle` is this app's own domain-specific
-extension - a partial update (`SET done = NOT done`) flux-db's generic
-CRUD has no primitive for - hand-written SQL decoded via flux-db's
-exported `Flux.DB.Crud.decodeFirst`, the same "single optional row"
+extension - a partial update (`SET done = NOT done`) db's generic
+CRUD has no primitive for - hand-written SQL decoded via db's
+exported `DB.Crud.decodeFirst`, the same "single optional row"
 helper `findById`/`update` use internally, reused instead of duplicated.
 A handler looks like:
 
@@ -255,12 +255,12 @@ InMemoryRepository.idr` provides a second one - `IORef`-backed, zero
 Postgres connection - and both implementations are exercised through the
 exact same `RepositoryBehavior.repositoryBehaviorChecks` (see "Tests"
 below): the actual proof the pattern buys something (substitutability),
-not just a restructuring. See flux-db's own README for
-`Flux.DB.Repository`'s design (why it's a record of functions, not an
+not just a restructuring. See db's own README for
+`DB.Repository`'s design (why it's a record of functions, not an
 interface; why the primary key `pk` is generic, not hardcoded; the
 `withTransactionRepos` combinator for atomic multi-repository writes -
 `Todo` is a single-table model with no natural use for it yet, so it's
-only exercised in flux-db's own test suite, not here).
+only exercised in db's own test suite, not here).
 
 `Handlers/TypedQuery.idr` is deliberately **not** migrated to
 `TodoRepository` - it still takes a raw `DB` directly. It's already
@@ -271,19 +271,19 @@ needs to prove - a reasonable later cleanup, not done here.
 ## Two ways to query: active record vs. typed query builder
 
 `src/Handlers/` has two implementations of `listTodos`/`getTodo`, in
-separate files, demonstrating flux-db's two query layers side by side on
+separate files, demonstrating db's two query layers side by side on
 the same two operations:
 
 - **`Handlers/ActiveRecord.idr`** - the live version, wired into
-  `TodoApi.appRouter`. `getTodo` uses `Flux.DB.Crud`'s `findById`;
+  `TodoApi.appRouter`. `getTodo` uses `DB.Crud`'s `findById`;
   `listTodos` falls back to hand-written SQL decoded through the
-  derived `FromRow` instance, since `Flux.DB.Crud` has no generic "list
+  derived `FromRow` instance, since `DB.Crud` has no generic "list
   all" primitive (only by-pk `insert`/`findById`/`update`/`deleteById`).
   This file also has the other four handlers (`createTodo`/`updateTodo`/
   `toggleTodo`/`deleteTodo`) - see below for why they don't get a second
   version.
 - **`Handlers/TypedQuery.idr`** - `listTodos`/`getTodo` reimplemented via
-  flux-db's typed query builder instead (`Flux.DB.Query`'s `selectQuery`,
+  db's typed query builder instead (`DB.Query`'s `selectQuery`,
   `Models`'s derived `todoColumns`):
   ```idris
   listTodos db ctx = do
@@ -296,9 +296,9 @@ the same two operations:
   responses against the same live data, including after mutations made
   through the active-record routes.
 
-Only `listTodos`/`getTodo` get two versions. `Flux.DB.Query` is
+Only `listTodos`/`getTodo` get two versions. `DB.Query` is
 deliberately `SELECT`-only (no bulk `updateWhere`/`deleteWhere` by
-condition - see flux-db's own README) - `createTodo`/`updateTodo`/
+condition - see db's own README) - `createTodo`/`updateTodo`/
 `toggleTodo`/`deleteTodo` are mutations with no typed-query-builder
 equivalent to write, not an oversight.
 
@@ -322,7 +322,7 @@ table) regardless of what the app itself, or a previous test run, left
 behind. Connection details come from their own, separate env vars -
 `PG_TEST_HOST`/`PG_TEST_PORT`/`PG_TEST_USER`/`PG_TEST_PASSWORD`/
 `PG_TEST_DB` (`Config.loadTestConfig`), matching postgres's and
-flux-db's own test suites' convention - deliberately **not**
+db's own test suites' convention - deliberately **not**
 `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE` (what `Main` itself
 reads via `Config.loadConfig`). The default *database name* is also
 deliberately different (`todo_api_test` here, `testdb` for the app) -

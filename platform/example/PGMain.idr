@@ -4,8 +4,8 @@ import Protocol
 import Config
 import Models
 import TodoRepository
-import Flux.DB.Table
-import Flux.DB.Repository
+import DB.Table
+import DB.Repository
 import Idris2_pg
 import Flux.DB.PG
 import Flux.DB.Pool

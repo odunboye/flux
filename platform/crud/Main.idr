@@ -4,7 +4,7 @@ import Protocol
 import Flux.Auth
 import Flux.Server.Assets
 import Config
-import Flux.DB.Migration
+import DB.Migration
 import Flux.DB.PG
 import Data.PGPool
 import Data.PGValue

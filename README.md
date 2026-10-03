@@ -3,13 +3,20 @@
 **Platform preview.** Flux brings its HTTP server and owned runtime, Flux UI,
 Flux DB persistence/migrations, PostgreSQL transport/pooling, and generated Flux UI
 clients into one modular repository. The UI now uses the `flux-ui` package and
-`Flux.UI.*` modules. Persistence is now `flux-db` / `flux-db-flux` with
-`Flux.DB.*` modules. Both are breaking renames without compatibility aliases.
-Existing databases must follow the [Flux DB metadata cutover guide](packages/db/MIGRATION.md).
-Runtime, protocol/client and Docker packages are now `flux-runtime`,
-`flux-protocol`, `flux-client` and `flux-docker`. See the
+`Flux.UI.*` modules, a breaking rename without compatibility aliases. Persistence
+is now split the same way PostgreSQL support is: the active-record/query-builder
+layer moved back out to its own repo, [odunboye/db](https://github.com/odunboye/db)
+(package `db`, modules `DB.*`), since it has no Flux-specific dependencies; the
+genuinely Flux-specific HTTP-framework glue (`Flux.DB.PG`/`Flux.DB.Pool`) stays
+here as `flux-db-flux`. Existing databases must follow the
+[Flux DB metadata cutover guide](https://github.com/odunboye/db/blob/main/MIGRATION.md).
+Runtime and protocol/client packages are now `flux-runtime`, `flux-protocol`
+and `flux-client`. See the
 [coordinated package migration](design/PACKAGE_MIGRATION.md); suitable module
-namespaces remain unchanged. PostgreSQL transport/pooling (`postgres`/
+namespaces remain unchanged. The Docker dev-workflow helper moved back out to
+its own repo, [odunboye/docker](https://github.com/odunboye/docker) (package
+`docker`), the same way `db`/`postgres` did - it never had any Flux-specific
+dependencies either. PostgreSQL transport/pooling (`postgres`/
 `postgres-async`) is no longer vendored here - it moved back to its own
 repo, [odunboye/postgres](https://github.com/odunboye/postgres), so it
 isn't Flux-only; `pack.toml` pulls it as a pinned external dependency (see
@@ -18,7 +25,7 @@ declaration.
 
 - `packages/runtime/`: owned tasks, sockets, streams and supervision.
 - `packages/ui/`: Flux UI widgets, application lifecycle and platform backends.
-- `packages/db/`, `packages/db-flux/`: persistence and PG integration, built on the external `postgres`.
+- `packages/db-flux/`: Flux's HTTP-framework glue over the external `db` and `postgres` packages.
 - `platform/`: shared protocols, generated server/client code and typed CRUD examples.
 - `examples/todo-api/`: database-backed application example.
 - `website/`: Flux's landing page, served by Flux itself.

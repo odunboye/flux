@@ -11,28 +11,33 @@ every public API, or establish production readiness.
 | flux-server | repository root `src/` | `flux` |
 | flux-runtime | `packages/runtime/` | `flux-runtime` |
 | flux-ui | `packages/ui/` | `flux-ui` |
-| flux-db | `packages/db/` | `flux-db` |
+| db | external (pinned git dependency, not vendored) | `db` |
 | postgres / postgres-async | external (pinned git dependency, not vendored) | `postgres`, `postgres-async` |
 | Server/database integration | `packages/db-flux/` | `flux-db-flux` |
 | flux-client | `platform/client/` | `flux-client` |
 | flux-protocol | `platform/` | `flux-protocol` |
 | Example application | `examples/todo-api/` | `todo-api` |
-| Local container helper | `packages/docker/` | `flux-docker` |
+| Local container helper | external (pinned git dependency, not vendored) | `docker` |
 | Application CLI | repository-local `./flux` | no published package yet |
 
 The UI has now been renamed outright to `flux-ui` and `Flux.UI.*`, with no
 legacy package or namespace shim. See the [breaking migration guide](../packages/ui/MIGRATION.md).
 Persistence is also renamed outright to `flux-db` / `flux-db-flux` and
 `Flux.DB.*`. Existing databases require the explicit
-[metadata cutover](../packages/db/MIGRATION.md); old history must not be replayed.
+[metadata cutover](https://github.com/odunboye/db/blob/main/MIGRATION.md); old
+history must not be replayed.
 The runtime, protocol/client and Docker packages also use the current names
 above, without old-name package aliases. See the
 [coordinated package migration](PACKAGE_MIGRATION.md). These are workspace-local
 packages, not additional published registry entries. PostgreSQL support
-(`postgres`/`postgres-async`) is the one exception: it was later moved back
-out to its own repo (odunboye/postgres), first under its original
-`idris2-pg`/`idris2-pg-async` names and then renamed there to `postgres`/
-`postgres-async` - see the package map above and `workspace.json`'s
+(`postgres`/`postgres-async`) and the active-record/query-builder layer (`db`,
+formerly `flux-db`) are the exceptions: both were later moved back out to
+their own repos - `postgres` first under its original `idris2-pg`/
+`idris2-pg-async` names and then renamed there to `postgres`/`postgres-async`;
+`db` straight to its current name, dropping the `Flux.DB.*` module prefix
+along with it, since `Flux.DB.PG`/`Flux.DB.Pool` (the one genuinely
+Flux-specific part) stayed behind as `flux-db-flux` - see the package map
+above and `workspace.json`'s
 `external_packages` - so it's a pinned external dependency, not a
 workspace-local package. Server source stays at the root.
 
@@ -56,7 +61,11 @@ working trees.
 
 `flux-docker` had no Git repository. Its source, package, README and tests were
 copied explicitly, excluding build outputs. No nonexistent history is claimed.
-The repository records its first version as part of this consolidation.
+The repository records its first version as part of this consolidation. It was
+later moved back out to its own repo and renamed `docker` (see the package map
+above), for the same reason as `db`/`postgres`: no Flux-specific dependencies.
+That new repo's own first commit is a fresh start too, for the same reason -
+there was never any history to carry over.
 
 Old verification reports and imported historical investigation notes retain
 some pre-consolidation paths and commands for provenance. Use this document,
@@ -91,7 +100,7 @@ replace every library's native sanitizer, property, soak or platform-specific
 suite. Individual package builds remain available, for example:
 
 ```sh
-(cd packages/db && pack --no-prompt build flux-db.ipkg)
+(cd packages/db-flux && pack --no-prompt build flux-db-flux.ipkg)
 (cd packages/ui && pack --no-prompt build flux-ui.ipkg)
 (cd platform && pack --no-prompt build crud/server.ipkg)
 ```
@@ -144,7 +153,7 @@ such as `server>=0.1.0`. Direct and transitive version-qualified forbidden edges
 are regression-tested; unsupported name syntax and duplicate `depends`
 declarations fail closed.
 
-Flux DB is currently PostgreSQL-backed; the `flux-db` umbrella label does not
+Flux DB is currently PostgreSQL-backed; the `db`/`flux-db-flux` umbrella label does not
 claim that it already abstracts every database backend. Keep SQL protocol and
 pool ownership in the PostgreSQL packages while persistence models, queries,
 repositories and migrations remain in the database layer.

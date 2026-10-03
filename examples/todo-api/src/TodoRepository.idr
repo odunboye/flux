@@ -1,6 +1,6 @@
-||| The generic CRUD/query operations (`Flux.DB.Repository.Repository`,
+||| The generic CRUD/query operations (`DB.Repository.Repository`,
 ||| from flux-db) plus this app's one domain-specific extension
-||| `Flux.DB.Crud` has no primitive for: a partial update
+||| `DB.Crud` has no primitive for: a partial update
 ||| (`SET done = NOT done`, not a whole-record replace). Flux DB supplies
 ||| the generic piece and the `decodeFirst` extension point; the
 ||| domain-specific operation itself is this app's own, not flux-db's -
@@ -18,11 +18,11 @@ module TodoRepository
 import Idris2_pg
 import Data.PGTypes
 import Data.PGValue
-import Flux.DB.Field
-import Flux.DB.Row
-import Flux.DB.Table
-import Flux.DB.Repository
-import Flux.DB.Crud as Crud
+import DB.Field
+import DB.Row
+import DB.Table
+import DB.Repository
+import DB.Crud as Crud
 import Models
 import Flux.DB.Pool
 
@@ -37,7 +37,7 @@ record TodoRepository where
 ||| The real, Postgres-backed implementation - `crud` delegates straight
 ||| to flux-db's `pgRepository`; `toggle` is hand-written SQL (the same
 ||| shape `Handlers.ActiveRecord.toggleTodo` used to run directly),
-||| decoded via flux-db's exported `Flux.DB.Crud.decodeFirst` - the same
+||| decoded via flux-db's exported `DB.Crud.decodeFirst` - the same
 ||| "single optional row" decode `findById`/`update` use internally,
 ||| reused here instead of duplicated.
 export

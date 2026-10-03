@@ -24,6 +24,13 @@ kept here as the historical record of this batch's rename, not current
 guidance - don't install or depend on `flux-postgres`/`flux-postgres-pool`,
 they no longer exist.
 
+**The `idris2-docker`/`flux-docker` row was later reversed too**, moving back
+out to [odunboye/docker](https://github.com/odunboye/docker) and renamed
+`docker` directly (it never had an `idris2-` row to revert to - the original
+`idris2-docker` checkout had no Git history, so this was always a from-scratch
+repo either way). Don't install or depend on `flux-docker`, it no longer
+exists.
+
 Related transport/Docker test package and executable prefixes are renamed too.
 Directories are unchanged; the canonical map is still `workspace.json`, with
 `pack.toml` generated from it. These are workspace-local packages, not a claim
@@ -59,7 +66,8 @@ python3 tools/workspace.py check
 pack --no-prompt install flux-runtime
 pack --no-prompt install postgres
 pack --no-prompt install postgres-async
-pack --no-prompt install flux-docker
+pack --no-prompt install db
+pack --no-prompt install docker
 ./flux build
 python3 tools/workspace.py test
 ```

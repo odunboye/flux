@@ -1,6 +1,6 @@
 module MigrationTests
 
-import Flux.DB.Migration
+import DB.Migration
 import Data.PGValue
 import Idris2_pg
 import Config

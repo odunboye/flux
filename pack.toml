@@ -17,26 +17,10 @@ type = "local"
 path = "platform"
 ipkg = "flux-client.ipkg"
 
-[custom.all.flux-db]
-type = "local"
-path = "packages/db"
-ipkg = "flux-db.ipkg"
-test = "test/test.ipkg"
-
 [custom.all.flux-db-flux]
 type = "local"
 path = "packages/db-flux"
 ipkg = "flux-db-flux.ipkg"
-
-[custom.all.flux-db-test]
-type = "local"
-path = "packages/db/test"
-ipkg = "test.ipkg"
-
-[custom.all.flux-docker]
-type = "local"
-path = "packages/docker"
-ipkg = "flux-docker.ipkg"
 
 [custom.all.flux-examples]
 type = "local"
@@ -108,6 +92,20 @@ ipkg = "pooled-test.ipkg"
 type = "local"
 path = "examples/todo-api/test"
 ipkg = "test.ipkg"
+
+[custom.all.db]
+type = "git"
+url = "https://github.com/odunboye/db.git"
+commit = "c4dcfb0b10401103c919bce1a07b5871594ac8f2"
+ipkg = "db.ipkg"
+test = "test/test.ipkg"
+
+[custom.all.docker]
+type = "git"
+url = "https://github.com/odunboye/docker.git"
+commit = "b268eb147135351d8dc7cd3e1a90143214469a9c"
+ipkg = "docker.ipkg"
+test = "test/test.ipkg"
 
 [custom.all.flux-async]
 type = "git"

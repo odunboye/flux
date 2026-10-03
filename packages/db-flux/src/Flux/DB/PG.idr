@@ -1,6 +1,6 @@
 ||| Glue between Flux's `AppProg`/`AppError` and flux-postgres's `PGError` -
 ||| lifts any `IO (Either PGError a)` call (a raw `queryRows`/
-||| `execCommand`, or any of flux-postgres's `Flux.DB.Crud` generic CRUD
+||| `execCommand`, or any of flux-postgres's `DB.Crud` generic CRUD
 ||| calls - `insert`/`findById`/`update`/`deleteById` - they all share
 ||| this exact shape) into a Flux handler, throwing a `500 AppError` on
 ||| failure.
@@ -18,7 +18,7 @@ import public Flux.Core.Router
 import public Idris2_pg
 import public Data.PGTypes
 import Data.PGValue
-import Flux.DB.Row
+import DB.Row
 
 %default covering
 
@@ -48,7 +48,7 @@ dbFail err = logAndFail500 "db error: \{displayError err}"
 ||| Lifts any flux-postgres call into a Flux handler: runs it on the bounded blocking worker pool,
 ||| throwing `dbFail err` on `Left err`, returning the value on `Right`.
 ||| Every flux-postgres call - `queryRows`, `execCommand`, and all of
-||| `Flux.DB.Crud`'s generic CRUD helpers - shares this exact
+||| `DB.Crud`'s generic CRUD helpers - shares this exact
 ||| `IO (Either PGError a)` shape, so this one combinator covers all of
 ||| them; a handler writes `todo <- dbIO (insert {a=Todo} db newTodo)`
 ||| instead of hand-matching `Right`/`Left` itself.
@@ -62,14 +62,14 @@ dbIO action = do
   pure v
 
 ||| Convenience wrapper for a raw `SELECT`, for the cases that don't fit
-||| `Flux.DB.Crud`'s generic, single-row-by-id-shaped helpers (a list
+||| `DB.Crud`'s generic, single-row-by-id-shaped helpers (a list
 ||| result, custom ordering/filtering, a join, etc).
 export
 query : DB -> String -> List (Maybe String) -> AppProg (List Row)
 query db sql params = dbIO (queryRows db sql params)
 
 ||| Convenience wrapper for a raw `INSERT`/`UPDATE`/`DELETE`/DDL
-||| statement, for the cases that don't fit `Flux.DB.Crud`'s generic
+||| statement, for the cases that don't fit `DB.Crud`'s generic
 ||| `insert`/`update`/`deleteById` (a non-replace mutation, DDL, a
 ||| statement touching more than one table, etc). Discards the command
 ||| tag `execCommand` itself returns - use `dbIO (execCommand ...)`
@@ -129,7 +129,7 @@ requireIntParam name ctx = case getParam name ctx.pathParams of
 
 ||| `requireIntParam` for the path param named `"id"` - matching
 ||| `Table`'s own default primary-key column-name convention
-||| (`Flux.DB.Derive.ActiveRecord`), and Flux's own routing convention of
+||| (`DB.Derive.ActiveRecord`), and Flux's own routing convention of
 ||| naming that path segment `:id`.
 export
 requireId : Context -> AppProg Integer

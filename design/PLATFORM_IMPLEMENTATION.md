@@ -55,7 +55,7 @@ by `flux-auth`; owner-scoped repositories remain pending. See `IDENTITY_IMPLEMEN
 - Real pooled todo repository integration: Node and Chromium each execute a
   24-command concurrent batch plus one round-trip call; 50 persisted rows
   independently confirmed in PostgreSQL, followed by clean shutdown.
-- Flux DB `Flux.DB.Migration`: reviewed forward-only SQL subset, dedicated
+- Flux DB `DB.Migration`: reviewed forward-only SQL subset, dedicated
   connection/session advisory lock, version/name/checksum history verification,
   and per-migration transactional application/history insertion.
 - The original checkpoint passed 14 migration integration checks. The Flux DB

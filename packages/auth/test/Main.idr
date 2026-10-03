@@ -1,7 +1,7 @@
 module Main
 
 import Flux.Auth
-import Flux.DB.Migration
+import DB.Migration
 import Flux.DB.PG
 import Data.PGPool
 import Config
