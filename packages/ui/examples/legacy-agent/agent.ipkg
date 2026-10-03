@@ -4,3 +4,4 @@ sourcedir = "."
 modules = Main
 main = Main
 executable = flux-ui-legacy-agent
+prebuild = "mkdir -p build/exec/flux-ui-legacy-agent_app && cc -dynamiclib ../../c/fluxuitui.c -o build/exec/flux-ui-legacy-agent_app/libfluxuitui.dylib 2>/dev/null || cc -shared -fPIC ../../c/fluxuitui.c -o build/exec/flux-ui-legacy-agent_app/libfluxuitui.so"

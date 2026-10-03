@@ -77,8 +77,8 @@ loading. Signing and store packaging remain deployment responsibilities.
   are implemented; applications manage offsets rather than receiving a general
   native scrolling system.
 - Managed `CancellableTask` effects are cancelled during lifecycle suspension and stale
-  generation callbacks are rejected after resume. Canvas `QuitApp` can stop
-  frame scheduling before teardown runs; see [capabilities](CAPABILITIES.md).
+  generation callbacks are rejected after resume. Canvas `QuitApp` tears down the overlay, listeners and generated stylesheet
+  even when quitting during event dispatch; see [capabilities](CAPABILITIES.md).
   Legacy `Task` actions cannot
   be forcibly interrupted; use `CancellableTask` for long-running production IO.
 - Desktop SDL2 and embedded framebuffer modules are experimental skeletons and

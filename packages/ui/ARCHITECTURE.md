@@ -47,10 +47,10 @@ supported application runners. See [API policy](API_STABILITY.md).
 |---|---|---|
 | Application message types | `UIApp model msg`, `Widget msg`, `Cmd msg`; [PublicAPITest](tests/PublicAPITest.idr) | Does not prove business logic or rendering correct |
 | Event boundary validation | Versioned decoder; [EventWireTest](tests/EventWireTest.idr) | Internal protocol, not arbitrary network input validation |
-| Browser effect retirement | Managed generations and cleanup; [RuntimeTest](tests/RuntimeTest.idr), browser acceptance | Cooperative work only; terminal differs and Canvas Quit teardown has a known gap |
+| Browser effect retirement | Managed generations and cleanup; [RuntimeTest](tests/RuntimeTest.idr), [terminal runtime tests](tests/TerminalRuntimeTest.idr), browser acceptance | Cooperative work only; raw IO cannot be forcibly stopped |
 | Canvas hit targets and layout | [CanvasLayoutTest](tests/CanvasLayoutTest.idr) | Concrete tested cases, not a general layout proof |
 | DOM escaping and semantics | [DOMRenderTest](tests/DOMRenderTest.idr), [browser tests](tests/browser/flux-ui.spec.js) | No complete accessibility certification |
-| Terminal startup and exit | [native smoke checks](tests/native_smoke.py) | No guarantee that arbitrary effect IO is joined |
+| Terminal startup and exit | [native smoke checks](tests/native_smoke.py) | Cooperative cleanup verified; arbitrary raw IO is not joined |
 
 Types enforce the relationships encoded in their definitions. They do not
 establish blanket layout validity, absence of leaks, or freedom from runtime

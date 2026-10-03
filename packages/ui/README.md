@@ -51,7 +51,7 @@ DOM and Canvas entry points, package files and browser hosts.
   clipping, and a screen-reader/native-input overlay
 - Typed routing with UTF-8 URLs, path/query parameters, base paths, guards, and
   browser history
-- Cooperative lifecycle-aware browser effects (terminal behavior differs)
+- Cooperative effect cleanup on supported runners; browser pause/resume support
 - Browser HTTP cancellation, timeouts, and response limits
 - Idris unit tests and Playwright browser integration tests
 
@@ -140,7 +140,8 @@ accessibility, cancellation and lifecycle differences, and
 
 Wrapped text and clipped scroll-offset widgets are implemented. General native
 Canvas scrolling, richer accessibility metadata and native-device validation
-remain limited. Terminal effect cleanup differs from browser cleanup. The legacy
+remain limited. Terminal cooperative effects are cancelled on quit/Ctrl+C; raw IO cannot be
+forcibly stopped. The legacy
 `Flux.UI.Core.Widget`/`Flux.UI.Core.Runtime` path is retained for compatibility; new
 applications should use `Flux.UI.Widget` and the specialized runners.
 

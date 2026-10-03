@@ -29,8 +29,8 @@ data Cmd : (msg : Type) -> Type where
   ||| Use this for LLM token streaming, file tailing, etc.
   StreamTask : ((msg -> IO ()) -> IO ()) -> Cmd msg
   ||| Start cooperative asynchronous work and return its cancellation action.
-  ||| DOM/Canvas invoke this on shutdown or lifecycle suspension.
-  ||| The terminal runner currently discards the returned cancellation action.
+  ||| Supported runners invoke this on shutdown; DOM/Canvas also do so on
+  ||| lifecycle suspension. Starters must return promptly after arranging work.
   CancellableTask : ((msg -> IO ()) -> IO (IO ())) -> Cmd msg
   ||| Tell the runtime to exit cleanly.
   ||| Use `quit` in your update function instead of returning `none`.

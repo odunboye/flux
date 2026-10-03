@@ -12,7 +12,7 @@ platform. Share `UIApp` and `Widget`; select behavior using this matrix.
 | Pointer | Browser controls and typed pointer events | No portable pointer-control interaction promised | Hit testing, pointer capture, clipped/transformed targets |
 | Focus | Native focus with restoration across render | Application-defined input handling; no DOM-style focus guarantee | Overlay restores active control and selection |
 | Accessibility | Semantic controls, names, progress/status semantics | Terminal output; no screen-reader widget semantics contract | Semantic controls in DOM overlay; richer labeling metadata remains limited |
-| Effect lifecycle | Managed `CancellableTask` cleanup on pause/quit; stale callbacks rejected | Forked effects; returned cancellation action currently discarded | Managed lifecycle suspension; `QuitApp` stops dispatch but teardown is not guaranteed |
+| Effect lifecycle | Managed `CancellableTask` cleanup on pause/quit; stale callbacks rejected | Cooperative cleanup on quit/Ctrl+C; starters register on the owner loop | Managed cleanup on pause/quit; quit removes overlay, listeners and generated stylesheet |
 | Raw `Task`/`StreamTask` | Cannot forcibly interrupt arbitrary IO | Cannot forcibly interrupt or promise joining arbitrary IO | Cannot forcibly interrupt arbitrary IO |
 | Navigation | Browser history/location events and router helpers | Application-defined navigation | Browser/WebView location events; device back behavior needs validation |
 | Hot replacement | Opt-in `runWebHot` with explicit state codec | Not supported | Not supported |
@@ -39,8 +39,7 @@ not proved by the widget type. Backend styling can differ.
 `UIApp` does not accept `Sub`; `State.TEA.App` and its subscription field belong
 to the legacy runtime. Use commands, `handleEvent` and `tickMsg` in new apps.
 
-Canvas currently stops scheduling frames when a command sets `QuitApp` during
-event dispatch, so the next-frame teardown branch may not run. Do not rely on
-Quit to remove its overlay/listeners or retire every effect; the counter
-acceptance test establishes that subsequent input no longer updates the model.
-This is a known runner lifecycle gap, separate from managed pause/resume behavior.
+Cooperative starters must return promptly with a cleanup action after arranging
+asynchronous work. Terminal registers these on the owner loop; arbitrary raw IO
+still cannot be forcibly interrupted or promised joined. Cleanup runs once on
+normal quit or Ctrl+C. Callback delivery during or after cancellation is ignored.

@@ -14,7 +14,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def check(directory, name, banner):
+def check(directory, name, banner, key=b'q', expected=None):
     app = directory / f'build/exec/{name}_app'
     master, slave = pty.openpty()
     process = None
@@ -46,7 +46,7 @@ def check(directory, name, banner):
                 if select.select([master], [], [], .1)[0]:
                     output = (output + os.read(master, 65536))[-65536:]
             assert b'Count: 1' in output, output.decode(errors='replace')
-        os.write(master, b'q')
+        os.write(master, key)
         # Keep draining: a renderer can otherwise block on the PTY's small
         # output buffer before it gets to consume the quit key.
         deadline = time.monotonic() + 10
@@ -57,6 +57,16 @@ def check(directory, name, banner):
                 except OSError:
                     break
         assert process.wait(timeout=max(.01, deadline - time.monotonic())) == 0, output.decode(errors='replace')
+        while select.select([master], [], [], 0)[0]:
+            try:
+                chunk = os.read(master, 65536)
+                if not chunk:
+                    break
+                output = (output + chunk)[-65536:]
+            except OSError:
+                break
+        if expected is not None:
+            assert expected in output, output.decode(errors='replace')
         print(f'PASS {name}: native TUI render, renamed C FFI and keyboard shutdown')
     finally:
         if process is not None and process.poll() is None:
@@ -71,3 +81,7 @@ def check(directory, name, banner):
 if __name__ == '__main__':
     check(ROOT, 'flux-ui-demo', b'Count: 0')
     check(ROOT / 'examples/todo', 'flux-ui-todo', b'Flux UI Todo')
+
+    for key in [b'q', b'\x03']:
+        check(ROOT / 'tests', 'terminal-lifecycle', b'Lifecycle ready', key,
+              b'Lifecycle cancellations: 2')

@@ -1,0 +1,6 @@
+package flux-ui-canvas-lifecycle
+depends = flux-ui
+sourcedir = "."
+modules = CanvasLifecycle
+main = CanvasLifecycle
+executable = canvas-lifecycle
