@@ -427,6 +427,18 @@ response) previously could inject a stray `;`-attribute or an entire
 extra header line into its own response. Silently stripped rather than
 rejected, so `setHeader`/`cookie` stay plain, non-fallible functions.
 
+Response header names must be nonempty ASCII HTTP tokens, as defined by
+[RFC 9110 sections 5.1 and 5.6.2](https://www.rfc-editor.org/rfc/rfc9110.html#section-5.6.2).
+`validHeaderName` exposes this check. `setHeader`/`setHeaders` ignore invalid
+names without trimming or repairing them. At the final wire boundary,
+`encodeResponse` also omits entries with malformed names or ASCII control
+characters in values (HTAB is permitted). This protects direct encoder calls,
+`ok`, cookie output and direct updates to the public `Context` record. Existing
+`setHeader` CR/LF stripping is retained; direct encoder calls omit the entire
+malformed entry. Valid header case, ordering and repeated fields are preserved.
+These checks establish field syntax safety, not field-specific semantics; the
+application still owns the meaning of a valid header.
+
 Session IDs are 128 bits of real OS entropy, hex-encoded — not a
 guessable counter. `Flux.Middleware.Internal.Random` reads directly from
 `/dev/urandom` via `System.Posix.File` (already used the same way for
