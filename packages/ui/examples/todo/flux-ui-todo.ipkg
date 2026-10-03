@@ -1,0 +1,18 @@
+package flux-ui-todo
+
+authors    = "Odun Adeboye"
+version    = 0.1.0
+brief      = "Flux UI Todo — terminal build  (Chez Scheme backend)"
+
+depends    = flux-ui
+sourcedir  = "src"
+executable = "flux-ui-todo"
+main       = Main
+
+prebuild   = "mkdir -p build/exec/flux-ui-todo_app && cc -dynamiclib ../../c/fluxuitui.c -o build/exec/flux-ui-todo_app/libfluxuitui.dylib 2>/dev/null || cc -shared -fPIC ../../c/fluxuitui.c -o build/exec/flux-ui-todo_app/libfluxuitui.so"
+
+modules =
+    Todo.Types
+  , Todo.Update
+  , Todo.View
+  , TodoApp

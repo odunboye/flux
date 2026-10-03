@@ -1,0 +1,205 @@
+OK connected
+OK deriveSubset generates a working include-list companion type
+OK createTableSql generates the expected DDL shape
+OK customTable's columnDefaults generates a real DB-level DEFAULT
+OK insert via the derived active-record layer
+OK insert with a NULL field round-trips as Nothing
+OK findById
+OK findById returns Nothing (not an error) for a missing id
+OK update (whole-record replace)
+OK deleteById reports True for an existing id
+OK deleteById reports False for an already-deleted id
+OK compileQuery generates the expected SQL shape
+OK selectAll (no condition) returns everything
+OK where_ (==.) filters correctly
+OK compound &&. with isNull filters correctly
+OK isNotNull filters correctly
+OK where_ (||.) combines conditions correctly
+OK orderByAsc sorts ascending
+OK orderByDesc sorts descending
+OK limit/offset paginate correctly
+OK selectQuery's LIMIT-as-placeholder design reuses one stmtCache entry across different limit values
+OK repo.insert
+OK repo.findById
+OK repo.update
+OK repo.query selectAll returns everything
+OK repo.query with a condition filters correctly
+OK repo.deleteById reports True for an existing id
+OK repo.deleteById reports False for an already-deleted id
+OK withTransactionRepos commit path: both rows are visible after commit (verified via a separate connection)
+OK withTransactionRepos commit path: txStatus returns to Idle
+OK withTransactionRepos rollback path: the deliberate error after a successful insert propagates out
+OK withTransactionRepos rollback path: the row was NOT persisted (verified via a separate connection)
+OK withTransactionRepos rollback path: txStatus returns to Idle
+OK repo.insert with a String key
+OK repo.findById with a String key
+OK repo.findById with a String key returns Nothing for a missing slug
+OK repo.deleteById reports True for an existing String key
+OK repo.deleteById reports False for an already-deleted String key
+OK done
+PASS migration fresh install
+PASS migration replay is a no-op
+PASS migration upgrade applies only pending version
+PASS migration history drift rejected
+PASS database ahead of application rejected
+PASS failed migration reports failure
+PASS failed migration rolls back data and preserves existing rows
+PASS failed migration does not record its version
+PASS concurrent migration runner fails closed on held lock
+PASS migration succeeds after lock release and previous failure
+PASS duplicate migration versions rejected
+PASS transaction control rejected
+PASS multiple statements in an entry rejected
+PASS migration history remains usable after invalid SQL
+PASS rejected SQL batch executes no statements
+PASS legacy metadata blocks automatic replay
+PASS legacy guard does not create a parallel history
+PASS both metadata schemas fail closed
+PASS metadata cutover preserves every history field
+PASS renamed metadata replays no historical SQL
+Post-cutover migrations applied: 1
+PASS renamed metadata accepts new migrations
+All migration checks passed
+PASS single-field request requires JSON object
+
+PASS client rejects numeric identifier
+
+PASS client rejects malformed error envelope
+
+PASS transport timeout remains typed
+
+PASS generated Flux UI client round trip with exact BIGINT
+
+PASS server rejects invalid field type
+
+PASS server rejects malformed JSON
+
+PASS server rejects unsupported media type
+
+PASS typed domain error
+
+PASS pooled create 0
+
+PASS pooled create 2
+
+PASS pooled create 4
+
+PASS pooled create 3
+
+PASS pooled create 6
+
+PASS pooled create 5
+
+PASS pooled create 7
+
+PASS pooled create 8
+
+PASS pooled create 10
+
+PASS pooled create 9
+
+PASS pooled create 12
+
+PASS pooled create 11
+
+PASS pooled create 14
+
+PASS pooled create 13
+
+PASS pooled create 16
+
+PASS pooled create 18
+
+PASS pooled create 15
+
+PASS pooled create 20
+
+PASS pooled create 17
+
+PASS pooled create 19
+
+PASS pooled create 22
+
+PASS pooled create 21
+
+PASS pooled create 23
+
+PASS pooled create 1
+
+PASS 24 distinct persisted IDs
+
+PASS single-field request requires JSON object
+
+PASS client rejects numeric identifier
+
+PASS client rejects malformed error envelope
+
+PASS transport timeout remains typed
+
+PASS generated Flux UI client round trip with exact BIGINT
+
+Failed to load resource: the server responded with a status of 400 ()
+PASS server rejects invalid field type
+
+Failed to load resource: the server responded with a status of 400 ()
+PASS server rejects malformed JSON
+
+Failed to load resource: the server responded with a status of 415 ()
+PASS server rejects unsupported media type
+
+Failed to load resource: the server responded with a status of 400 ()
+PASS typed domain error
+
+PASS pooled create 0
+
+PASS pooled create 1
+
+PASS pooled create 4
+
+PASS pooled create 3
+
+PASS pooled create 5
+
+PASS pooled create 6
+
+PASS pooled create 7
+
+PASS pooled create 8
+
+PASS pooled create 9
+
+PASS pooled create 10
+
+PASS pooled create 11
+
+PASS pooled create 12
+
+PASS pooled create 13
+
+PASS pooled create 14
+
+PASS pooled create 15
+
+PASS pooled create 16
+
+PASS pooled create 17
+
+PASS pooled create 18
+
+PASS pooled create 19
+
+PASS pooled create 21
+
+PASS pooled create 20
+
+PASS pooled create 22
+
+PASS pooled create 23
+
+PASS pooled create 2
+
+PASS 24 distinct persisted IDs
+
+PASS real Chromium Flux UI client and cross-origin preflight
+PASS PostgreSQL independently confirms 50 Flux UI-created rows
+PASS pooled generated endpoint clean shutdown

@@ -217,7 +217,7 @@ flushNow blogger = do
 export covering
 flushLoop : Clock Duration -> BatchedLogger -> Async Poll [] ()
 flushLoop interval blogger = do
-  sleep interval
+  Flux.Core.Runtime.sleep interval
   liftIO (flushNow blogger)
   flushLoop interval blogger
 
@@ -303,6 +303,6 @@ flushAccessLog blog = do
 export covering
 accessFlushLoop : Clock Duration -> BatchedAccessLog -> Async Poll [] ()
 accessFlushLoop interval blog = do
-  sleep interval
+  Flux.Core.Runtime.sleep interval
   liftIO (flushAccessLog blog)
   accessFlushLoop interval blog

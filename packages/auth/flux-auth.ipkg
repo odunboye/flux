@@ -1,0 +1,7 @@
+package flux-auth
+version = 0.1.0
+brief = "Durable Flux accounts and revocable opaque sessions"
+depends = flux-protocol, flux-db-flux
+sourcedir = "src"
+modules = Flux.Auth.Crypto, Flux.Auth.Schema, Flux.Auth
+prebuild = "make native"

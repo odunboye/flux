@@ -1,0 +1,12 @@
+{
+  "format": 2,
+  "schema": "schema.json",
+  "server": "server.ipkg",
+  "ui": "ui.ipkg",
+  "sources": ["."],
+  "generated": {"directory": ".", "namespace": "", "openapi": "openapi.json"},
+  "public": {"directory": ".", "files": ["index.html", "app.css"]},
+  "dependencies": "workspace",
+  "database": "postgres",
+  "run": {"web": true}
+}

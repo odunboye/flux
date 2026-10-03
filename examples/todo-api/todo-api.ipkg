@@ -1,0 +1,25 @@
+package todo-api
+version = 0.1.0
+authors = "Odun Adeboye"
+brief   = "A small Todo CRUD API built on Flux and postgres"
+
+depends = flux
+        , postgres
+        , docker
+        , db
+        , flux-db-flux
+        , json-simple
+
+modules = Models
+        , TodoRepository
+        , Handlers.ActiveRecord
+        , Handlers.TypedQuery
+        , TodoApi
+        , DevPostgres
+        , Config
+        , Main
+
+main = Main
+
+executable = "todo-api"
+sourcedir = "src"

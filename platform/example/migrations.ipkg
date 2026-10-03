@@ -1,0 +1,6 @@
+package platform-migration-test
+version = 0.1.0
+depends = db, todo-api
+sourcedir = "."
+main = MigrationTests
+executable = platform-migration-test

@@ -160,7 +160,7 @@ persistSession store ctx =
 export covering
 sessionGCLoop : Clock Duration -> SessionStore -> Async Poll [] ()
 sessionGCLoop interval store = do
-  sleep interval
+  Flux.Core.Runtime.sleep interval
   liftIO $ do
     now <- nowMs
     for_ (sessions store) $ \stripe =>

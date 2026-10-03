@@ -1,9 +1,9 @@
 package flux
-version = 0.2.0
+version = 0.3.0
 authors = "Odun Adeboye"
 -- maintainers =
 -- license =
-brief   = "A production-grade HTTP server framework for Idris2"
+brief   = "An HTTP/1.1 server framework for Idris2 (platform preview)"
 -- readme =
 -- homepage =
 -- sourceloc =
@@ -13,18 +13,20 @@ brief   = "A production-grade HTTP server framework for Idris2"
 -- langversion
 
 -- packages to add to search path
-depends    = streams-posix
-           , async-posix
+depends    = flux-runtime
+           , posix
            , ref1
            , json-simple
 
 -- modules to install
-modules = Flux.Core.HTTP
+modules = Flux.Core.Runtime
+        , Flux.Core.HTTP
         , Flux.Core.Router
         , Flux.Core.Middleware
         , Flux.Middleware.Internal.Stripe
         , Flux.Middleware.Internal.Random
         , Flux.Middleware.JSON
+        , Flux.Server.Assets
         , Flux.Server.Config
         , Flux.Server.Logging
         , Flux.Server.Health
@@ -33,6 +35,7 @@ modules = Flux.Core.HTTP
         , Flux.Middleware.Cookies
         , Flux.Middleware.Session
         , Flux.Middleware.Static
+        , Flux.Middleware.RpcCors
         , Flux
 
 -- main file (i.e. file to load at REPL) - this is a library, not a

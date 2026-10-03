@@ -1,0 +1,6 @@
+[ info ] Found local config at /tmp/flux-application/playground/todo-api/pack.toml
+[ info ] Using package collection nightly-260906
+[ info ] Building: flux-examples
+[ build ] 1/2: Building EchoServer (src/EchoServer.idr)
+[ build ] 2/2: Building Main (src/Main.idr)
+[ build ] Now compiling the executable: flux-examples

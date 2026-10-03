@@ -1,0 +1,112 @@
+[ info ] Found local config at /tmp/flux-application/playground/todo-api/pack.toml
+[ info ] Using package collection nightly-260906
+[ info ] Installing libraries:
+         - ansi
+         - prettier
+         - elab-pretty
+         - prettier-ansi
+         - parser
+         - parser-show
+         - pretty-show
+         - random-pure
+         - sop
+         - bounded-doubles
+         - weaker-traversals
+         - summary-stat
+         - hedgehog
+[ info ] Installing library (with sources): ansi
+[ build ] 1/3: Building Text.ANSI.CSI (src/Text/ANSI/CSI.idr)
+[ build ] 2/3: Building Text.ANSI.SGR (src/Text/ANSI/SGR.idr)
+[ build ] 3/3: Building Text.ANSI (src/Text/ANSI.idr)
+[ info ] Installing library (with sources): prettier
+[ build ] 1/4: Building Text.PrettyPrint.Bernardy.Core (src/Text/PrettyPrint/Bernardy/Core.idr)
+[ build ] 2/4: Building Text.PrettyPrint.Bernardy.Combinators (src/Text/PrettyPrint/Bernardy/Combinators.idr)
+[ build ] 3/4: Building Text.PrettyPrint.Bernardy.Interface (src/Text/PrettyPrint/Bernardy/Interface.idr)
+[ build ] 4/4: Building Text.PrettyPrint.Bernardy (src/Text/PrettyPrint/Bernardy.idr)
+[ info ] Installing library (with sources): elab-pretty
+[ build ] 1/7: Building Language.Reflection.Syntax (src/Language/Reflection/Syntax.idr)
+[ build ] 2/7: Building Language.Reflection.Types (src/Language/Reflection/Types.idr)
+[ build ] 3/7: Building Language.Reflection.Derive (src/Language/Reflection/Derive.idr)
+[ build ] 4/7: Building Language.Reflection.Util (src/Language/Reflection/Util.idr)
+[ build ] 5/7: Building Derive.Show (src/Derive/Show.idr)
+[ build ] 6/7: Building Derive.Pretty (src/Derive/Pretty.idr)
+[ build ] 7/7: Building Language.Reflection.Pretty (src/Language/Reflection/Pretty.idr)
+[ info ] Installing library (with sources): prettier-ansi
+[ build ] 1/2: Building Text.PrettyPrint.Bernardy.Core.ANSI (src/Text/PrettyPrint/Bernardy/Core/ANSI.idr)
+[ build ] 2/2: Building Text.PrettyPrint.Bernardy.ANSI (src/Text/PrettyPrint/Bernardy/ANSI.idr)
+[ info ] Installing library (with sources): parser
+[ build ]  1/16: Building Data.Bool.Rewrite (src/Data/Bool/Rewrite.idr)
+[ build ]  2/16: Building Data.List.Suffix (src/Data/List/Suffix.idr)
+[ build ]  3/16: Building Data.List.Shift (src/Data/List/Shift.idr)
+[ build ]  4/16: Building Data.List.Suffix.Result (src/Data/List/Suffix/Result.idr)
+[ build ]  5/16: Building Data.List.Suffix.Result0 (src/Data/List/Suffix/Result0.idr)
+[ build ]  6/16: Building Text.Lex.Manual (src/Text/Lex/Manual.idr)
+[ build ]  7/16: Building Text.Lex.Shift (src/Text/Lex/Shift.idr)
+[ build ]  8/16: Building Text.Parse.Manual (src/Text/Parse/Manual.idr)
+[ build ]  9/16: Building Text.Parse.Syntax (src/Text/Parse/Syntax.idr)
+[ build ] 10/16: Building Text.Lex.Core (src/Text/Lex/Core.idr)
+[ build ] 11/16: Building Text.Lex.Tokenizer (src/Text/Lex/Tokenizer.idr)
+[ build ] 12/16: Building Text.Parse.Core (src/Text/Parse/Core.idr)
+[ build ] 13/16: Building Text.Parse (src/Text/Parse.idr)
+[ build ] 14/16: Building Text.Lex.Manual.Syntax (src/Text/Lex/Manual/Syntax.idr)
+[ build ] 15/16: Building Text.Lex.Util (src/Text/Lex/Util.idr)
+[ build ] 16/16: Building Text.Lex (src/Text/Lex.idr)
+[ info ] Installing library (with sources): parser-show
+[ build ] 1/1: Building Text.Show.Value (src/Text/Show/Value.idr)
+[ info ] Installing library (with sources): pretty-show
+[ build ] 1/4: Building Text.Show.PrettyVal (src/Text/Show/PrettyVal.idr)
+[ build ] 2/4: Building Text.Show.PrettyVal.Derive (src/Text/Show/PrettyVal/Derive.idr)
+[ build ] 3/4: Building Text.Show.Pretty (src/Text/Show/Pretty.idr)
+[ build ] 4/4: Building Text.Show.Diff (src/Text/Show/Diff.idr)
+[ info ] Installing library (with sources): random-pure
+[ build ] 1/5: Building System.Random.Pure (src/System/Random/Pure.idr)
+[ build ] 2/5: Building Control.Monad.Random.Interface (src/Control/Monad/Random/Interface.idr)
+[ build ] 3/5: Building System.Random.Pure.StdGen (src/System/Random/Pure/StdGen.idr)
+[ build ] 4/5: Building Control.Monad.Random.Random (src/Control/Monad/Random/Random.idr)
+[ build ] 5/5: Building Control.Monad.Random (src/Control/Monad/Random.idr)
+[ info ] Installing library (with sources): sop
+[ build ]  1/11: Building Data.SOP.Utils (src/Data/SOP/Utils.idr)
+[ build ]  2/11: Building Data.SOP.Interfaces (src/Data/SOP/Interfaces.idr)
+[ build ]  3/11: Building Data.SOP.NP (src/Data/SOP/NP.idr)
+[ build ]  4/11: Building Data.SOP.NS (src/Data/SOP/NS.idr)
+[ build ]  5/11: Building Data.SOP.POP (src/Data/SOP/POP.idr)
+[ build ]  6/11: Building Data.SOP.SOP (src/Data/SOP/SOP.idr)
+[ build ]  7/11: Building Data.SOP (src/Data/SOP.idr)
+[ build ]  8/11: Building Generics.SOP (src/Generics/SOP.idr)
+[ build ]  9/11: Building Generics.Meta (src/Generics/Meta.idr)
+[ build ] 10/11: Building Generics.Derive (src/Generics/Derive.idr)
+[ build ] 11/11: Building Data.Lazy (src/Data/Lazy.idr)
+[ info ] Installing library (with sources): bounded-doubles
+[ build ] 1/1: Building Data.Double.Bounded (src/Data/Double/Bounded.idr)
+[ info ] Installing library (with sources): weaker-traversals
+[ build ] 1/1: Building Data.Functor.TraverseSt (src/Data/Functor/TraverseSt.idr)
+[ info ] Installing library (with sources): summary-stat
+[ warning ] Weak traversal interface can be found in `weaker-traversals` lib
+[ build ] 1/6: Building Statistics.Probability (src/Statistics/Probability.idr)
+[ build ] 2/6: Building Statistics.Norm (src/Statistics/Norm.idr)
+[ build ] 3/6: Building Statistics.Erf (src/Statistics/Erf.idr)
+[ build ] 4/6: Building Statistics.Norm.Rough (src/Statistics/Norm/Rough.idr)
+[ build ] 5/6: Building Statistics.Norm.Precise (src/Statistics/Norm/Precise.idr)
+[ build ] 6/6: Building Statistics.Confidence (src/Statistics/Confidence.idr)
+[ info ] Installing library (with sources): hedgehog
+[ build ]  1/18: Building Hedgehog.Internal.Config (src/Hedgehog/Internal/Config.idr)
+[ build ]  2/18: Building Data.Bounded (src/Data/Bounded.idr)
+[ build ]  3/18: Building Data.Tree (src/Data/Tree.idr)
+[ build ]  4/18: Building Data.Cotree (src/Data/Cotree.idr)
+[ build ]  5/18: Building Hedgehog.Internal.Util (src/Hedgehog/Internal/Util.idr)
+[ build ]  6/18: Building Hedgehog.Internal.Range (src/Hedgehog/Internal/Range.idr)
+[ build ]  7/18: Building Hedgehog.Internal.Shrink (src/Hedgehog/Internal/Shrink.idr)
+[ build ]  8/18: Building Hedgehog.Internal.Gen (src/Hedgehog/Internal/Gen.idr)
+[ build ]  9/18: Building Hedgehog.Internal.Function (src/Hedgehog/Internal/Function.idr)
+[ build ] 10/18: Building Hedgehog.Internal.Property (src/Hedgehog/Internal/Property.idr)
+[ build ] 11/18: Building Hedgehog.Internal.Report (src/Hedgehog/Internal/Report.idr)
+[ build ] 12/18: Building Hedgehog.Internal.Options (src/Hedgehog/Internal/Options.idr)
+[ build ] 13/18: Building Hedgehog.Internal.Terminal (src/Hedgehog/Internal/Terminal.idr)
+[ build ] 14/18: Building Hedgehog.Internal.Runner (src/Hedgehog/Internal/Runner.idr)
+[ build ] 15/18: Building Hedgehog (src/Hedgehog.idr)
+[ build ] 16/18: Building Hedgehog.Meta (src/Hedgehog/Meta.idr)
+[ build ] 17/18: Building Hedgehog.Gen.Unicode (src/Hedgehog/Gen/Unicode.idr)
+[ build ] 18/18: Building Derive.Cogen (src/Derive/Cogen.idr)
+[ info ] Building: idris2-pg-prop-test
+[ build ] 1/1: Building PropTests (src/PropTests.idr)
+[ build ] Now compiling the executable: idris2-pg-prop-test

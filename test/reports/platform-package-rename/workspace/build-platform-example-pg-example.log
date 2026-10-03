@@ -1,0 +1,21 @@
+[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Installing libraries:
+         - flux-docker
+         - flux-postgres-pool
+         - flux-db-flux
+         - todo-api
+[ info ] Installing library (with sources): flux-docker
+[ build ] 1/1: Building Docker (src/Docker.idr)
+[ info ] Installing library (with sources): flux-postgres-pool
+[ info ] Installing library (with sources): flux-db-flux
+[ build ] 2/2: Building Flux.DB.PG (src/Flux/DB/PG.idr)
+[ info ] Installing library (with sources): todo-api
+[ build ] 5/8: Building TodoApi (src/TodoApi.idr)
+[ build ] 6/8: Building DevPostgres (src/DevPostgres.idr)
+[ build ] 7/8: Building Config (src/Config.idr)
+[ build ] Now compiling the executable: todo-api
+[ build ] Warning: compiling hole Helper.unimplementedEncode
+[ info ] Building: platform-pg-example
+[ build ] Now compiling the executable: platform-pg-example
+[ build ] Warning: compiling hole Helper.unimplementedEncode

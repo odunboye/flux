@@ -1,0 +1,15 @@
+[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Installing libraries:
+         - flux-postgres
+         - flux-db
+[ info ] Installing library (with sources): flux-postgres
+[ build ] mkdir -p lib
+[ build ] cc -O2 -Wall -Wextra -Werror -std=c11 -dynamiclib c/pg_transport.c -o lib/libidris2_pg_transport.dylib
+[ info ] Installing library (with sources): flux-db
+[ build ]  1/10: Building Flux.DB.ObjectFromJSON (src/Flux/DB/ObjectFromJSON.idr)
+[ build ]  7/10: Building Flux.DB.Repository (src/Flux/DB/Repository.idr)
+[ info ] Building: flux-db-test
+[ build ] 1/1: Building Main (src/Main.idr)
+[ build ] Now compiling the executable: flux-db-test
+[ build ] Warning: compiling hole Helper.unimplementedEncode

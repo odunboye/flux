@@ -1,0 +1,9 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; }
+body { margin: 0; background: #0d1117; color: #f0f6fc; }
+main { max-width: 64rem; margin: auto; }
+button, input { font: inherit; min-height: 2.75rem; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid #79c0ff; outline-offset: 3px; }
+[role="group"] { min-width: 0; flex-wrap: wrap; }
+span, button { overflow-wrap: anywhere; }
+input { min-width: 0; max-width: 100%; box-sizing: border-box; }

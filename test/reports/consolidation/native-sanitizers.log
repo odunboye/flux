@@ -1,0 +1,11 @@
+mkdir -p build/native
+cc -O1 -g -Wall -Wextra -Werror -std=c11 -pthread -Ic -fsanitize=address,undefined c/flux_native.c test/native_test.c -o build/native/native-sanitized
+./build/native/native-sanitized
+PASS native readiness, registration tokens, EOF, wake saturation, cross-thread wake
+cc -O1 -g -Wall -Wextra -Werror -std=c11 -pthread -Ic -fsanitize=address,undefined c/flux_native.c test/native_stress_test.c -o build/native/native-stress
+./build/native/native-stress
+PASS interrupted poll retains deadline (50 ms)
+PASS 5000 registrations under four continuous wake producers
+cc -O1 -g -Wall -Wextra -Werror -std=c11 -pthread -Ic -fsanitize=address,undefined c/flux_native.c test/watchdog_test.c -o build/native/watchdog-test
+./build/native/watchdog-test
+PASS standalone signal lifecycle and independent forced exit

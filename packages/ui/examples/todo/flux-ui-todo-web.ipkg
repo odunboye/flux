@@ -1,0 +1,12 @@
+package flux-ui-todo-web
+
+authors    = "Odun Adeboye"
+version    = 0.1.0
+brief      = "Flux UI Todo — web / DOM build  (Idris2 JavaScript backend)"
+
+depends    = flux-ui
+sourcedir  = "src"
+executable = "flux-ui-todo-web"
+main       = MainWeb
+
+-- No prebuild needed — JS backend doesn't use C FFI

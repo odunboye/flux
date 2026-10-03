@@ -1,0 +1,4 @@
+PASS feature catalog: four showcases, eight capabilities, keyboard/no-JS anchors, honest scope and card bounds at 320–1440px
+PASS Flux landing: HTTP/security, desktop/mobile, keyboard tabs/menu, clipboard success/failure, reduced motion and no-JS fallback
+Screenshots: /Users/odunadeboye/dev/idris2/projects/flux/.workspace/landing
+PASS Flux landing server clean shutdown

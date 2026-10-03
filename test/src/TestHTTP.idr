@@ -4,9 +4,56 @@ import Flux.Core.HTTP
 import Data.SortedMap
 import Data.IORef
 import Data.Vect
+import Data.String
 import System
 
 %default covering
+
+-- Byte-exact wire tests: invalid names must not add fields, terminate the
+-- header section, or inject a second response. Exercise every ASCII character.
+validNameChars : String
+validNameChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&'*+-.^_`|~"
+
+invalidNames : List String
+invalidNames = ["", " X", "X ", "X:Y", "X\tY", "X\rY", "X\nY",
+  "X\NULY", "X\DELY", "X-é", "X-中", "X: v\r\nContent-Length",
+  "X\r\n\r\nHTTP/1.1 200 OK\r\nX"]
+
+export
+testResponseHeaderNameASCII : Bool
+testResponseHeaderNameASCII = all check [0..127]
+  where
+    check : Int -> Bool
+    check n =
+      let char = chr n
+          name = pack [char]
+          allowed = elem char (unpack validNameChars)
+          expected = if allowed then "HTTP/1.1 200\r\n" ++ name ++ ": v\r\n\r\n"
+                                else "HTTP/1.1 200\r\n\r\n"
+       in validHeaderName name == allowed && toString (encodeResponse 200 [(name, "v")]) == expected
+
+export
+testResponseRejectsMalformedNames : Bool
+testResponseRejectsMalformedNames = all
+  (\name => not (validHeaderName name) &&
+    toString (encodeResponse 200 [("X-Before", "a"), (name, "evil"), ("X-After", "b")]) ==
+      "HTTP/1.1 200\r\nX-Before: a\r\nX-After: b\r\n\r\n") invalidNames
+
+export
+testResponsePreservesValidHeaders : Bool
+testResponsePreservesValidHeaders =
+  toString (encodeResponse 200 [(validNameChars, "ok"), ("Set-Cookie", "a=1"),
+    ("Set-Cookie", "b=2"), ("x-MiXeD", "a\tb"), ("X-Empty", "")]) ==
+    "HTTP/1.1 200\r\n" ++ validNameChars ++ ": ok\r\nSet-Cookie: a=1\r\nSet-Cookie: b=2\r\nx-MiXeD: a\tb\r\nX-Empty: \r\n\r\n"
+
+export
+testResponseRejectsControlValues : Bool
+testResponseRejectsControlValues = all check ([0..8] ++ [10..31] ++ [127]) &&
+  toString (ok [("X", "a\r\nInjected: evil")]) == "HTTP/1.1 200\r\n\r\n"
+  where
+    check : Int -> Bool
+    check n = toString (encodeResponse 200 [("X", pack ['a', chr n, 'b'])]) ==
+      "HTTP/1.1 200\r\n\r\n"
 
 -- method
 
@@ -437,7 +484,11 @@ runAllTests = do
   reqAcceptsAbsoluteForm   <- testRequestAcceptsAbsoluteFormTargetAsLiteralPath
   reqCRLFCannotSmuggle     <- testRequestCRLFCannotSmuggleAHeaderValue
   pure $
-   [ ("methodGet", testMethodGet),
+   [ ("responseHeaderNameASCII", testResponseHeaderNameASCII),
+  ("responseRejectsMalformedNames", testResponseRejectsMalformedNames),
+  ("responsePreservesValidHeaders", testResponsePreservesValidHeaders),
+  ("responseRejectsControlValues", testResponseRejectsControlValues),
+  ("methodGet", testMethodGet),
   ("methodAllVariants", testMethodAllVariants),
   ("methodUnknown", testMethodUnknown),
   ("methodLowercaseRejected", testMethodLowercaseRejected),

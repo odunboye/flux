@@ -1,0 +1,9 @@
+PASS pure result
+PASS deep bind without interpreter stack recursion
+PASS typed failure caught across error lists
+PASS cancel joins and cleanup runs once
+PASS scope exit cancels and joins child
+PASS cancel during acquire releases resource without use
+PASS race waits for loser finalization
+PASS cleanup on typed failure
+All runtime checks passed

@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "collection": "nightly-260903",
+  "compiler": "Idris2 0.8.0 / 74b33730b6fea649b15e8d01ab099df9effcc7a0",
+  "packages": {
+    "flux": "flux.ipkg",
+    "flux-test": "test/test.ipkg",
+    "flux-examples": "examples/examples.ipkg",
+    "flux-use-cases": "examples/use-cases.ipkg",
+    "flux-landing": "website/landing.ipkg",
+    "flux-runtime": "packages/runtime/flux-runtime.ipkg",
+    "flux-ui": "packages/ui/flux-ui.ipkg",
+    "flux-db-flux": "packages/db-flux/flux-db-flux.ipkg",
+    "flux-protocol": "platform/flux-protocol.ipkg",
+    "flux-auth": "packages/auth/flux-auth.ipkg",
+    "flux-client": "platform/flux-client.ipkg",
+    "platform-crud-ui": "platform/crud/ui.ipkg",
+    "platform-crud-server": "platform/crud/server.ipkg",
+    "todo-api": "examples/todo-api/todo-api.ipkg",
+    "todo-api-test": "examples/todo-api/test/test.ipkg",
+    "todo-api-inmemory-test": "examples/todo-api/test/inmemory-test.ipkg",
+    "todo-api-pooled-test": "examples/todo-api/test/pooled-test.ipkg",
+    "flux-ui-todo": "packages/ui/examples/todo/flux-ui-todo.ipkg"
+  },
+  "tests": {"flux": "test/test.ipkg", "todo-api": "test/test.ipkg"},
+  "imports": [
+    {"path": "packages/runtime", "source": "idris2-flux-async", "commit": "bfc3ff67c3d4dd85462ba7063d6d81ad7328ccf5"},
+    {"path": "packages/db-flux", "source": "nebula-flux", "commit": "51f0c818f3a86c2fde4fb59e432b69b949d923e5"},
+    {"path": "packages/ui", "source": "iris", "commit": "bf07bf6ce2b61ab8197323efb8fb4ae46d48efbe"},
+    {"path": "examples/todo-api", "source": "todo-api", "commit": "731fbd4f6942d7073c8fc91b10da53b752c8a002"}
+  ],
+  "unversioned_imports": [],
+  "external_packages": {
+    "postgres": {
+      "url": "https://github.com/odunboye/postgres.git",
+      "commit": "60f4c71a28c9a74d184749e41c9da7dcb7253b4e",
+      "ipkg": "postgres.ipkg",
+      "test": "test/test.ipkg",
+      "note": "Formerly vendored here as packages/postgres/flux-postgres (then briefly external as idris2-pg, then idris2-postgres); moved back to its own repo so it isn't Flux-only. See design/CONSOLIDATION.md."
+    },
+    "postgres-async": {
+      "url": "https://github.com/odunboye/postgres.git",
+      "commit": "60f4c71a28c9a74d184749e41c9da7dcb7253b4e",
+      "ipkg": "async/postgres-async.ipkg",
+      "note": "Formerly packages/postgres/async/flux-postgres-pool; same repo/commit as postgres, different ipkg path. Depends on flux-async below (its own name for flux-runtime) - a git dependency can only resolve its own deps against other globally-known collection/git packages, not a project-local alias."
+    },
+    "flux-async": {
+      "url": "https://github.com/odunboye/idris2-flux-async.git",
+      "commit": "bfc3ff67c3d4dd85462ba7063d6d81ad7328ccf5",
+      "ipkg": "flux-async.ipkg",
+      "note": "Published so postgres-async (an external git dependency) can resolve its own 'flux-async' dependency. Same content Flux vendors locally as flux-runtime (packages/runtime); kept as two names because postgres-async predates the flux-runtime rename and nothing outside Flux knows that name."
+    },
+    "db": {
+      "url": "https://github.com/odunboye/db.git",
+      "commit": "c4dcfb0b10401103c919bce1a07b5871594ac8f2",
+      "ipkg": "db.ipkg",
+      "test": "test/test.ipkg",
+      "note": "Formerly vendored here as packages/db/flux-db (Flux.DB.* modules); moved back out since it has no Flux-specific dependencies, and renamed db/DB.* along with the move. flux-db-flux (Flux.DB.PG/Flux.DB.Pool) stays - it's the genuinely Flux-specific HTTP-framework glue on top of this."
+    },
+    "docker": {
+      "url": "https://github.com/odunboye/docker.git",
+      "commit": "b268eb147135351d8dc7cd3e1a90143214469a9c",
+      "ipkg": "docker.ipkg",
+      "test": "test/test.ipkg",
+      "note": "Formerly vendored here as packages/docker/flux-docker; moved back out since it has no dependencies beyond Idris2 base. Had no prior git history to sync into (it was imported as a source snapshot, not a subtree)."
+    }
+  },
+  "browser_roots": ["flux-ui", "flux-client", "platform-crud-ui"],
+  "browser_forbidden": ["flux", "flux-runtime", "flux-async", "db", "flux-db-flux", "postgres", "postgres-async", "flux-protocol", "flux-auth"]
+}

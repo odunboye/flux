@@ -1,0 +1,7 @@
+package platform-client-web-test
+version = 0.1.0
+depends = flux-client
+sourcedir = "."
+modules = ProtocolTypes, Client, ClientChecks, ClientWebTest
+main = ClientWebTest
+executable = platform-client-web-test

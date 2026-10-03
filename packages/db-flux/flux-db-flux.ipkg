@@ -1,0 +1,18 @@
+package flux-db-flux
+version = 0.3.0
+authors = "Odun Adeboye"
+license = "MIT"
+brief   = "Glue lifting postgres/db's IO (Either PGError a) calls into Flux's AppProg/Handler pipeline"
+readme  = "README.md"
+
+depends = flux
+        , db
+        , postgres
+        , postgres-async
+
+modules = Flux.DB.PG
+        , Flux.DB.Pool
+
+main = Flux.DB.PG
+
+sourcedir = "src"

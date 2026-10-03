@@ -1,0 +1,20 @@
+[ info ] Found local config at
+         - /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+         - /Users/odunadeboye/dev/idris2/projects/flux/platform/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Installing libraries:
+         - flux-platform
+[ info ] Installing library (with sources): flux-platform
+[ build ] 1/1: Building Flux.Platform.Endpoint (src/Flux/Platform/Endpoint.idr)
+[ build ] Warning: We are about to implicitly bind the following lowercase names.
+[ build ] You may be unintentionally shadowing the associated global definitions:
+[ build ]   request is shadowing Flux.Core.HTTP.request, Flux.Core.Middleware.Context.request
+[ build ] 
+[ build ] Flux.Platform.Endpoint:29:1--30:54
+[ build ]  29 | rpcHandler : FromJSON request => ToJSON response =>
+[ build ]  30 |              (request -> AppProg response) -> Handler
+[ build ] 
+[ info ] Building: platform-example
+[ build ] 1/2: Building Protocol (Protocol.idr)
+[ build ] 2/2: Building Main (Main.idr)
+[ build ] Now compiling the executable: platform-example

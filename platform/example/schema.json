@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "models": {
+    "CreateTodoRequest": {"title": "string"},
+    "TodoResponse": {"id": "string", "title": "string", "done": "bool"}
+  },
+  "endpoints": [
+    {"name": "createTodo", "path": "/rpc/v1/todos/create", "request": "CreateTodoRequest", "response": "TodoResponse", "access": "public"}
+  ]
+}

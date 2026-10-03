@@ -1,0 +1,14 @@
+PASS 21 local packages, canonical paths and browser dependency boundaries
+PASS 23 local packages, canonical paths and browser dependency boundaries
+Created apps/sample. Next: ./flux --project apps/sample build
+PASS 23 local packages, canonical paths and browser dependency boundaries
+..PASS 21 local packages, canonical paths and browser dependency boundaries
+PASS 21 local packages, canonical paths and browser dependency boundaries
+.PASS 21 local packages, canonical paths and browser dependency boundaries
+PASS 21 local packages, canonical paths and browser dependency boundaries
+.PASS 21 local packages, canonical paths and browser dependency boundaries
+...
+----------------------------------------------------------------------
+Ran 7 tests in 0.291s
+
+OK

@@ -1,0 +1,785 @@
+{
+  "output": "/var/folders/7x/qc57ddy15_zcrzvx3jdrprvw0000gn/T/flux-socket-suite-tt1zfjga",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "started_at": 1789162072.541248,
+  "probes": [],
+  "load": [
+    {
+      "async_threads": 1,
+      "duration_s": 30,
+      "connections": 100,
+      "idle_timeout_ms": 5000,
+      "samples": [
+        {
+          "time": 1789162073.0690649,
+          "phase": "baseline",
+          "rss_kib": 34048,
+          "cpu_percent": 13.0,
+          "fd_rows": 16,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162073.077028,
+          "phase": "load",
+          "rss_kib": 34048,
+          "cpu_percent": 13.0,
+          "fd_rows": 16,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162075.087204,
+          "phase": "load",
+          "rss_kib": 51424,
+          "cpu_percent": 104.8,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162077.102796,
+          "phase": "load",
+          "rss_kib": 48768,
+          "cpu_percent": 104.8,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162079.113685,
+          "phase": "load",
+          "rss_kib": 44608,
+          "cpu_percent": 104.7,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162081.125056,
+          "phase": "load",
+          "rss_kib": 42528,
+          "cpu_percent": 104.4,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162083.136502,
+          "phase": "load",
+          "rss_kib": 52992,
+          "cpu_percent": 104.6,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162085.1485178,
+          "phase": "load",
+          "rss_kib": 49072,
+          "cpu_percent": 104.3,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162087.161452,
+          "phase": "load",
+          "rss_kib": 46704,
+          "cpu_percent": 104.6,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162089.174582,
+          "phase": "load",
+          "rss_kib": 46704,
+          "cpu_percent": 104.3,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162091.18606,
+          "phase": "load",
+          "rss_kib": 55088,
+          "cpu_percent": 104.4,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162093.204639,
+          "phase": "load",
+          "rss_kib": 23040,
+          "cpu_percent": 95.5,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162095.2201338,
+          "phase": "load",
+          "rss_kib": 29024,
+          "cpu_percent": 104.6,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162097.232571,
+          "phase": "load",
+          "rss_kib": 37408,
+          "cpu_percent": 93.4,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162099.245874,
+          "phase": "load",
+          "rss_kib": 35312,
+          "cpu_percent": 103.9,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162101.262683,
+          "phase": "load",
+          "rss_kib": 29040,
+          "cpu_percent": 103.3,
+          "fd_rows": 116,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162105.280688,
+          "phase": "recovery",
+          "rss_kib": 22768,
+          "cpu_percent": 8.7,
+          "fd_rows": 16,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162107.30338,
+          "phase": "recovery",
+          "rss_kib": 22768,
+          "cpu_percent": 7.2,
+          "fd_rows": 16,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162109.324827,
+          "phase": "recovery",
+          "rss_kib": 22768,
+          "cpu_percent": 8.1,
+          "fd_rows": 16,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162111.3429608,
+          "phase": "recovery",
+          "rss_kib": 22768,
+          "cpu_percent": 7.3,
+          "fd_rows": 16,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162113.3745542,
+          "phase": "recovery",
+          "rss_kib": 22768,
+          "cpu_percent": 7.2,
+          "fd_rows": 16,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162115.404305,
+          "phase": "recovery",
+          "rss_kib": 22768,
+          "cpu_percent": 7.3,
+          "fd_rows": 16,
+          "tcp_rows": 1,
+          "close_wait": 0
+        }
+      ],
+      "session_mode": "one shared established session",
+      "wrk_output": "Running 30s test @ http://127.0.0.1:65331/\n  2 threads and 100 connections\n  Thread Stats   Avg      Stdev     Max   +/- Stdev\n    Latency     6.23ms    2.34ms  78.64ms   97.79%\n    Req/Sec     8.18k   784.79     8.88k    88.37%\n  Latency Distribution\n     50%    6.04ms\n     75%    6.50ms\n     90%    7.20ms\n     99%   11.29ms\n  490112 requests in 30.10s, 170.21MB read\nRequests/sec:  16282.69\nTransfer/sec:      5.65MB\n",
+      "wrk_exit_code": 0,
+      "post_load_healthy": true,
+      "shutdown": {
+        "exit_code": 0,
+        "forced": false
+      }
+    },
+    {
+      "async_threads": 2,
+      "duration_s": 60,
+      "connections": 100,
+      "idle_timeout_ms": 5000,
+      "samples": [
+        {
+          "time": 1789162117.099584,
+          "phase": "baseline",
+          "rss_kib": 34064,
+          "cpu_percent": 22.1,
+          "fd_rows": 18,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162117.1084669,
+          "phase": "load",
+          "rss_kib": 34064,
+          "cpu_percent": 22.1,
+          "fd_rows": 31,
+          "tcp_rows": 14,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162119.121838,
+          "phase": "load",
+          "rss_kib": 50944,
+          "cpu_percent": 195.6,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162121.135989,
+          "phase": "load",
+          "rss_kib": 59200,
+          "cpu_percent": 196.6,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162123.150527,
+          "phase": "load",
+          "rss_kib": 48848,
+          "cpu_percent": 194.4,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162125.1606941,
+          "phase": "load",
+          "rss_kib": 59344,
+          "cpu_percent": 196.2,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162127.172374,
+          "phase": "load",
+          "rss_kib": 49088,
+          "cpu_percent": 195.7,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162129.185032,
+          "phase": "load",
+          "rss_kib": 55152,
+          "cpu_percent": 196.8,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162131.200238,
+          "phase": "load",
+          "rss_kib": 50960,
+          "cpu_percent": 195.1,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162133.21556,
+          "phase": "load",
+          "rss_kib": 59344,
+          "cpu_percent": 196.5,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162135.227639,
+          "phase": "load",
+          "rss_kib": 53056,
+          "cpu_percent": 196.3,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162137.239823,
+          "phase": "load",
+          "rss_kib": 61440,
+          "cpu_percent": 195.7,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162139.256181,
+          "phase": "load",
+          "rss_kib": 55040,
+          "cpu_percent": 195.9,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162141.269902,
+          "phase": "load",
+          "rss_kib": 57248,
+          "cpu_percent": 196.1,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162143.285195,
+          "phase": "load",
+          "rss_kib": 55152,
+          "cpu_percent": 196.0,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162145.301167,
+          "phase": "load",
+          "rss_kib": 57248,
+          "cpu_percent": 195.7,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162147.316637,
+          "phase": "load",
+          "rss_kib": 50960,
+          "cpu_percent": 195.7,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162149.328029,
+          "phase": "load",
+          "rss_kib": 57664,
+          "cpu_percent": 195.7,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162151.3438358,
+          "phase": "load",
+          "rss_kib": 53056,
+          "cpu_percent": 196.8,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162153.3602078,
+          "phase": "load",
+          "rss_kib": 59344,
+          "cpu_percent": 195.7,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162155.371574,
+          "phase": "load",
+          "rss_kib": 53264,
+          "cpu_percent": 196.7,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162157.385329,
+          "phase": "load",
+          "rss_kib": 50976,
+          "cpu_percent": 195.6,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162159.39661,
+          "phase": "load",
+          "rss_kib": 53056,
+          "cpu_percent": 196.0,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162161.4123971,
+          "phase": "load",
+          "rss_kib": 59568,
+          "cpu_percent": 195.9,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162163.427049,
+          "phase": "load",
+          "rss_kib": 53072,
+          "cpu_percent": 196.6,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162165.439167,
+          "phase": "load",
+          "rss_kib": 50960,
+          "cpu_percent": 196.0,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162167.454835,
+          "phase": "load",
+          "rss_kib": 53056,
+          "cpu_percent": 196.0,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162169.466937,
+          "phase": "load",
+          "rss_kib": 61440,
+          "cpu_percent": 196.2,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162171.478501,
+          "phase": "load",
+          "rss_kib": 53056,
+          "cpu_percent": 195.7,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162173.4908092,
+          "phase": "load",
+          "rss_kib": 50960,
+          "cpu_percent": 196.5,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162175.505208,
+          "phase": "load",
+          "rss_kib": 53776,
+          "cpu_percent": 196.2,
+          "fd_rows": 118,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162179.534537,
+          "phase": "recovery",
+          "rss_kib": 55152,
+          "cpu_percent": 6.4,
+          "fd_rows": 18,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162181.560191,
+          "phase": "recovery",
+          "rss_kib": 55152,
+          "cpu_percent": 6.7,
+          "fd_rows": 18,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162183.592315,
+          "phase": "recovery",
+          "rss_kib": 55152,
+          "cpu_percent": 6.6,
+          "fd_rows": 18,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162185.6136918,
+          "phase": "recovery",
+          "rss_kib": 55152,
+          "cpu_percent": 5.8,
+          "fd_rows": 18,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162187.633399,
+          "phase": "recovery",
+          "rss_kib": 55152,
+          "cpu_percent": 5.9,
+          "fd_rows": 18,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162189.660289,
+          "phase": "recovery",
+          "rss_kib": 55152,
+          "cpu_percent": 6.4,
+          "fd_rows": 18,
+          "tcp_rows": 1,
+          "close_wait": 0
+        }
+      ],
+      "session_mode": "one shared established session",
+      "wrk_output": "Running 1m test @ http://127.0.0.1:65465/\n  2 threads and 100 connections\n  Thread Stats   Avg      Stdev     Max   +/- Stdev\n    Latency     3.99ms  674.02us  14.34ms   83.05%\n    Req/Sec    12.60k   278.25    13.36k    78.29%\n  Latency Distribution\n     50%    3.83ms\n     75%    4.27ms\n     90%    4.79ms\n     99%    6.38ms\n  1506928 requests in 1.00m, 523.92MB read\nRequests/sec:  25073.30\nTransfer/sec:      8.72MB\n",
+      "wrk_exit_code": 0,
+      "post_load_healthy": true,
+      "shutdown": {
+        "exit_code": 0,
+        "forced": false
+      }
+    },
+    {
+      "async_threads": 4,
+      "duration_s": 30,
+      "connections": 100,
+      "idle_timeout_ms": 5000,
+      "samples": [
+        {
+          "time": 1789162191.372685,
+          "phase": "baseline",
+          "rss_kib": 34048,
+          "cpu_percent": 13.4,
+          "fd_rows": 22,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162191.3822122,
+          "phase": "load",
+          "rss_kib": 34048,
+          "cpu_percent": 13.4,
+          "fd_rows": 22,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162193.3984141,
+          "phase": "load",
+          "rss_kib": 59392,
+          "cpu_percent": 321.6,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162195.415076,
+          "phase": "load",
+          "rss_kib": 60832,
+          "cpu_percent": 323.0,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162197.428617,
+          "phase": "load",
+          "rss_kib": 63584,
+          "cpu_percent": 322.2,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162199.44228,
+          "phase": "load",
+          "rss_kib": 63584,
+          "cpu_percent": 320.6,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162201.4559639,
+          "phase": "load",
+          "rss_kib": 57296,
+          "cpu_percent": 320.3,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162203.468998,
+          "phase": "load",
+          "rss_kib": 60320,
+          "cpu_percent": 322.4,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162205.481725,
+          "phase": "load",
+          "rss_kib": 65680,
+          "cpu_percent": 320.5,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162207.498545,
+          "phase": "load",
+          "rss_kib": 53104,
+          "cpu_percent": 320.2,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162209.519375,
+          "phase": "load",
+          "rss_kib": 59392,
+          "cpu_percent": 321.8,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162211.533174,
+          "phase": "load",
+          "rss_kib": 63584,
+          "cpu_percent": 298.9,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162213.548213,
+          "phase": "load",
+          "rss_kib": 55216,
+          "cpu_percent": 319.6,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162215.5639832,
+          "phase": "load",
+          "rss_kib": 61488,
+          "cpu_percent": 321.8,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162217.57933,
+          "phase": "load",
+          "rss_kib": 55200,
+          "cpu_percent": 320.2,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162219.590667,
+          "phase": "load",
+          "rss_kib": 59392,
+          "cpu_percent": 321.1,
+          "fd_rows": 122,
+          "tcp_rows": 101,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162223.605067,
+          "phase": "recovery",
+          "rss_kib": 64224,
+          "cpu_percent": 2.6,
+          "fd_rows": 22,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162225.6387389,
+          "phase": "recovery",
+          "rss_kib": 64224,
+          "cpu_percent": 8.3,
+          "fd_rows": 22,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162227.6687129,
+          "phase": "recovery",
+          "rss_kib": 64224,
+          "cpu_percent": 7.5,
+          "fd_rows": 22,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162229.704871,
+          "phase": "recovery",
+          "rss_kib": 64224,
+          "cpu_percent": 8.6,
+          "fd_rows": 22,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162231.737548,
+          "phase": "recovery",
+          "rss_kib": 64224,
+          "cpu_percent": 9.2,
+          "fd_rows": 22,
+          "tcp_rows": 1,
+          "close_wait": 0
+        },
+        {
+          "time": 1789162233.7716439,
+          "phase": "recovery",
+          "rss_kib": 64224,
+          "cpu_percent": 9.3,
+          "fd_rows": 22,
+          "tcp_rows": 1,
+          "close_wait": 0
+        }
+      ],
+      "session_mode": "one shared established session",
+      "wrk_output": "Running 30s test @ http://127.0.0.1:49210/\n  2 threads and 100 connections\n  Thread Stats   Avg      Stdev     Max   +/- Stdev\n    Latency     3.14ms    1.07ms  27.89ms   81.56%\n    Req/Sec    16.08k     0.92k   17.82k    68.27%\n  Latency Distribution\n     50%    2.79ms\n     75%    3.72ms\n     90%    4.56ms\n     99%    6.28ms\n  963144 requests in 30.10s, 334.85MB read\nRequests/sec:  31995.51\nTransfer/sec:     11.12MB\n",
+      "wrk_exit_code": 0,
+      "post_load_healthy": true,
+      "shutdown": {
+        "exit_code": 0,
+        "forced": false
+      }
+    }
+  ]
+}

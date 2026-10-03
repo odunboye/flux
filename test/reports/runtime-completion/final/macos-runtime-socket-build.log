@@ -1,0 +1,15 @@
+[ info ] Found local config at /Users/odunadeboye/dev/idris2/libs/idris2-flux-async/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Building: flux-async-socket-test
+[ build ] mkdir -p build/native lib
+[ build ] cc -O2 -Wall -Wextra -Werror -std=c11 -pthread -dynamiclib c/flux_native.c -o build/native/libflux_async.dylib
+[ build ] cp build/native/libflux_async.dylib lib/
+[ build ] mkdir -p test/build/exec/flux-async-stream-test_app
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-async-stream-test_app/
+[ build ] mkdir -p test/build/exec/flux-async-test_app test/build/exec/flux-async-service-test_app test/build/exec/flux-async-socket-test_app
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-async-test_app/
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-async-service-test_app/
+[ build ] cp lib/libflux_async.dylib test/build/exec/flux-async-socket-test_app/
+[ build ] 5/6: Building Flux.Async.Socket (../src/Flux/Async/Socket.idr)
+[ build ] 6/6: Building TestSocket (../src/TestSocket.idr)
+[ build ] Now compiling the executable: flux-async-socket-test

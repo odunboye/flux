@@ -1,0 +1,375 @@
+[ info ] Found local config at /tmp/flux-application/playground/todo-api/pack.toml
+[ info ] Using package collection nightly-260906
+[ info ] Installing libraries:
+         - quantifiers-extra
+         - elin
+         - cptr
+         - posix
+         - flux-async
+         - ilex-json
+         - json-simple
+         - flux
+         - contrib
+         - idris2-pg
+         - idris2-docker
+         - nebula
+         - idris2-pg-async
+         - nebula-flux
+[ info ] Installing library (with sources): quantifiers-extra
+[ build ] 1/1: Building Data.List.Quantifiers.Extra (src/Data/List/Quantifiers/Extra.idr)
+[ info ] Installing library (with sources): elin
+[ build ] 1/5: Building Control.Monad.MErr (src/Control/Monad/MErr.idr)
+[ build ] 2/5: Building Control.Monad.MCancel (src/Control/Monad/MCancel.idr)
+[ build ] 3/5: Building Control.Monad.Resource (src/Control/Monad/Resource.idr)
+[ build ] 4/5: Building Data.Linear.ELift1 (src/Data/Linear/ELift1.idr)
+[ build ] 5/5: Building Control.Monad.Elin (src/Control/Monad/Elin.idr)
+[ info ] Installing library (with sources): cptr
+[ build ] make: Entering directory '/root/.cache/pack/.tmp0/cptr/codegen'
+[ build ] cc -o integer_gen integer.c 
+[ build ] make: Leaving directory '/root/.cache/pack/.tmp0/cptr/codegen'
+[ build ] make: Entering directory '/root/.cache/pack/.tmp0/cptr/support'
+[ build ] cc    -c -o cptr.o cptr.c
+[ build ] cc -shared -o cptr-idris cptr.o 
+[ build ] make: Leaving directory '/root/.cache/pack/.tmp0/cptr/support'
+[ build ] 1/7: Building Data.C.Deref (src/Data/C/Deref.idr)
+[ build ] 2/7: Building Data.C.Integer (src/Data/C/Integer.idr)
+[ build ] 3/7: Building Data.C.SizeOf (src/Data/C/SizeOf.idr)
+[ build ] 4/7: Building Data.C.Struct (src/Data/C/Struct.idr)
+[ build ] 5/7: Building Data.C.Array (src/Data/C/Array.idr)
+[ build ] 6/7: Building Data.C.Ptr (src/Data/C/Ptr.idr)
+[ build ] 7/7: Building Data.C.Array8 (src/Data/C/Array8.idr)
+[ info ] Installing library (with sources): posix
+[ build ] make: Entering directory '/root/.cache/pack/.tmp0/posix/posix/codegen'
+[ build ] cc -o error_gen error.c 
+[ build ] cc -o flags_gen flags.c 
+[ build ] cc -o whence_gen whence.c 
+[ build ] cc -o limits_gen limits.c 
+[ build ] cc -o filetype_gen filetype.c 
+[ build ] cc -o signal_gen signal.c 
+[ build ] cc -o poll_gen poll.c 
+[ build ] cc -o process_gen process.c 
+[ build ] cc -o time_gen time.c 
+[ build ] cc -o timer_gen timer.c 
+[ build ] cc -o pthreads_gen pthreads.c 
+[ build ] cc -o socket_gen socket.c 
+[ build ] make: Leaving directory '/root/.cache/pack/.tmp0/posix/posix/codegen'
+[ build ] make: Entering directory '/root/.cache/pack/.tmp0/posix/posix/support'
+[ build ] cc  -fPIC  -c -o posix.o posix.c
+[ build ] cc -shared -o posix-idris posix.o 
+[ build ] make: Leaving directory '/root/.cache/pack/.tmp0/posix/posix/support'
+[ build ]  1/41: Building System.Posix.Limits (src/System/Posix/Limits.idr)
+[ build ]  2/41: Building System.Posix.Errno.Type (src/System/Posix/Errno/Type.idr)
+[ build ]  3/41: Building System.Posix.Errno (src/System/Posix/Errno.idr)
+[ build ]  4/41: Building System.Posix.Timer.Types (src/System/Posix/Timer/Types.idr)
+[ build ]  5/41: Building System.Posix.File.ReadRes (src/System/Posix/File/ReadRes.idr)
+[ build ]  6/41: Building System.Posix.Time.Types (src/System/Posix/Time/Types.idr)
+[ build ]  7/41: Building System.Posix.Time (src/System/Posix/Time.idr)
+[ build ]  8/41: Building System.Posix.Timer.Prim (src/System/Posix/Timer/Prim.idr)
+[ build ]  9/41: Building System.Posix.Timer (src/System/Posix/Timer.idr)
+[ build ] 10/41: Building System.Posix.File.FileDesc (src/System/Posix/File/FileDesc.idr)
+[ build ] 11/41: Building System.Posix.File.Flags (src/System/Posix/File/Flags.idr)
+[ build ] 12/41: Building System.Posix.File.Whence (src/System/Posix/File/Whence.idr)
+[ build ] 13/41: Building System.Posix.File.Prim (src/System/Posix/File/Prim.idr)
+[ build ] 14/41: Building System.Posix.Socket.Types (src/System/Posix/Socket/Types.idr)
+[ build ] 15/41: Building System.Posix.Socket.Struct (src/System/Posix/Socket/Struct.idr)
+[ build ] 16/41: Building System.Posix.Socket.Prim (src/System/Posix/Socket/Prim.idr)
+[ build ] 17/41: Building System.Posix.Socket (src/System/Posix/Socket.idr)
+[ build ] 18/41: Building System.Posix.Pthreads.Types (src/System/Posix/Pthreads/Types.idr)
+[ build ] 19/41: Building System.Posix.Pthreads.Struct (src/System/Posix/Pthreads/Struct.idr)
+[ build ] 20/41: Building System.Posix.Signal.Types (src/System/Posix/Signal/Types.idr)
+[ build ] 21/41: Building System.Posix.Signal.Struct (src/System/Posix/Signal/Struct.idr)
+[ build ] 22/41: Building System.Posix.Signal.Prim (src/System/Posix/Signal/Prim.idr)
+[ build ] 23/41: Building System.Posix.Signal (src/System/Posix/Signal.idr)
+[ build ] 24/41: Building System.Posix.Pthreads.Prim (src/System/Posix/Pthreads/Prim.idr)
+[ build ] 25/41: Building System.Posix.Pthreads (src/System/Posix/Pthreads.idr)
+[ build ] 26/41: Building System.Posix.File (src/System/Posix/File.idr)
+[ build ] 27/41: Building System.Posix.Process.Flags (src/System/Posix/Process/Flags.idr)
+[ build ] 28/41: Building System.Posix.Process.ProcStatus (src/System/Posix/Process/ProcStatus.idr)
+[ build ] 29/41: Building System.Posix.Process.Prim (src/System/Posix/Process/Prim.idr)
+[ build ] 30/41: Building System.Posix.Process (src/System/Posix/Process.idr)
+[ build ] 31/41: Building System.Posix.Poll.Types (src/System/Posix/Poll/Types.idr)
+[ build ] 32/41: Building System.Posix.Poll.Struct (src/System/Posix/Poll/Struct.idr)
+[ build ] 33/41: Building System.Posix.Poll.Prim (src/System/Posix/Poll/Prim.idr)
+[ build ] 34/41: Building System.Posix.Poll (src/System/Posix/Poll.idr)
+[ build ] 35/41: Building System.Posix.Pipe.Prim (src/System/Posix/Pipe/Prim.idr)
+[ build ] 36/41: Building System.Posix.Pipe (src/System/Posix/Pipe.idr)
+[ build ] 37/41: Building System.Posix.File.Type (src/System/Posix/File/Type.idr)
+[ build ] 38/41: Building System.Posix.File.Stats (src/System/Posix/File/Stats.idr)
+[ build ] 39/41: Building System.Posix.Dir.Dir (src/System/Posix/Dir/Dir.idr)
+[ build ] 40/41: Building System.Posix.Dir.Prim (src/System/Posix/Dir/Prim.idr)
+[ build ] 41/41: Building System.Posix.Dir (src/System/Posix/Dir.idr)
+[ info ] Installing library (with sources): flux-async
+[ build ] mkdir -p build/native lib
+[ build ] cc -O2 -Wall -Wextra -Werror -std=c11 -pthread -shared -fPIC c/flux_native.c -o build/native/libflux_async.so
+[ build ] cp build/native/libflux_async.so lib/
+[ build ]  1/15: Building Flux.Async.Standalone (src/Flux/Async/Standalone.idr)
+[ build ]  2/15: Building Flux.Async.Core (src/Flux/Async/Core.idr)
+[ build ]  3/15: Building Flux.Async.Native (src/Flux/Async/Native.idr)
+[ build ]  4/15: Building Flux.Async.Runner (src/Flux/Async/Runner.idr)
+[ build ]  5/15: Building Flux.Async.Socket (src/Flux/Async/Socket.idr)
+[ build ]  6/15: Building Flux.Async.Server (src/Flux/Async/Server.idr)
+[ build ]  7/15: Building Flux.Stream.Core (src/Flux/Stream/Core.idr)
+[ build ]  8/15: Building Flux.Stream.Pull (src/Flux/Stream/Pull.idr)
+[ build ]  9/15: Building Flux.Stream.Chunk (src/Flux/Stream/Chunk.idr)
+[ build ] 10/15: Building Flux.Stream.Internal.Bytes (src/Flux/Stream/Internal/Bytes.idr)
+[ build ] 11/15: Building Flux.Stream.Bytes (src/Flux/Stream/Bytes.idr)
+[ build ] 12/15: Building Flux.Stream.Resource (src/Flux/Stream/Resource.idr)
+[ build ] 13/15: Building Flux.Stream (src/Flux/Stream.idr)
+[ build ] 14/15: Building Flux.Stream.Posix (src/Flux/Stream/Posix.idr)
+[ build ] 15/15: Building Flux.Stream.Socket (src/Flux/Stream/Socket.idr)
+[ info ] Installing library (with sources): ilex-json
+[ build ] 1/1: Building JSON.Parser (src/JSON/Parser.idr)
+[ info ] Installing library (with sources): json-simple
+[ build ] 1/7: Building JSON.Simple.Option (src/JSON/Simple/Option.idr)
+[ build ] 2/7: Building JSON.Simple.ToJSON (src/JSON/Simple/ToJSON.idr)
+[ build ] 3/7: Building JSON.Simple.FromJSON (src/JSON/Simple/FromJSON.idr)
+[ build ] 4/7: Building Derive.FromJSON.Simple (src/Derive/FromJSON/Simple.idr)
+[ build ] 5/7: Building Derive.ToJSON.Simple (src/Derive/ToJSON/Simple.idr)
+[ build ] 6/7: Building JSON.Simple (src/JSON/Simple.idr)
+[ build ] 7/7: Building JSON.Simple.Derive (src/JSON/Simple/Derive.idr)
+[ info ] Installing library (with sources): flux
+[ build ]  1/16: Building Flux.Core.Runtime (src/Flux/Core/Runtime.idr)
+[ build ]  2/16: Building Flux.Server.Config (src/Flux/Server/Config.idr)
+[ build ]  3/16: Building Flux.Core.HTTP (src/Flux/Core/HTTP.idr)
+[ build ]  4/16: Building Flux.Core.Router (src/Flux/Core/Router.idr)
+[ build ]  5/16: Building Flux.Core.Middleware (src/Flux/Core/Middleware.idr)
+[ build ]  6/16: Building Flux.Middleware.JSON (src/Flux/Middleware/JSON.idr)
+[ build ]  7/16: Building Flux.Server.Logging (src/Flux/Server/Logging.idr)
+[ build ]  8/16: Building Flux.Server.Health (src/Flux/Server/Health.idr)
+[ build ]  9/16: Building Flux.Middleware.Internal.Stripe (src/Flux/Middleware/Internal/Stripe.idr)
+[ build ] 10/16: Building Flux.Middleware.RequestId (src/Flux/Middleware/RequestId.idr)
+[ build ] 11/16: Building Flux.Middleware.Timing (src/Flux/Middleware/Timing.idr)
+[ build ] 12/16: Building Flux.Middleware.Cookies (src/Flux/Middleware/Cookies.idr)
+[ build ] 13/16: Building Flux.Middleware.Internal.Random (src/Flux/Middleware/Internal/Random.idr)
+[ build ] 14/16: Building Flux.Middleware.Session (src/Flux/Middleware/Session.idr)
+[ build ] 15/16: Building Flux.Middleware.Static (src/Flux/Middleware/Static.idr)
+[ build ] 16/16: Building Flux (src/Flux.idr)
+[ info ] Installing library (with sources): contrib
+[ build ]   1/103: Building Data.String.Extra (Data/String/Extra.idr)
+[ build ]   2/103: Building Text.PrettyPrint.Prettyprinter.Doc (Text/PrettyPrint/Prettyprinter/Doc.idr)
+[ build ]   3/103: Building Text.PrettyPrint.Prettyprinter.Render.String (Text/PrettyPrint/Prettyprinter/Render/String.idr)
+[ build ]   4/103: Building Text.PrettyPrint.Prettyprinter.Util (Text/PrettyPrint/Prettyprinter/Util.idr)
+[ build ]   5/103: Building Text.PrettyPrint.Prettyprinter.SimpleDocTree (Text/PrettyPrint/Prettyprinter/SimpleDocTree.idr)
+[ build ]   6/103: Building Control.ANSI.CSI (Control/ANSI/CSI.idr)
+[ build ]   7/103: Building Control.ANSI.SGR (Control/ANSI/SGR.idr)
+[ build ]   8/103: Building Control.ANSI (Control/ANSI.idr)
+[ build ]   9/103: Building Text.PrettyPrint.Prettyprinter.Render.Terminal (Text/PrettyPrint/Prettyprinter/Render/Terminal.idr)
+[ build ]  10/103: Building Text.PrettyPrint.Prettyprinter.Render.HTML (Text/PrettyPrint/Prettyprinter/Render/HTML.idr)
+[ build ]  11/103: Building Control.Delayed (Control/Delayed.idr)
+[ build ]  12/103: Building Text.Bounded (Text/Bounded.idr)
+[ build ]  13/103: Building Text.Parser.Core (Text/Parser/Core.idr)
+[ build ]  14/103: Building Text.Quantity (Text/Quantity.idr)
+[ build ]  15/103: Building Text.Token (Text/Token.idr)
+[ build ]  16/103: Building Text.Parser (Text/Parser.idr)
+[ build ]  17/103: Building Text.Parser.Expression (Text/Parser/Expression.idr)
+[ build ]  18/103: Building Text.Lexer.Core (Text/Lexer/Core.idr)
+[ build ]  19/103: Building Text.Lexer (Text/Lexer.idr)
+[ build ]  20/103: Building Text.Literate (Text/Literate.idr)
+[ build ]  21/103: Building Text.PrettyPrint.Prettyprinter.Symbols (Text/PrettyPrint/Prettyprinter/Symbols.idr)
+[ build ]  22/103: Building Text.PrettyPrint.Prettyprinter (Text/PrettyPrint/Prettyprinter.idr)
+[ build ]  23/103: Building Text.Lexer.Tokenizer (Text/Lexer/Tokenizer.idr)
+[ build ]  24/103: Building Data.IOMatrix (Data/IOMatrix.idr)
+[ build ]  25/103: Building Data.List.Extra (Data/List/Extra.idr)
+[ build ]  26/103: Building Text.Distance.Levenshtein (Text/Distance/Levenshtein.idr)
+[ build ]  27/103: Building System.Random (System/Random.idr)
+[ build ]  28/103: Building System.Future (System/Future.idr)
+[ build ]  29/103: Building System.Path (System/Path.idr)
+[ build ]  30/103: Building System.Directory.Tree (System/Directory/Tree.idr)
+[ build ]  31/103: Building System.Console.GetOpt (System/Console/GetOpt.idr)
+[ build ]  32/103: Building Language.JSON.String.Tokens (Language/JSON/String/Tokens.idr)
+[ build ]  33/103: Building Language.JSON.String.Lexer (Language/JSON/String/Lexer.idr)
+[ build ]  34/103: Building Language.JSON.String.Parser (Language/JSON/String/Parser.idr)
+[ build ]  35/103: Building Language.JSON.String (Language/JSON/String.idr)
+[ build ]  36/103: Building Language.JSON.Tokens (Language/JSON/Tokens.idr)
+[ build ]  37/103: Building Language.JSON.Lexer (Language/JSON/Lexer.idr)
+[ build ]  38/103: Building Language.JSON.Data (Language/JSON/Data.idr)
+[ build ]  39/103: Building Language.JSON.Parser (Language/JSON/Parser.idr)
+[ build ]  40/103: Building Language.JSON (Language/JSON.idr)
+[ build ]  41/103: Building Data.Fun.Extra (Data/Fun/Extra.idr)
+[ build ]  42/103: Building Data.Rel.Complement (Data/Rel/Complement.idr)
+[ build ]  43/103: Building Decidable.Decidable.Extra (Decidable/Decidable/Extra.idr)
+[ build ]  44/103: Building Data.Nat.Equational (Data/Nat/Equational.idr)
+[ build ]  45/103: Building Decidable.Order.Strict (Decidable/Order/Strict.idr)
+[ build ]  46/103: Building Data.Nat.Order.Strict (Data/Nat/Order/Strict.idr)
+[ build ]  47/103: Building Data.Nat.Properties (Data/Nat/Properties.idr)
+[ build ]  48/103: Building Data.Nat.Division (Data/Nat/Division.idr)
+[ build ]  49/103: Building Data.Fin.Extra (Data/Fin/Extra.idr)
+[ build ]  50/103: Building Decidable.Finite.Fin (Decidable/Finite/Fin.idr)
+[ build ]  51/103: Building Debug.Buffer (Debug/Buffer.idr)
+[ build ]  52/103: Building Data.Vect.Sort (Data/Vect/Sort.idr)
+[ build ]  53/103: Building Data.Vect.Properties.Tabulate (Data/Vect/Properties/Tabulate.idr)
+[ build ]  54/103: Building Data.Vect.Properties.Index (Data/Vect/Properties/Index.idr)
+[ build ]  55/103: Building Data.Vect.Properties.Foldr (Data/Vect/Properties/Foldr.idr)
+[ build ]  56/103: Building Data.Vect.Extra (Data/Vect/Extra.idr)
+[ build ]  57/103: Building Data.Vect.Properties.Map (Data/Vect/Properties/Map.idr)
+[ build ]  58/103: Building Data.Vect.Properties.Fin (Data/Vect/Properties/Fin.idr)
+[ build ]  59/103: Building Data.Vect.Properties (Data/Vect/Properties.idr)
+[ build ]  60/103: Building Data.Validated (Data/Validated.idr)
+[ build ]  61/103: Building Data.Telescope.Telescope (Data/Telescope/Telescope.idr)
+[ build ]  62/103: Building Data.Telescope.Segment (Data/Telescope/Segment.idr)
+[ build ]  63/103: Building Data.Telescope.SimpleFun (Data/Telescope/SimpleFun.idr)
+[ build ]  64/103: Building Data.Telescope.Fun (Data/Telescope/Fun.idr)
+[ build ]  65/103: Building Data.Telescope.Congruence (Data/Telescope/Congruence.idr)
+[ build ]  66/103: Building Data.Telescope (Data/Telescope.idr)
+[ build ]  67/103: Building Data.String.Position (Data/String/Position.idr)
+[ build ]  68/103: Building Data.List.Alternating (Data/List/Alternating.idr)
+[ build ]  69/103: Building Data.String.Parser (Data/String/Parser.idr)
+[ build ]  70/103: Building Data.String.Parser.Expression (Data/String/Parser/Expression.idr)
+[ build ]  71/103: Building Data.String.Iterator (Data/String/Iterator.idr)
+[ build ]  72/103: Building Data.String.Interpolation (Data/String/Interpolation.idr)
+[ build ]  73/103: Building Data.Stream.Extra (Data/Stream/Extra.idr)
+[ build ]  74/103: Building Data.Seq.Internal (Data/Seq/Internal.idr)
+[ build ]  75/103: Building Data.Seq.Unsized (Data/Seq/Unsized.idr)
+[ build ]  76/103: Building Data.Seq.Sized (Data/Seq/Sized.idr)
+[ build ]  77/103: Building Data.Path (Data/Path.idr)
+[ build ]  78/103: Building Data.Nat.Order.Relation (Data/Nat/Order/Relation.idr)
+[ build ]  79/103: Building Data.Nat.Fib (Data/Nat/Fib.idr)
+[ build ]  80/103: Building Data.Nat.Factor (Data/Nat/Factor.idr)
+[ build ]  81/103: Building Data.Nat.Fact (Data/Nat/Fact.idr)
+[ build ]  82/103: Building Data.Monoid.Exponentiation (Data/Monoid/Exponentiation.idr)
+[ build ]  83/103: Building Data.Nat.Exponentiation (Data/Nat/Exponentiation.idr)
+[ build ]  84/103: Building Data.Nat.Ack (Data/Nat/Ack.idr)
+[ build ]  85/103: Building Data.Logic.Propositional (Data/Logic/Propositional.idr)
+[ build ]  86/103: Building Data.List.Elem.Extra (Data/List/Elem/Extra.idr)
+[ build ]  87/103: Building Data.List.Sufficient (Data/List/Sufficient.idr)
+[ build ]  88/103: Building Data.List.Reverse (Data/List/Reverse.idr)
+[ build ]  89/103: Building Data.List.Equalities (Data/List/Equalities.idr)
+[ build ]  90/103: Building Data.List.Views.Extra (Data/List/Views/Extra.idr)
+[ build ]  91/103: Building Data.List.Palindrome (Data/List/Palindrome.idr)
+[ build ]  92/103: Building Data.List.TailRec (Data/List/TailRec.idr)
+[ build ]  93/103: Building Data.Linear.Array (Data/Linear/Array.idr)
+[ build ]  94/103: Building Data.Late (Data/Late.idr)
+[ build ]  95/103: Building Data.Order (Data/Order.idr)
+[ build ]  96/103: Building Data.Int.Order (Data/Int/Order.idr)
+[ build ]  97/103: Building Data.IMaybe (Data/IMaybe.idr)
+[ build ]  98/103: Building Data.Fun.Graph (Data/Fun/Graph.idr)
+[ build ]  99/103: Building Data.Binary.Digit (Data/Binary/Digit.idr)
+[ build ] 100/103: Building Data.Binary (Data/Binary.idr)
+[ build ] 101/103: Building Control.Validation (Control/Validation.idr)
+[ build ] 102/103: Building Control.Category (Control/Category.idr)
+[ build ] 103/103: Building Control.Arrow (Control/Arrow.idr)
+[ info ] Installing library (with sources): idris2-pg
+[ build ] mkdir -p lib
+[ build ] cc -O2 -Wall -Wextra -Werror -std=c11 -shared -fPIC c/pg_transport.c -o lib/libidris2_pg_transport.so
+[ build ]  1/23: Building Network.Core (src/Network/Core.idr)
+[ build ]  2/23: Building Network.Deadline (src/Network/Deadline.idr)
+[ build ]  3/23: Building Network.RawSocket (src/Network/RawSocket.idr)
+[ build ]  4/23: Building Network.TLSWire (src/Network/TLSWire.idr)
+[ build ]  5/23: Building Crypto.P256 (src/Crypto/P256.idr)
+[ build ]  6/23: Building Crypto.SHA256 (src/Crypto/SHA256.idr)
+[ build ]  7/23: Building Crypto.ChaCha20 (src/Crypto/ChaCha20.idr)
+[ build ]  8/23: Building Crypto.Poly1305 (src/Crypto/Poly1305.idr)
+[ build ]  9/23: Building Crypto.ChaCha20Poly1305 (src/Crypto/ChaCha20Poly1305.idr)
+[ build ] 10/23: Building Data.Utf8 (src/Data/Utf8.idr)
+[ build ] 11/23: Building Crypto.SCRAM (src/Crypto/SCRAM.idr)
+[ build ] 12/23: Building Crypto.HKDF (src/Crypto/HKDF.idr)
+[ build ] 13/23: Building Network.TLSHandshake (src/Network/TLSHandshake.idr)
+[ build ] 14/23: Building Network.TLS (src/Network/TLS.idr)
+[ build ] 15/23: Building Data.PGTypes (src/Data/PGTypes.idr)
+[ build ] 16/23: Building Data.PGJson (src/Data/PGJson.idr)
+[ build ] 17/23: Building Crypto.MD5 (src/Crypto/MD5.idr)
+[ build ] 18/23: Building Helper (src/Helper.idr)
+[ build ] 19/23: Building Data.PGBinary (src/Data/PGBinary.idr)
+[ build ] 20/23: Building Data.PGValue (src/Data/PGValue.idr)
+[ build ] 21/23: Building Network.Timeout (src/Network/Timeout.idr)
+[ build ] 22/23: Building Idris2_pg (src/Idris2_pg.idr)
+[ build ] 23/23: Building Crypto.Curve25519 (src/Crypto/Curve25519.idr)
+[ info ] Installing library (with sources): idris2-docker
+[ build ] 1/1: Building Docker (src/Docker.idr)
+[ info ] Installing library (with sources): nebula
+[ build ] 1/9: Building ObjectFromJSON (src/ObjectFromJSON.idr)
+[ build ] 2/9: Building Data.PGField (src/Data/PGField.idr)
+[ build ] 3/9: Building Data.PGTable (src/Data/PGTable.idr)
+[ build ] 4/9: Building Data.PGRow (src/Data/PGRow.idr)
+[ build ] 5/9: Building Data.PGQuery (src/Data/PGQuery.idr)
+[ build ] 6/9: Building Data.PGCrud (src/Data/PGCrud.idr)
+[ build ] 7/9: Building Data.PGRepository (src/Data/PGRepository.idr)
+[ build ] 8/9: Building Data.PGColumnType (src/Data/PGColumnType.idr)
+[ build ] 9/9: Building Derive.PGActiveRecord (src/Derive/PGActiveRecord.idr)
+[ info ] Installing library (with sources): idris2-pg-async
+[ build ] 1/1: Building Data.PGPool (src/Data/PGPool.idr)
+[ info ] Installing library (with sources): nebula-flux
+[ build ] 1/2: Building Nebula.Pool (src/Nebula/Pool.idr)
+[ build ] 2/2: Building Nebula.PG (src/Nebula/PG.idr)
+[ info ] Building: todo-api
+[ build ] 1/8: Building Models (src/Models.idr)
+[ build ] 2/8: Building Handlers.TypedQuery (src/Handlers/TypedQuery.idr)
+[ build ] 3/8: Building TodoRepository (src/TodoRepository.idr)
+[ build ] 4/8: Building Handlers.ActiveRecord (src/Handlers/ActiveRecord.idr)
+[ build ] 5/8: Building TodoApi (src/TodoApi.idr)
+[ build ] 6/8: Building DevPostgres (src/DevPostgres.idr)
+[ build ] 7/8: Building Config (src/Config.idr)
+[ build ] 8/8: Building Main (src/Main.idr)
+[ build ] Now compiling the executable: todo-api
+[ build ] Warning: compiling hole Helper.unimplementedEncode
+[ info ] Found local config at /tmp/flux-application/playground/todo-api/pack.toml
+[ info ] Using package collection nightly-260906
+[ info ] Installing libraries:
+         - todo-api
+[ info ] Installing library (with sources): todo-api
+[ build ] Now compiling the executable: todo-api
+[ build ] Warning: compiling hole Helper.unimplementedEncode
+[ info ] Building: todo-api-pooled-test
+[ build ] 1/3: Building TestHarness (src/TestHarness.idr)
+[ build ] 2/3: Building RepositoryBehavior (src/RepositoryBehavior.idr)
+[ build ] 3/3: Building PooledMain (src/PooledMain.idr)
+[ build ] Now compiling the executable: todo-api-pooled-test
+[ build ] Warning: compiling hole Helper.unimplementedEncode
+  [PASS] listTodos: empty table returns 200 []
+  [PASS] createTodo: missing title is 400
+  [PASS] createTodo: 201, id=1, done=false
+  [PASS] createTodo: second insert gets id=2
+  [PASS] listTodos: both todos, ordered by id
+  [PASS] getTodo: existing id returns it
+  [PASS] getTodo: missing id is 404
+  [PASS] getTodo: non-numeric id is 400
+  [PASS] createTodo: third insert gets id=3
+  [PASS] updateTodo: updating the first of several todos succeeds
+  [PASS] listTodos: stays ordered by id after updating the first of several, before any delete
+  [PASS] toggleTodo: flips done to true
+  [PASS] toggleTodo: flips done back to false
+  [PASS] toggleTodo: missing id is 404
+  [PASS] updateTodo: full replace
+  [PASS] updateTodo: invalid body is 400
+  [PASS] updateTodo: missing id is 404
+  [PASS] deleteTodo: existing id is 204
+  [PASS] deleteTodo: already-deleted id is 404
+  [PASS] listTodos: reflects the delete
+  [PASS] pooled transaction commits multiple repository operations
+  [PASS] pooled transaction propagates callback failure
+  [PASS] a subsequent lease observes commit and no rolled-back row
+  [PASS] pooled scenario closes every connection
+
+========================================
+Total: 24 | Passed: 24 | Failed: 0
+========================================
+All tests passed!
+Connecting to Postgres at flux-mission-pg:5432/todo_api_test ...
+Connected. Schema ready.
+Flux server listening on http://127.0.0.1:33441 (1 event loops, 128 connections)
+db error: connection error: connection timed out
+
+Traceback (most recent call last):
+  File "/tmp/flux-application/playground/todo-api/test/runtime_http_test.py", line 87, in <module>
+    list(executor.map(scenario, range(24)))
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 619, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 317, in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/flux-application/playground/todo-api/test/runtime_http_test.py", line 50, in scenario
+    todo = request('POST', '/todos', {'title': title}, 201)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/flux-application/playground/todo-api/test/runtime_http_test.py", line 45, in request
+    assert response.status == expected, (method, path, response.status, payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('POST', '/todos', 500, b'{"error":"internal server error"}')

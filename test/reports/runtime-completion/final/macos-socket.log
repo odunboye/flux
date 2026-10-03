@@ -1,0 +1,2 @@
+PASS socket echo, EOF, accept cancellation
+PASS byte-exact binary transfer and large payload backpressure

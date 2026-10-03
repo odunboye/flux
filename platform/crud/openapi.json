@@ -1,0 +1,427 @@
+{
+  "components": {
+    "schemas": {
+      "CreateTodoRequest": {
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "type": "object"
+      },
+      "DeleteTodoResponse": {
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "type": "object"
+      },
+      "FindTodoResponse": {
+        "properties": {
+          "todo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodoView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "todo"
+        ],
+        "type": "object"
+      },
+      "ListTodosRequest": {
+        "properties": {
+          "afterId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "afterId"
+        ],
+        "type": "object"
+      },
+      "ListTodosResponse": {
+        "properties": {
+          "nextId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "todos": {
+            "items": {
+              "$ref": "#/components/schemas/TodoView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "nextId",
+          "todos"
+        ],
+        "type": "object"
+      },
+      "RpcErrorEnvelope": {
+        "properties": {
+          "error": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "TodoIdRequest": {
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "TodoView": {
+        "properties": {
+          "done": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "done",
+          "id",
+          "title"
+        ],
+        "type": "object"
+      },
+      "UpdateTodoRequest": {
+        "properties": {
+          "done": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "done",
+          "id",
+          "title"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "sessionBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Flux protocol",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/rpc/v1/todos/create": {
+      "post": {
+        "operationId": "createTodo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTodoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodoView"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcErrorEnvelope"
+                }
+              }
+            },
+            "description": "RPC error"
+          }
+        },
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
+      }
+    },
+    "/rpc/v1/todos/delete": {
+      "post": {
+        "operationId": "deleteTodo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TodoIdRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteTodoResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcErrorEnvelope"
+                }
+              }
+            },
+            "description": "RPC error"
+          }
+        },
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
+      }
+    },
+    "/rpc/v1/todos/get": {
+      "post": {
+        "operationId": "getTodo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TodoIdRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindTodoResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcErrorEnvelope"
+                }
+              }
+            },
+            "description": "RPC error"
+          }
+        },
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
+      }
+    },
+    "/rpc/v1/todos/list": {
+      "post": {
+        "operationId": "listTodos",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListTodosRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTodosResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcErrorEnvelope"
+                }
+              }
+            },
+            "description": "RPC error"
+          }
+        },
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
+      }
+    },
+    "/rpc/v1/todos/toggle": {
+      "post": {
+        "operationId": "toggleTodo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TodoIdRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindTodoResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcErrorEnvelope"
+                }
+              }
+            },
+            "description": "RPC error"
+          }
+        },
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
+      }
+    },
+    "/rpc/v1/todos/update": {
+      "post": {
+        "operationId": "updateTodo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTodoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindTodoResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcErrorEnvelope"
+                }
+              }
+            },
+            "description": "RPC error"
+          }
+        },
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "x-protocol-sha256": "ab2611d80c30ca34eb8152fabb68a651adcd6a7f06cbb795cc2ce8bbf3f8dc81"
+}

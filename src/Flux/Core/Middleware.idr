@@ -119,9 +119,16 @@ setStatus code ctx = { statusCode := code } ctx
 stripCRLF : String -> String
 stripCRLF = pack . filter (\c => c /= '\r' && c /= '\n') . unpack
 
+||| Set a response header only when its name is a valid HTTP token. Invalid
+||| names leave the context unchanged; they are never repaired or trimmed.
+||| CR/LF are stripped from values for compatibility. encodeResponse separately
+||| rejects malformed names/ASCII-control values at the final wire boundary.
 export
 setHeader : String -> String -> Context -> Context
-setHeader k v ctx = { respHeaders $= insert k (stripCRLF v) } ctx
+setHeader k v ctx =
+  if validHeaderName k
+    then { respHeaders $= insert k (stripCRLF v) } ctx
+    else ctx
 
 export
 setHeaders : List (String, String) -> Context -> Context
@@ -313,11 +320,19 @@ export
 cors : List (String, String) -> Middleware
 cors headers ctx = pure (setHeaders headers ctx)
 
+-- `PUT`/`DELETE`/`PATCH` were missing until this project actually had a
+-- browser client that needed them (Iris's todo-web) - a real gap, not
+-- hypothetical: a browser preflights any `PUT`/`DELETE`/`PATCH` request
+-- with `OPTIONS`, and rejects the real request client-side if that
+-- preflight response's `Access-Control-Allow-Methods` doesn't list the
+-- method being asked about, regardless of what the real endpoint would
+-- have done. `GET`/`POST` alone was enough for every client until now
+-- because none of them used any other verb.
 export
 corsAllowAll : Middleware
 corsAllowAll = cors
   [ ("Access-Control-Allow-Origin", "*")
-  , ("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+  , ("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
   , ("Access-Control-Allow-Headers", "Content-Type")
   ]
 

@@ -1,0 +1,10 @@
+[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Installing libraries:
+         - todo-api
+[ info ] Installing library (with sources): todo-api
+[ build ] Now compiling the executable: todo-api
+[ build ] Warning: compiling hole Helper.unimplementedEncode
+[ info ] Building: flux-auth-integration-test
+[ build ] Now compiling the executable: flux-auth-integration-test
+[ build ] Warning: compiling hole Helper.unimplementedEncode

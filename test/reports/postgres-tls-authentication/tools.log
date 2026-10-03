@@ -1,0 +1,52 @@
+test_legacy_metadata_is_a_guard_not_a_fallback (test_db_names.DBNamingTests.test_legacy_metadata_is_a_guard_not_a_fallback) ... ok
+test_owned_module_names (test_db_names.DBNamingTests.test_owned_module_names) ... ok
+test_packages_and_boundaries (test_db_names.DBNamingTests.test_packages_and_boundaries) ... ok
+test_cli_fails_when_disposable_removal_fails (test_flux.FluxTests.test_cli_fails_when_disposable_removal_fails) ... Disposable development database flux-dev-0de4106a7e974d36b2f3b575ab1b52c6: removed on exit; no persistent data.
+ok
+test_create_and_register (test_flux.FluxTests.test_create_and_register) ... PASS 22 local packages, canonical paths and browser dependency boundaries
+PASS 24 local packages, canonical paths and browser dependency boundaries
+Created apps/sample. Next: ./flux --project apps/sample build
+PASS 24 local packages, canonical paths and browser dependency boundaries
+ok
+test_database_requires_explicit_configuration (test_flux.FluxTests.test_database_requires_explicit_configuration) ... ok
+test_disposable_removal_failure_is_reported (test_flux.FluxTests.test_disposable_removal_failure_is_reported) ... Disposable development database flux-dev-40c0a25655cc4c42b446232434181880: removed on exit; no persistent data.
+Disposable development database flux-dev-118424be439148db83ff62385d6630c9: removed on exit; no persistent data.
+Disposable development database flux-dev-310614ce28bc4c37823c34549f9fdc24: removed on exit; no persistent data.
+Disposable development database flux-dev-77186ac8915a44ae87a9918d8a8a1931: removed on exit; no persistent data.
+Disposable development database flux-dev-adb90cc6d97141768103cb5da2023e70: removed on exit; no persistent data.
+Disposable development database flux-dev-c300fa58a03c411e93c5630dfbf89fcb: removed on exit; no persistent data.
+ok
+test_disposable_removal_success_and_body_failure (test_flux.FluxTests.test_disposable_removal_success_and_body_failure) ... Disposable development database flux-dev-e6ef75dd896f4f63a30a20d345ab02e2: removed on exit; no persistent data.
+Disposable development database flux-dev-78eab499c90e4db59c5cd60a9d83d436: removed on exit; no persistent data.
+ok
+test_generation_failure_rolls_back (test_flux.FluxTests.test_generation_failure_rolls_back) ... PASS 22 local packages, canonical paths and browser dependency boundaries
+PASS 22 local packages, canonical paths and browser dependency boundaries
+ok
+test_map_failure_rolls_back (test_flux.FluxTests.test_map_failure_rolls_back) ... PASS 22 local packages, canonical paths and browser dependency boundaries
+PASS 22 local packages, canonical paths and browser dependency boundaries
+ok
+test_names_and_existing_directories_are_safe (test_flux.FluxTests.test_names_and_existing_directories_are_safe) ... PASS 22 local packages, canonical paths and browser dependency boundaries
+ok
+test_project_paths_cannot_escape (test_flux.FluxTests.test_project_paths_cannot_escape) ... ok
+test_subprocess_deadline (test_flux.FluxTests.test_subprocess_deadline) ... ok
+test_all_package_dependencies_use_current_names (test_package_names.PackageNamingTests.test_all_package_dependencies_use_current_names) ... ok
+test_canonical_names_and_files (test_package_names.PackageNamingTests.test_canonical_names_and_files) ... ok
+test_canonical_package_only (test_ui_names.UINamingTests.test_canonical_package_only) ... ok
+test_modules_are_definitions_not_aliases (test_ui_names.UINamingTests.test_modules_are_definitions_not_aliases) ... ok
+test_runtime_identifiers_are_renamed (test_ui_names.UINamingTests.test_runtime_identifiers_are_renamed) ... ok
+test_child_cleanup (test_workspace.WorkspaceTests.test_child_cleanup) ... ok
+test_config_deterministic (test_workspace.WorkspaceTests.test_config_deterministic) ... ok
+test_current_workspace (test_workspace.WorkspaceTests.test_current_workspace) ... PASS 22 local packages, canonical paths and browser dependency boundaries
+ok
+test_dependency_parser (test_workspace.WorkspaceTests.test_dependency_parser) ... ok
+test_outside_paths_rejected (test_workspace.WorkspaceTests.test_outside_paths_rejected) ... ok
+test_package_identity (test_workspace.WorkspaceTests.test_package_identity) ... ok
+test_transitive_browser_boundary (test_workspace.WorkspaceTests.test_transitive_browser_boundary) ... ok
+test_unknown_dependency_syntax_fails_closed (test_workspace.WorkspaceTests.test_unknown_dependency_syntax_fails_closed) ... ok
+test_version_qualified_browser_boundaries (test_workspace.WorkspaceTests.test_version_qualified_browser_boundaries) ... ok
+test_version_qualified_dependency_parser (test_workspace.WorkspaceTests.test_version_qualified_dependency_parser) ... ok
+
+----------------------------------------------------------------------
+Ran 28 tests in 0.391s
+
+OK

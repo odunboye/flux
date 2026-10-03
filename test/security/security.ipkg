@@ -1,0 +1,6 @@
+package flux-security-probes
+depends = flux
+modules = Main
+main = Main
+executable = "flux-security-probes"
+sourcedir = "src"

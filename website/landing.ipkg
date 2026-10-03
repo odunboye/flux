@@ -1,0 +1,7 @@
+package flux-landing
+version = 0.1.0
+depends = flux
+sourcedir = "src"
+modules = Main
+main = Main
+executable = flux-landing

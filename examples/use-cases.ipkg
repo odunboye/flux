@@ -1,0 +1,8 @@
+package flux-use-cases
+version = 0.1.0
+brief = "Focused HTTP use cases for Flux"
+depends = flux
+sourcedir = "src"
+modules = Recipes.Greetings, Recipes.Quotes, Recipes.Main
+main = Recipes.Main
+executable = flux-use-cases

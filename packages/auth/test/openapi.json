@@ -1,0 +1,145 @@
+{
+  "components": {
+    "schemas": {
+      "ProbeRequest": {
+        "properties": {
+          "claimedOwner": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claimedOwner"
+        ],
+        "type": "object"
+      },
+      "ProbeResponse": {
+        "properties": {
+          "resolvedOwner": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolvedOwner"
+        ],
+        "type": "object"
+      },
+      "RpcErrorEnvelope": {
+        "properties": {
+          "error": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "sessionBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Flux protocol",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/rpc/v1/probe/private": {
+      "post": {
+        "operationId": "privateProbe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProbeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProbeResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcErrorEnvelope"
+                }
+              }
+            },
+            "description": "RPC error"
+          }
+        },
+        "security": [
+          {
+            "sessionBearer": []
+          }
+        ]
+      }
+    },
+    "/rpc/v1/probe/public": {
+      "post": {
+        "operationId": "publicProbe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProbeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProbeResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcErrorEnvelope"
+                }
+              }
+            },
+            "description": "RPC error"
+          }
+        },
+        "security": []
+      }
+    }
+  },
+  "x-protocol-sha256": "84e79e50e654d4864c214c9cf335828ab6f308f82fe6eb476b6e975696866226"
+}

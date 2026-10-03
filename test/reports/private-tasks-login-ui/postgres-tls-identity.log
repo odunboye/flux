@@ -1,0 +1,30 @@
+PASS TLS peer valid: localhost, ok, chain=True, ca=root.pem
+PASS TLS peer valid: 127.0.0.1, ok, chain=True, ca=root.pem
+PASS TLS peer valid: localhost, reject, chain=True, ca=None
+PASS TLS peer valid: localhost, reject, chain=False, ca=root.pem
+PASS TLS peer valid: localhost, reject, chain=True, ca=missing.pem
+PASS TLS peer valid: localhost, reject, chain=True, ca=other.pem
+PASS TLS peer mismatch: localhost, reject, chain=True, ca=root.pem
+PASS TLS peer mismatch: 127.0.0.1, reject, chain=True, ca=root.pem
+PASS TLS peer expired: localhost, reject, chain=True, ca=root.pem
+PASS TLS peer future: localhost, reject, chain=True, ca=root.pem
+PASS TLS peer usage: localhost, reject, chain=True, ca=root.pem
+PASS TLS peer cn-only: localhost, reject, chain=True, ca=root.pem
+PASS TLS peer dns-ip: 127.0.0.1, reject, chain=True, ca=root.pem
+PASS TLS peer partial: localhost, reject, chain=True, ca=root.pem
+PASS TLS peer valid: localhost, reject, chain=True, ca=root.pem
+PASS TLS negotiation b'N': reject, joined close in 0.04s
+PASS TLS negotiation b'X': reject, joined close in 0.04s
+PASS TLS negotiation b'S': timeout, joined close in 0.54s
+PASS verified TLS 1.3, SCRAM and large exact payload
+PASS cancellation connection revalidates TLS identity and closes
+PASS verified TLS read deadline, poisoning and repeated close
+PASS verified TLS 1.3, SCRAM and large exact payload
+PASS cancellation connection revalidates TLS identity and closes
+PASS verified TLS read deadline, poisoning and repeated close
+PASS application PGSSLMODE verify-full and CA configuration
+PASS application rejects weaker/unknown TLS modes and CA/plaintext conflict
+PASS verified TLS 1.3, SCRAM and large exact payload
+PASS cancellation connection revalidates TLS identity and closes
+PASS verified TLS read deadline, poisoning and repeated close
+PASS authenticated PostgreSQL TLS identity integration

@@ -1,0 +1,30 @@
+...Disposable development database flux-dev-8e0ee406840445768069b058c8cd5e7e: removed on exit; no persistent data.
+.PASS 23 local packages, canonical paths and browser dependency boundaries
+PASS 25 local packages, canonical paths and browser dependency boundaries
+Created apps/sample. Next: ./flux --project apps/sample build
+PASS 25 local packages, canonical paths and browser dependency boundaries
+..Disposable development database flux-dev-32504362cdfb48e391323600d0cc623b: removed on exit; no persistent data.
+Disposable development database flux-dev-9df68c8c6cee455db3fcdbce880e9b83: removed on exit; no persistent data.
+Disposable development database flux-dev-4b34bad44a834f209929f6ae73b77e64: removed on exit; no persistent data.
+Disposable development database flux-dev-00d1e614b56941bfbe75910afa078629: removed on exit; no persistent data.
+Disposable development database flux-dev-0e39b062345c4c2985b003fd840ab795: removed on exit; no persistent data.
+Disposable development database flux-dev-09a3d1b4e2fa433e97853f7fcac4acc1: removed on exit; no persistent data.
+.Disposable development database flux-dev-332af939c524454990c09eea3b283af4: removed on exit; no persistent data.
+Disposable development database flux-dev-b0fb9cf0fceb4fbd8b21ab52f76ef2ae: removed on exit; no persistent data.
+.PASS 23 local packages, canonical paths and browser dependency boundaries
+PASS 23 local packages, canonical paths and browser dependency boundaries
+.PASS 23 local packages, canonical paths and browser dependency boundaries
+PASS 23 local packages, canonical paths and browser dependency boundaries
+.PASS 23 local packages, canonical paths and browser dependency boundaries
+..127.0.0.1 - - [12/Sep/2026 16:59:38] "POST /rpc/v1/auth/me HTTP/1.1" 200 -
+127.0.0.1 - - [12/Sep/2026 16:59:38] "POST /rpc/v1/auth/me HTTP/1.1" 400 -
+127.0.0.1 - - [12/Sep/2026 16:59:38] "POST /rpc/v1/auth/me HTTP/1.1" 400 -
+127.0.0.1 - - [12/Sep/2026 16:59:38] "POST /rpc/v1/auth/me HTTP/1.1" 400 -
+127.0.0.1 - - [12/Sep/2026 16:59:38] "POST /rpc/v1/auth/me HTTP/1.1" 400 -
+127.0.0.1 - - [12/Sep/2026 16:59:38] "POST /rpc/v1/auth/me HTTP/1.1" 403 -
+.........PASS 23 local packages, canonical paths and browser dependency boundaries
+........
+----------------------------------------------------------------------
+Ran 29 tests in 1.441s
+
+OK

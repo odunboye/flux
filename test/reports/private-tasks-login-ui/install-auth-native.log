@@ -1,0 +1,14 @@
+[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
+[ info ] Using package collection nightly-260903
+[ info ] Installing libraries:
+         - flux-db
+         - flux-postgres-pool
+         - flux-db-flux
+         - flux-auth
+[ info ] Installing library (with sources): flux-db
+[ info ] Installing library (with sources): flux-postgres-pool
+[ info ] Installing library (with sources): flux-db-flux
+[ info ] Installing library (with sources): flux-auth
+[ build ] pkg-config --atleast-version=1.0.18 libsodium
+[ build ] mkdir -p lib
+[ build ] cc -O2 -Wall -Wextra -Werror -std=c11 -dynamiclib $( pkg-config --cflags libsodium ) c/auth_crypto.c -o lib/libflux_auth.dylib $( pkg-config --libs libsodium ) -pthread

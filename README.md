@@ -1,27 +1,117 @@
-# flux
+# Flux — full-stack Idris applications
 
-An HTTP/1.1 server framework for Idris2, built from scratch on top of
-[`idris2-streams`](https://github.com/stefan-hoeck/idris2-streams)'
-`async`/`streams-posix` — no C server library, no FFI to an existing web
-server. The wire protocol (request parsing, persistent connections,
-chunked transfer-encoding), the router, and the middleware/`Context`
-pipeline are all implemented directly in this repo; JSON (see "JSON"
-below) is the one thing layered on top that isn't - everything else
-built on top (cookies, sessions, static files, health checks) is.
+**Platform preview.** Flux brings its HTTP server and owned runtime, Flux UI,
+Flux DB persistence/migrations, PostgreSQL transport/pooling, and generated Flux UI
+clients into one modular repository. The UI now uses the `flux-ui` package and
+`Flux.UI.*` modules, a breaking rename without compatibility aliases. Persistence
+is now split the same way PostgreSQL support is: the active-record/query-builder
+layer moved back out to its own repo, [odunboye/db](https://github.com/odunboye/db)
+(package `db`, modules `DB.*`), since it has no Flux-specific dependencies; the
+genuinely Flux-specific HTTP-framework glue (`Flux.DB.PG`/`Flux.DB.Pool`) stays
+here as `flux-db-flux`. Existing databases must follow the
+[Flux DB metadata cutover guide](https://github.com/odunboye/db/blob/main/MIGRATION.md).
+Runtime and protocol/client packages are now `flux-runtime`, `flux-protocol`
+and `flux-client`. See the
+[coordinated package migration](design/PACKAGE_MIGRATION.md); suitable module
+namespaces remain unchanged. The Docker dev-workflow helper moved back out to
+its own repo, [odunboye/docker](https://github.com/odunboye/docker) (package
+`docker`), the same way `db`/`postgres` did - it never had any Flux-specific
+dependencies either. PostgreSQL transport/pooling (`postgres`/
+`postgres-async`) is no longer vendored here - it moved back to its own
+repo, [odunboye/postgres](https://github.com/odunboye/postgres), so it
+isn't Flux-only; `pack.toml` pulls it as a pinned external dependency (see
+`workspace.json`'s `external_packages`). This is not a production-readiness
+declaration.
 
-## Project goals
+- `packages/runtime/`: owned tasks, sockets, streams and supervision.
+- `packages/ui/`: Flux UI widgets, application lifecycle and platform backends.
+- `packages/db-flux/`: Flux's HTTP-framework glue over the external `db` and `postgres` packages.
+- `platform/`: shared protocols, generated server/client code and typed CRUD examples.
+- `examples/todo-api/`: database-backed application example.
+- `website/`: Flux's landing page, served by Flux itself.
 
-The goal is a **usable, honestly-documented** framework: routing,
-middleware, JSON, cookies/sessions, static files, structured error
-handling and streaming responses all work and are tested (146 unit tests,
-`test/`). What sets this README apart from a typical framework's docs is
-that every non-obvious tradeoff, gap, and half-solved problem uncovered
-while building it is written down rather than smoothed over — see
-"Limitations" below. Several of those gaps trace back to real bugs found
-in the underlying `idris2-async` scheduler while load-testing this
-project; where a bug couldn't be fixed safely, what's documented here is
-the mitigation actually shipped and the tradeoff it represents, not a
-claim that the underlying issue is solved.
+See the [workspace/package map](design/CONSOLIDATION.md) and
+[typed Flux UI client guide](platform/README.md). No sibling repositories or
+user-specific dependency paths are needed. Run `python3 tools/workspace.py check`
+to verify the package map and browser/server dependency boundary.
+
+For the combined integration gate, first install the prerequisites in the
+[workspace guide](design/CONSOLIDATION.md), then run:
+
+```sh
+python3 tools/workspace.py test
+```
+
+## Run the landing page
+
+```sh
+pack --no-prompt build website/landing.ipkg
+(cd website && ./build/exec/flux-landing 8080 128)
+```
+
+Open **http://127.0.0.1:8080**. See the [site guide](website/README.md)
+for the design, server configuration and browser verification.
+
+## Learn Flux by use case
+
+The [examples guide](examples/README.md) walks through public HTTP APIs, typed
+JSON, middleware/health, generated contracts, PostgreSQL migrations, private
+accounts/tasks, Idris UI effects and native clients. Start with the small runnable
+recipes in `examples/src/Recipes/`, then follow the complete application.
+
+## Run the Flux UI application
+
+```sh
+./flux doctor
+./flux build
+./flux dev --watch --disposable-db --no-build
+# Open http://127.0.0.1:8090
+```
+
+`--watch` refreshes CSS without resetting UI state, rebuilds changed Idris targets,
+and reloads browsers after successful publication. Failed builds leave the previous
+application running and show compiler diagnostics. See the
+[live-reload guide](design/DEV_RELOAD.md) for configuration and limitations.
+`--hot` additionally supports [model-preserving DOM replacement](design/DEV_HMR.md)
+for applications opting into `runWebHot` with a versioned state codec.
+
+This creates a disposable PostgreSQL database and removes it on exit. For
+persistent data, configure `PG*` explicitly and omit `--disposable-db`.
+The [application/CLI guide](platform/crud/README.md) covers `new`, `generate`,
+`check`, `build`, `migrate`, `dev` and native `run`, plus real browser/database acceptance tests.
+The starter has private, owner-scoped tasks and an Idris registration/login UI.
+It is a local multi-user preview, not a production-readiness promise; deployable
+HTTPS, operations and backup/restore remain separate work.
+
+## External applications and native run
+
+The same CLI works outside this repository; no application-specific launcher is
+needed. Install this checkout's command with `./flux install-cli`, ensure its bin
+directory is on PATH, then:
+
+```sh
+cd /path/to/application
+flux sync
+flux generate
+flux check
+flux build
+flux dev --hot --disposable-db
+flux run --disposable-db
+```
+
+Format-2 `flux.json` declares source/public layout, namespaces, local dependencies
+and native asset integration. `run` launches a verified built native web server,
+not the development proxy. Existing format-1 examples still work with `dev`.
+See the [application CLI guide](design/APPLICATION_CLI.md) for migration, explicit
+project selection, installer collision handling and database/artifact ownership.
+
+## HTTP server reference
+
+The existing `flux` package remains an HTTP/1.1 framework using `flux-runtime`.
+Request parsing, persistent connections, streaming responses, routing and
+middleware are implemented in Idris; a small native shim provides readiness
+and standalone shutdown supervision. The sections below document this server
+package, not every component of the full-stack preview.
 
 ## Install / build
 
@@ -232,8 +322,8 @@ wiring every field to something real:
   actual bind address, so e.g. `FLUX_SERVER_HOST=0.0.0.0` really does
   bind all interfaces, not just loopback. An unparseable host warns to
   stderr and falls back to `127.0.0.1` rather than crashing.
-- `workers` — the `foreachPar` accept-loop concurrency (labeled "workers"
-  in the startup log line) - a different knob from `IDRIS2_ASYNC_THREADS`
+- `workers` — the active connection limit (labeled "connections"
+  in the startup log line) - a different knob from `FLUX_EVENT_LOOPS`
   (see "Concurrency" below), which this doesn't touch.
 - `maxBodySize` — replaces the hardcoded `MaxContentSize` (~4GB) as the
   ceiling `assemble` rejects an oversized Content-Length against.
@@ -257,35 +347,17 @@ env-var-backed key/value store independent of any of this (`test/src/TestConfig.
 
 ## Logging
 
-`Flux.Server.Logging` ships two sinks. `mkLogger` writes every line
-immediately (`putStrLn`) — simplest, but every worker thread's requests
-contend on the same stdout, and that contention becomes the whole
-server's bottleneck once more than one async worker thread is genuinely
-running requests in parallel (measured: a request-ID+session-only
-middleware stack held ~22.4k req/s at 4 worker threads; adding one
-`mkLogger` call per request dropped that to ~484 req/s). `BatchedLogger`
-buffers formatted lines and flushes them periodically
-(`flushLoop`/`flushNow`) off the request path, but still *builds* the
-formatted string on the request-handling thread — under real concurrency
-that's still a bottleneck (throughput as low as ~300-500 req/s at 2-4
-threads), because Chez's multi-threaded allocator/GC contends heavily on
-concurrent string-building specifically, not on the shared buffer itself
-(striping the buffer 16 ways, the same fix that worked for request-ID/
-session counters, did not fix this).
+`Flux.Server.Logging` provides immediate and batched sinks. `mkLogger` writes
+formatted lines immediately. `BatchedLogger` buffers already formatted strings;
+`flushLoop`/`flushNow` publish them later. `BatchedAccessLog`, paired with
+`requestAccessLog`, buffers `HTTPLogContext` records and defers formatting to
+`flushAccessLog`, reducing work on connection owner loops.
 
-`BatchedAccessLog` (paired with `Flux.Middleware.Timing.requestAccessLog`)
-is the one to actually use for the per-request access log: it buffers the
-*raw* `HTTPLogContext` record and defers all string formatting to
-`flushAccessLog`, which runs on a single background thread. Measured
-directly in Chez (no Idris2 involved): appending a built string to a
-shared cell scales 4.5M → 568K → 194K → 181K ops/sec at 1/2/4/8 threads;
-appending a small fixed-size record instead (no string built at all)
-scales 20.1M → 21.0M → 13.0M → 4.8M — 25-90x better at every thread
-count, and it actually improves from 1 to 2 threads instead of
-immediately collapsing. Both batched loggers share the same tradeoff:
-whatever's buffered when the process dies (crash, `kill -9`, power loss)
-is lost — up to one flush interval's worth. Not acceptable for an audit
-trail; fine for an access log.
+All sinks eventually share the output destination. Measure logging overhead with
+your application and current runtime; historical upstream-scheduler throughput
+numbers are not current Flux performance claims. Batched logs can lose up to a
+flush interval of data on a crash or forced exit. Durable audit trails need a
+separate persistence strategy.
 
 ## Health checks
 
@@ -344,6 +416,18 @@ response) previously could inject a stray `;`-attribute or an entire
 extra header line into its own response. Silently stripped rather than
 rejected, so `setHeader`/`cookie` stay plain, non-fallible functions.
 
+Response header names must be nonempty ASCII HTTP tokens, as defined by
+[RFC 9110 sections 5.1 and 5.6.2](https://www.rfc-editor.org/rfc/rfc9110.html#section-5.6.2).
+`validHeaderName` exposes this check. `setHeader`/`setHeaders` ignore invalid
+names without trimming or repairing them. At the final wire boundary,
+`encodeResponse` also omits entries with malformed names or ASCII control
+characters in values (HTAB is permitted). This protects direct encoder calls,
+`ok`, cookie output and direct updates to the public `Context` record. Existing
+`setHeader` CR/LF stripping is retained; direct encoder calls omit the entire
+malformed entry. Valid header case, ordering and repeated fields are preserved.
+These checks establish field syntax safety, not field-specific semantics; the
+application still owns the meaning of a valid header.
+
 Session IDs are 128 bits of real OS entropy, hex-encoded — not a
 guessable counter. `Flux.Middleware.Internal.Random` reads directly from
 `/dev/urandom` via `System.Posix.File` (already used the same way for
@@ -363,7 +447,10 @@ expired entries so a long-running server doesn't accumulate them
 forever. What's still explicitly out of scope: persistence across
 restarts and sharing sessions across more than one process — this
 remains in-memory and single-process; swap in a real backend (Redis,
-a DB) for either of those.
+a DB) for either of those. Separately, the platform now provides
+[`flux-auth`](packages/auth/README.md): PostgreSQL-backed password accounts and
+revocable bearer sessions that survive restarts. It does not change this cookie
+middleware or automatically make existing public endpoints private.
 
 ## Static files
 
@@ -431,228 +518,41 @@ example server from anywhere other than `examples/` (e.g. the repo
 root) and `"public"` silently resolves to a directory that doesn't
 exist, so every static request 404s. See "Install / build" above.
 
-## Concurrency: async worker threads
+## Concurrency and ownership
 
-The server accepts connections via `Flux.Core.HTTP.serveConnections`
-(in place of `FS.Concurrent.foreachPar` — see "Graceful shutdown"),
-one fiber per connection, driven by `async-posix`'s POSIX
-`poll()`-based scheduler. `Flux.Core.HTTP.defaultAsyncThreads` reads
-`IDRIS2_ASYNC_THREADS` and defaults to **1** thread if it isn't set.
-That default reflects real, repeatedly-verified benchmarking (`wrk`,
-this project's example server, 100 concurrent connections, server
-process fully restarted between trials to rule out measurement
-artifacts): across many separate trial runs, 1 thread consistently
-measured the fastest option (~40k req/s), never once reliably beaten by
-2 threads (~2k-9k req/s across different trials — always collapsed
-relative to 1, though by a varying amount) or 4 threads (~660-900
-req/s in most trials). Going past 1 thread doesn't reliably help and
-regularly collapses throughput; it never reliably wins.
+Flux now uses `flux-runtime`; its dependency graph no longer includes
+`async`, `async-posix`, `streams`, or `streams-posix`. `FLUX_EVENT_LOOPS`
+selects the number of connection owner threads and defaults to 2. Accepted
+connections are assigned round robin. A connection's tasks and continuations
+remain on its owner; unrelated connections can run on other owners.
 
-That cliff is a real, unfixed bug in `idris2-async`'s scheduler: every
-fiber forked from the accept loop is pinned to whichever worker happens
-to be running the accept loop at the time, so beyond a single worker
-most sit permanently idle while one does all the work, and the
-resulting contention/queueing overhead outweighs any parallelism gained.
-A fix (round-robin fiber scheduling instead of pinning, in a fork of
-`idris2-async`) was built, and its throughput improvement independently
-confirmed (2 threads reaching ~7k-20k req/s, no longer collapsing worse
-than 1 as thread count rises) — but not shipped: it surfaced a real,
-separate, not-yet-root-caused bug of its own, an intermittent
-cancelation stall under sustained high-concurrency load that can
-itself block graceful shutdown past its own bounded drain (see
-"Graceful shutdown"). An earlier, different round-robin attempt had
-also been reverted for dramatically worsening a rare connection-leak
-race in the same scheduler (see the next section) - that specific
-concern was checked directly against this later attempt and ruled out
-(the leak/stuck-connection rate was statistically indistinguishable
-with or without round-robin, confirmed via controlled A/B testing), but
-the cancelation-stall finding is a different, still-open problem
-blocking it regardless. See the `idris2-async` fork's
-`roundrobin-only-test` branch and its `INVESTIGATION_NOTES.md` for the
-full history. Until that's fixed and shipped, stay at the default of 1
-thread; only raise it if your own workload doesn't hit this cliff
-(confirm with your own benchmark, restarting the server between trials
-the same way — an earlier round of this project's own testing initially
-reported a *worse* number for 2 threads specifically, which turned out
-to be a benchmarking-harness bug: an orphaned server process from a
-prior trial kept answering requests on the same port across a
-supposedly clean restart).
+The `workers` server setting is the maximum number of active connections,
+not the number of OS threads. Blocking operations belong on the runtime's
+bounded worker pool. `Flux.DB.PG.dbIO` uses that pool, and `Flux.DB.Pool` supplies
+exclusive database leases. Sharing one raw `DB` across requests is unsafe.
 
-### The rare connection-leak race and its mitigation
-
-**Issue.** A server-side connection occasionally never gets closed after
-the peer sends FIN - the socket is left sitting in `CLOSE_WAIT` and the
-fd is never released. This is a bug in stock upstream `idris2-async`
-itself (reproduces on unmodified `stefan-hoeck/idris2-async`), not
-something Flux or this fork introduced, and it's independent of the
-thread-count/fiber-pinning issue above - it happens even at
-`IDRIS2_ASYNC_THREADS=1`.
-
-**Effect.** Left alone, leaked fds/sockets accumulate under sustained
-load without bound - a real resource-exhaustion risk for a long-lived
-process. An earlier round-robin scheduling attempt (round-robin
-dispatch plus a self-pipe poller-wakeup change together) was reverted
-for making this reproduce far more often - but a *later* attempt,
-testing round-robin dispatch alone (no self-pipe), found via controlled
-A/B testing that it does *not* measurably change this leak's rate at
-all (statistically indistinguishable stuck-connection counts with or
-without it, across repeated trials). What blocks that later attempt
-from shipping is a different, separate bug found the same way - see
-"Concurrency: async worker threads" and the `idris2-async` fork's
-`roundrobin-only-test` branch / `INVESTIGATION_NOTES.md` for where to
-resume that work.
-
-**Mitigation (shipped), two layers.** `serveWith` wraps every
-connection in `idleTimeout` (`Flux.Core.HTTP`), a watchdog fiber that
-cancels a connection if a shared "activity" counter hasn't moved in
-`idleConnectionTimeout` (default 60s). Bounded testing (back-to-back
-`wrk` runs against one long-lived process) confirms this works: leaked
-fds/`CLOSE_WAIT` sockets accumulate under load but get reaped within
-roughly one to two timeout windows, dropping to zero once load stops,
-rather than growing without bound. Set it lower if you need a tighter
-bound and can accept more false positives against genuinely slow (but
-not stuck) clients - via `ServerConfig.timeout` through
-`runServerFromConfig` (see "Config" above), or the hardcoded
-`idleConnectionTimeout` constant for `runServer`/`runServerArgs`.
-
-Separately, `Flux.Core.HTTP.serveConnections` (see "Graceful shutdown")
-bounds how long a *shutdown* specifically waits on a connection stuck
-exactly this way: confirmed by direct reproduction (not assumed) that
-`idleTimeout` alone doesn't help here - a connection can still be well
-inside its 60s idle window when `SIGTERM` arrives, and the old
-`foreachPar`-based drain would then wait for it with no bound of its
-own, requiring `SIGKILL`. `drainTimeout` (30s) caps that wait instead.
-
-Both are mitigations, not fixes - the underlying poller race is still
-there.
-
-**Root-cause investigation, so far (not fixed - findings only):**
-
-- **The key repro lever**: the posix backend runs one dedicated poller
-  thread that does nothing but loop `poll()` on a fixed timeout
-  (10ms by default). Shortening that timeout to 1ms takes the leak from
-  reproducing on roughly 1 in 20 runs of a trivial `wrk -t1 -c2 -d1s`
-  load to reproducing on essentially every run. The trigger is `poll()`
-  *responsiveness* (how soon it reacts to fd-state changes), not the
-  round-robin dispatch change itself - a bisection of the reverted fix
-  showed the leak reproduces from a faster poll loop alone, with no
-  round-robin or self-pipe change present at all. Round-robin dispatch
-  was very likely a red herring for this specific bug (it's still the
-  real, separate cause of the throughput cliff above), bundled into the
-  same reverted commit only because it needed the self-pipe change as a
-  co-requisite.
-- **Ruled out by direct instrumentation**: `Poller.idr`'s `insrt`
-  silently calls `cleanup` instead of retrying on a CAS-insert failure -
-  a plausible-looking way to silently drop a registration. Instrumented
-  and tested against the fast (1ms) repro: a leak reproduced, but this
-  branch never fired. Not the mechanism.
-- **Ruled out, mostly**: that connection cleanup (`RFD`'s `Resource`
-  release in `idris2-streams`, a raw `close()`) bypasses the scheduler's
-  own cancellation-to-registration-cleanup wiring. `IO.Async.Loop.idr`'s
-  `observeCancel` does correctly invoke the `pollFile` cancel hook
-  before a canceled fiber unwinds into resource release, for the
-  ordinary case (fiber canceled while suspended in `poll`, not inside a
-  masked/uncancelable region). Two narrower variants of this - whether
-  *normal* (non-cancellation) stream completion retires a registration
-  the same way, and whether cancellation inside a masked region skips it
-  - remain unconfirmed either way.
-- **Confirmed directly** (not inferred): instrumenting
-  `Flux.Core.HTTP.serveWith`'s entry and its `guarantee` cleanup action,
-  tagged by fd number, caught the actual failure live. For one fd,
-  reused three times in a 15s repro run as short connections cycled
-  through it, the log read `ENTER fd=5`, `CLOSE fd=5`, `ENTER fd=5`,
-  `CLOSE fd=5`, `ENTER fd=5` - no matching third `CLOSE`. `lsof` on the
-  live process at that moment confirmed fd 5 was the exact socket
-  sitting in `CLOSE_WAIT`. So the leaked connection's fiber never reaches
-  *any* of `guaranteeCase`'s terminal branches (success/error/cancel) at
-  all - it's parked forever, not mis-cleaned-up. `guarantee`'s cleanup
-  wiring itself is not the bug.
-- **Leading hypothesis, not yet confirmed**: `Poller.idr`'s
-  `pollWaitImpl` snapshots `(fd, event)` pairs for the `poll()` syscall
-  itself, but when results come back, `handleEvs` re-looks-up the
-  handler for that fd from the *live* registration map, not the
-  snapshot. Fd numbers get reused fast under load (confirmed - the fd=5
-  above cycled through three unrelated connections within 15 seconds).
-  There's a plausible window where a `poll()` result meant for an old,
-  already-closed connection gets delivered against whatever new
-  connection now holds that same fd number by the time results are
-  processed - or a stale cleanup evicts a new connection's live
-  registration. This is grounded in the code's structure, not yet caught
-  in the act; the concrete next step is instrumenting `handleEvs`/
-  `getHandle` itself against the same fast repro used above.
-
-### Memory growth under sustained load
-
-Separately from the connection leak, resident memory grows under sustained
-load and doesn't fully return to baseline once idle — observed even with
-**zero** connection leak present (`IDRIS2_ASYNC_THREADS=1`, `CLOSE_WAIT`/FD
-counts flat the whole time). This rules out both an application-level
-buffer bug (`BatchedAccessLog`'s flush loop correctly drains its buffer
-every tick) and the connection leak as the cause.
-
-Two soak tests (16-24 rounds of 20s `wrk` bursts against `/api/users`,
-followed by 4-5 minutes idle, sampling both process RSS and - via a
-temporary `bytes-allocated` probe - Chez's own live-heap size) narrowed
-down what's actually happening:
-
-- **It is not purely "GC not returning committed pages to the OS."** The
-  live heap itself (not just RSS) measurably grows under load - e.g. one
-  run's live heap averaged ~29MB across its first 8 rounds and ~37MB
-  across its last 8, tracking RSS's growth (though at roughly half the
-  proportional rate). A real, if modest, working set is growing under
-  load, not just an allocator artifact.
-- **It plateaus, at least within the windows tested.** Growth clearly
-  decelerates over each run, and in the longer of the two runs (24
-  rounds), RSS went fully flat - 12 consecutive samples with zero
-  movement - after about 3 minutes idle. The shorter run's 4-minute idle
-  window wasn't quite long enough to reach the same clean flatline (RSS
-  was still creeping slightly at the end), consistent with "takes a
-  couple of minutes to settle," not "never settles."
-- **Not confirmed**: behavior over much longer (hours-scale) continuous
-  operation. Both soak tests here are ~10-15 minutes; a working set that
-  plateaus within 15 minutes could still drift slowly over hours. That
-  needs a real long-running soak test, not done here.
+Handler signatures such as `Async Poll es a` remain compatibility aliases
+for the new `Task es a`; no old scheduler is involved. Low-level socket and
+supervisor APIs changed. Use `Flux.Async.Server.serve` for embedded servers
+and explicit stop tasks. See the [runtime guide](packages/runtime/README.md).
 
 ## Graceful shutdown
 
-`shutdownOn [SIGINT, SIGTERM]` (wired into `runServer`/`runProgWith`)
-stops accepting new connections on either signal while letting in-flight
-connections finish - `Flux.Core.HTTP.serveConnections` (in place of
-`FS.Concurrent.foreachPar`, which it's otherwise identical to) waits for
-each one to release its concurrency slot, up to `drainTimeout` (30s) -
-past that, it gives up on whatever's left and lets the process exit
-anyway, rather than waiting forever.
+The standalone `runProg`/`runProgWith` runner owns SIGINT/SIGTERM handling.
+On a signal the server stops accepting connections, allows 30 seconds for
+existing connections to finish, then cancels stragglers. Resource cleanup
+joins task children and native work before closing their resources.
 
-That bound exists because unbounded waiting is a real, previously
-undocumented production risk, confirmed by direct reproduction (not
-assumed): a connection that never terminates - the pre-existing,
-not-fully-root-caused `idris2-async` race described below, where a
-socket's readiness notification can be lost entirely - blocked shutdown
-completely under sustained multi-threaded load, leaving a server that
-never responded to `SIGTERM` at all and needed `SIGKILL` to recover
-(confirmed via repeated `wrk` runs against a running example server,
-directly observing the server process outlive its own graceful-shutdown
-signal). `foreachPar`'s own drain has no way to be given a bound from
-outside once it starts (a `bracket`'s release action runs in a scope
-that further external cancellation can't reach, by design - the same
-guarantee that makes it trustworthy to run at all) - `serveConnections`
-instead races the equivalent wait against a plain `sleep` *inside* its
-own cleanup action, which isn't crossing that boundary and so isn't
-subject to it.
+An independent native watchdog exits with status 124 if shutdown still has
+not completed after 35 seconds. It does not depend on a responsive Idris
+owner loop. Embedded runtime APIs never force process exit. Background tasks
+passed to `runProgWith` are canceled and joined when the program ends.
 
-Works on both Linux and macOS. It used to rely on `async-posix`'s
-`awaitSignals`, which calls the POSIX.1b `sigwaitinfo()` syscall — a
-syscall the `posix` package's C support explicitly excludes on Darwin,
-crashing the server (`Exception in foreign-procedure: no entry for
-"li_sigwaitinfo"`) on SIGINT/SIGTERM instead of shutting down cleanly.
-`Flux.Core.HTTP.fluxAwaitSignals` replaces it with a small polling loop
-over `sigpending()` (plain POSIX.1, available on both platforms, already
-exposed portably by the `posix` package) — it only needs to notice that
-one of the watched signals has arrived, not decode which one or recover
-`Siginfo` detail, so it never touches the Darwin-excluded call at all.
-Verified manually on both platforms; there's no unit test for it (not
-realistic for OS-signal behavior) — see `examples/src/Main.idr`'s
-`/slow` handler for the manual verification steps.
+Cancellation cannot safely kill arbitrary synchronous IO. Use deadline-aware
+transports and scoped resources. Old scheduler benchmarks and failure
+investigations do not describe this runtime; measure this implementation
+with your workload. `test/runtime_soak.py` exercises 1, 2, and 4 owner loops
+and records request counts, resident memory, and shutdown outcomes.
 
 ## Errors
 
@@ -722,49 +622,40 @@ pack build test/test.ipkg
 ./test/build/exec/flux-test
 ```
 
-206 tests across 11 suites (router, HTTP wire parsing, HTTP wire parsing
-*properties*, JSON, middleware, logging, config, cookies, sessions,
-static files, health) — mostly pure/unit-style with no real socket or
-database involved, though a handful (the `runApp` error-catching tests,
-`readBody`'s success/failure/keep-alive tests in `TestMiddleware.idr`,
-the `Connection`-header/`willClose` tests in the same file, and
-`TestHTTPProperties.idr`'s `request` round-trip and pipelining-desync
-tests) do run the real `Async`/`Pull` scheduler end to end against a
-synthetic in-memory body/request, rather than simulating it. Nothing
-here goes over an actual TCP connection.
+The framework executable currently reports 219 named checks across router,
+HTTP parsing, parser properties, JSON, middleware, RPC CORS, logging, config,
+cookies, sessions, static files and health suites. Most are pure; body handling,
+error rendering and stream checks run the owned `Task`/`Pull` interpreter with
+synthetic requests. This executable does not open real TCP connections.
 
-`test/src/TestHTTPProperties.idr` is [`idris2-hedgehog`](https://github.com/stefan-hoeck/idris2-hedgehog)
-(property-based testing, QuickCheck-style, with integrated shrinking)
-against `Flux.Core.HTTP`'s wire parser (`method`/`version`/`startLine`/
-`headers`/`splitQuery`/`parseQuery`/`request`) - added specifically
-because that parser is exactly the same shape of hand-rolled, stateful
-parsing code as the JSON parser that had three real, compounding bugs
-this session (see "JSON"), none of which any hand-picked example ever
-caught. It's already paid for itself once: a first, naive "headers
-round-trip exactly" property failed within 45 generated cases on a
-header value that was pure whitespace (`" "`, parsed back as `""`) - on
-inspection, Flux was behaving *correctly* (RFC 7230 strips a header
-value's surrounding whitespace, so an all-whitespace value legitimately
-becomes empty), but the property's own assumption was too naive. Fixing
-it to expect `trim v` instead of `v` is what's in the suite now - a
-precise, correct specification the hand-picked examples never had to
-state explicitly. One real limitation found building this: hedgehog's
-`property`/`forAll` do-block runs in a purely generator-based monad with
-no `IO` support at all, so it can't run anything needing the real async
-runtime (`request` itself) - worked around for those specific cases via
-`Hedgehog.Gen.sample`, drawing random input in plain `IO` and asserting
-in an ordinary loop instead, at the cost of hedgehog's automatic
-shrinking on a failing case.
+[HTTP property tests](test/src/TestHTTPProperties.idr) use Hedgehog generators
+and shrinking for pure parsers. Full request/stream checks sample generators in
+IO; those cases do not have automatic shrinking. Response-header regressions
+cover every ASCII name character, malformed names, control values, direct
+encoder calls and public context-record updates.
 
-`.github/workflows/ci.yml` runs on every push/PR: building `flux.ipkg`
-and running `flux-test`, building `examples/examples.ipkg`, and a live
-smoke test that starts the actual example server and drives it over a
-real HTTP connection (routing, `readBody`, JSON, pagination, 404 vs 405,
-static files) - the one thing the unit suite above doesn't cover. Still
-not covered by either: live keep-alive/close/host-binding behavior
-specifically (the `curl -v`/`wrk` checks used throughout this session)
-and anything requiring sustained load (the benchmarking in "Concurrency"
-above) - both remain manual.
+[Root CI](.github/workflows/ci.yml) runs on pushes to `main` and pull requests:
+
+- Workspace/package and browser dependency-boundary checks, selected CLI tests
+  and shell checks.
+- Library/unit builds, example builds and a live HTTP smoke test.
+- Flux UI checks, browser bundles, Chromium acceptance and native terminal smoke
+  through `tools/ci-suite.sh ui`.
+- Generated-client/native-transport, authentication, migration, CRUD and CLI
+  integration through `tools/ci-suite.sh platform`, using disposable databases.
+
+The configured jobs define intended coverage; their existence is not a claim
+that a particular remote run passed. Additional owned-runtime protocol and
+shutdown probes can be run after building the examples:
+
+```sh
+python3 test/runtime_protocol_test.py
+```
+
+Runtime/native suites and extended load/soak checks have separate commands in
+[the runtime guide](packages/runtime/README.md). They are not all part of root CI.
+Native mobile device certification, production operations, long-duration soak
+and workload-specific performance remain separate validation work.
 
 ## Features
 
@@ -808,18 +699,17 @@ above) - both remain manual.
 - [x] Env-var config loading (`Config`), wired into the running server
       via `runServerFromConfig` (`host`/`workers`/`maxBodySize`/`timeout`)
       — see "Config"
-- [x] Two logging strategies (immediate vs batched/format-on-flush), with
-      measured concurrency tradeoffs for each — see "Logging"
-- [x] Graceful shutdown on SIGINT/SIGTERM, on both Linux and macOS, with
-      a bounded drain (30s) so a connection stuck forever can't block
-      exit indefinitely — see "Graceful shutdown"
-- [x] An idle-connection timeout mitigating a known upstream scheduler
-      race (see "The rare connection-leak race and its mitigation")
+- [x] Immediate and batched/format-on-flush logging; measure overhead
+      with the current runtime and application — see "Logging"
+- [x] Graceful shutdown on SIGINT/SIGTERM with a 30-second drain and
+      an independent 35-second standalone watchdog on Linux/macOS — see "Graceful shutdown"
+- [x] An idle-connection timeout enforced by the owned runtime to bound
+      inactive connections
 - [x] Request body access from a router `Handler` (`readBody`), with a
       real keep-alive-preserving continuation on success — see
       "Middleware & Context"
-- [x] CI (`.github/workflows/ci.yml`): builds, unit tests, and one live
-      HTTP smoke test on every push/PR — see "Running the tests"
+- [x] CI (`.github/workflows/ci.yml`): workspace, builds, unit tests, live
+      HTTP smoke, UI/browser and full-stack integration on main pushes/PRs — see "Running the tests"
 - [x] Property-based tests (`idris2-hedgehog`) against the HTTP wire
       parser — see "Running the tests"
 - [ ] TLS/HTTPS — put a reverse proxy in front for TLS termination; this
@@ -831,46 +721,38 @@ above) - both remain manual.
 A consolidated list of every gap documented above, for anyone deciding
 whether this is production-ready for their use case:
 
-- **`MaxHeaderSize` (64KB) is still not configurable** through either
+- **`MaxHeaderSize` (65,535 bytes) is still not configurable** through either
   `ServerConfig` (no field for it) or any other entry point - the one
   request-size limit `runServerFromConfig` doesn't let you change.
 - **`parseIPv4` only accepts a literal dotted-quad** ("127.0.0.1",
   "0.0.0.0") - no hostnames, no DNS resolution, no IPv6. `ServerConfig.host`
   set to anything else falls back to `127.0.0.1` with a stderr warning.
-- **A throughput cliff beyond 1 async worker thread**, caused by an
-  unfixed fiber-pinning bug in the underlying `idris2-async` scheduler.
-  A fix exists and its throughput improvement is confirmed, but it's
-  blocked on a separate, not-yet-root-caused cancelation-stall bug of
-  its own - see "Concurrency: async worker threads". Stay at the
-  default (1) unless you've benchmarked your own workload past it.
-- **A rare, not-root-caused connection-leak race** in the same upstream
-  scheduler. Mitigated in two layers - bounded to roughly one
-  idle-timeout window via `idleTimeout`, and shutdown specifically
-  additionally bounded via `serveConnections`'s `drainTimeout` so a
-  connection stuck this way can't block `SIGTERM` past 30s - not
-  eliminated either way; see "The rare connection-leak race and its
-  mitigation".
-- **Memory growth under sustained load**, independent of the above leak
-  (reproduced with zero leaked connections) - real (both RSS and Chez's
-  own live-heap size grow, not just an allocator artifact), but
-  decelerating and plateauing within the ~10-15 minute windows tested;
-  not confirmed over hours-scale continuous operation - see "Memory
-  growth under sustained load".
+- **Current-runtime performance requires workload-specific measurement.** The
+  old `idris2-async` fiber-pinning and connection-leak investigations do not
+  describe `flux-runtime`. The [recorded runtime verification](test/reports/runtime-completion/README.md)
+  includes macOS arm64 and Linux amd64-under-emulation results with explicit
+  limits: native Linux application performance was not established, and the
+  prior two-hour HTTP soak was not repeated after the recorded crypto change.
+  No general throughput or long-running memory-stability guarantee follows.
+- **Cancellation is cooperative.** Owned scopes join children and native work
+  before release; arbitrary blocking IO can delay cleanup. The standalone
+  watchdog bounds process shutdown, while embedded APIs never force exit.
 - **No disk-space health check.** `diskCheck` was removed rather than
   shipped broken - see "Health checks" for the upstream `statvfs`
   linking bug behind that. `memoryCheck` is real, but Linux-only.
   Database/cache/external-service checks were never something Flux
   could provide generically - write your own via `addCheck`.
-- **Sessions are not durable.** IDs are now real random tokens with
-  expiry and GC (see "Cookies & sessions") - what's left is
-  single-process-only: no persistence across restarts, no sharing across
-  a cluster.
+- **The cookie middleware remains in-memory.** Its IDs have expiry and GC,
+  but no restart persistence. Use the separate `flux-auth` platform package for
+  durable PostgreSQL-backed password accounts and revocable bearer sessions.
+  The starter now includes private task ownership and a session-safe login UI.
+  Production deployment and broader identity-provider features remain future work.
 - **No TLS.** Terminate TLS in a reverse proxy; this project speaks
   plain HTTP only.
-- **CI covers unit tests, both builds, and one live smoke test - not
-  everything.** Live keep-alive/close/host-binding behavior and anything
-  requiring sustained load (benchmarking) are still manual-only - see
-  "Running the tests".
+- **CI and operational validation differ.** Root CI includes UI/browser and
+  full-stack database integration in addition to unit/build/live-smoke jobs.
+  Extended soak, all runtime/native stress checks, native mobile devices and
+  deployment/backup/restore validation are separate; see "Running the tests".
 - **New dependencies for JSON.** Swapping Flux's own hand-rolled (and
   buggy) JSON parser for `json-simple`/`ilex-json` (see "JSON") means
   this is no longer a dependency-free part of the framework - a

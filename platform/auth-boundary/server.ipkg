@@ -1,0 +1,6 @@
+package flux-auth-boundary-test
+version = 0.1.0
+depends = flux-protocol
+sourcedir = "."
+main = Main
+executable = flux-auth-boundary-test

@@ -1,0 +1,15 @@
+package todo-api-test
+version = 0.1.0
+authors = "Odun Adeboye"
+brief   = "Handler-level tests for todo-api, against a real Postgres"
+
+depends = todo-api
+
+modules = TestHarness
+        , RepositoryBehavior
+        , Main
+
+main = Main
+
+executable = "todo-api-test"
+sourcedir = "src"

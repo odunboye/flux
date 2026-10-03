@@ -1,0 +1,158 @@
+PASS migration fresh install
+PASS migration replay is a no-op
+PASS migration upgrade applies only pending version
+PASS migration history drift rejected
+PASS database ahead of application rejected
+PASS failed migration reports failure
+PASS failed migration rolls back data and preserves existing rows
+PASS failed migration does not record its version
+PASS concurrent migration runner fails closed on held lock
+PASS migration succeeds after lock release and previous failure
+PASS duplicate migration versions rejected
+PASS transaction control rejected
+PASS multiple statements in an entry rejected
+PASS migration history remains usable after invalid SQL
+All migration checks passed
+PASS single-field request requires JSON object
+
+PASS client rejects numeric identifier
+
+PASS client rejects malformed error envelope
+
+PASS transport timeout remains typed
+
+PASS generated Iris client round trip with exact BIGINT
+
+PASS server rejects invalid field type
+
+PASS server rejects malformed JSON
+
+PASS server rejects unsupported media type
+
+PASS typed domain error
+
+PASS pooled create 0
+
+PASS pooled create 3
+
+PASS pooled create 2
+
+PASS pooled create 4
+
+PASS pooled create 5
+
+PASS pooled create 6
+
+PASS pooled create 7
+
+PASS pooled create 8
+
+PASS pooled create 9
+
+PASS pooled create 10
+
+PASS pooled create 11
+
+PASS pooled create 12
+
+PASS pooled create 13
+
+PASS pooled create 14
+
+PASS pooled create 15
+
+PASS pooled create 17
+
+PASS pooled create 19
+
+PASS pooled create 16
+
+PASS pooled create 21
+
+PASS pooled create 18
+
+PASS pooled create 20
+
+PASS pooled create 23
+
+PASS pooled create 22
+
+PASS pooled create 1
+
+PASS 24 distinct persisted IDs
+
+PASS single-field request requires JSON object
+
+PASS client rejects numeric identifier
+
+PASS client rejects malformed error envelope
+
+PASS transport timeout remains typed
+
+PASS generated Iris client round trip with exact BIGINT
+
+Failed to load resource: the server responded with a status of 400 ()
+PASS server rejects invalid field type
+
+Failed to load resource: the server responded with a status of 400 ()
+PASS server rejects malformed JSON
+
+Failed to load resource: the server responded with a status of 415 ()
+PASS server rejects unsupported media type
+
+Failed to load resource: the server responded with a status of 400 ()
+PASS typed domain error
+
+PASS pooled create 1
+
+PASS pooled create 0
+
+PASS pooled create 5
+
+PASS pooled create 3
+
+PASS pooled create 4
+
+PASS pooled create 6
+
+PASS pooled create 9
+
+PASS pooled create 8
+
+PASS pooled create 7
+
+PASS pooled create 10
+
+PASS pooled create 11
+
+PASS pooled create 14
+
+PASS pooled create 12
+
+PASS pooled create 13
+
+PASS pooled create 16
+
+PASS pooled create 15
+
+PASS pooled create 17
+
+PASS pooled create 18
+
+PASS pooled create 20
+
+PASS pooled create 19
+
+PASS pooled create 21
+
+PASS pooled create 22
+
+PASS pooled create 23
+
+PASS pooled create 2
+
+PASS 24 distinct persisted IDs
+
+PASS real Chromium Iris client and cross-origin preflight
+PASS PostgreSQL independently confirms 50 Iris-created rows
+PASS pooled generated endpoint clean shutdown

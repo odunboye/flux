@@ -1,0 +1,23 @@
+Disposable development database flux-dev-a4787b94ebfa4037b8e83ccf821b17f7: removed on exit; no persistent data.
+.PASS 22 local packages, canonical paths and browser dependency boundaries
+PASS 24 local packages, canonical paths and browser dependency boundaries
+Created apps/sample. Next: ./flux --project apps/sample build
+PASS 24 local packages, canonical paths and browser dependency boundaries
+..Disposable development database flux-dev-22238ea7fd004a26a63bcf8c8bfaae2a: removed on exit; no persistent data.
+Disposable development database flux-dev-c857817beb904875ab8eea306a54d95e: removed on exit; no persistent data.
+Disposable development database flux-dev-40e5914393304405b84cae4ff4175a96: removed on exit; no persistent data.
+Disposable development database flux-dev-80012db8445b46f9abedbf3cdc5f856d: removed on exit; no persistent data.
+Disposable development database flux-dev-e438105690d443a1837d5a92654a1469: removed on exit; no persistent data.
+Disposable development database flux-dev-5086744919024c80b985eec07eb7992d: removed on exit; no persistent data.
+.Disposable development database flux-dev-d0a515fde89b4073b1614a1e50445df5: removed on exit; no persistent data.
+Disposable development database flux-dev-a51cac7aa6ca45628c9111db9482cf03: removed on exit; no persistent data.
+.PASS 22 local packages, canonical paths and browser dependency boundaries
+PASS 22 local packages, canonical paths and browser dependency boundaries
+.PASS 22 local packages, canonical paths and browser dependency boundaries
+PASS 22 local packages, canonical paths and browser dependency boundaries
+.PASS 22 local packages, canonical paths and browser dependency boundaries
+...
+----------------------------------------------------------------------
+Ran 10 tests in 0.310s
+
+OK

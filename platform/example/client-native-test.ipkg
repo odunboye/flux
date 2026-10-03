@@ -1,0 +1,7 @@
+package platform-client-native-test
+version = 0.1.0
+depends = flux-client
+sourcedir = "."
+modules = ProtocolTypes, Client, ClientChecks, ClientNativeTest
+main = ClientNativeTest
+executable = platform-client-native-test

@@ -1,0 +1,35 @@
+OK connected
+OK create table
+OK insert: INSERT 0 1
+OK select: [MkRow {columns = [("id", (FmtText, (23, Just [49]))), ("name", (FmtText, (25, Just [65, 108, 105, 99, 101])))]}, MkRow {columns = [("id", (FmtText, (23, Just [50]))), ("name", (FmtText, (25, Just [66, 111, 98])))]}]
+OK update: UPDATE 1
+OK delete: DELETE 1
+OK graceful error on bad query: SQL error: column "nonexistent_column" does not exist
+OK large value round-trip, length matches: True
+OK execCommand rejects multi-statement SQL
+OK execMulti returns separate per-statement results
+OK withTransaction rolled back on Left
+OK withTransaction committed on Right
+OK txStatus reports Idle after commit
+OK withTransaction reports failure when COMMIT actually performed a ROLLBACK
+OK withTransaction rejects nesting
+OK nested withTransaction did not commit any writes
+OK array/date/timestamp/numeric decode correctly
+OK 2D array decodes correctly
+OK JSONB decodes correctly
+OK cancelQuery aborted the slow query: canceling statement due to user request
+OK waitForNotification decodes the NOTIFY correctly
+OK an ordinary query is unaffected by an interleaved NotificationResponse
+OK the interleaved notification was queued, not dropped
+OK 50 repeated failed connectDB calls (wrong password) all rejected cleanly, no FD exhaustion
+OK connectDB surfaces the real auth error: password authentication failed for user "testuser"
+OK NULL round-trips correctly alongside a real value
+OK prepared statement cached and reused correctly
+OK binary format decodes correctly (int4/int8/bool/float4/float8/text)
+OK copyIn: COPY 2
+OK copyIn loaded the expected rows
+OK copyOut exported the expected data
+SKIP TLS: server does not have SSL enabled
+OK readTimeoutMs times out a slow query: operation timed out waiting for the server
+OK connectTimeoutMs times out an unreachable host: connection timed out
+OK done
