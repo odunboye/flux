@@ -72,7 +72,7 @@ def build(project, config):
     generate(project, config, check=True)
     cwd = application.build_cwd(project, config, ROOT)
     run(['pack', '--no-prompt', 'build', str(project / config['server'])], cwd=cwd)
-    run(['pack', '--no-prompt', 'install', 'flux-ui'], cwd=cwd)
+    run(['pack', '--no-prompt', 'install', 'iris'], cwd=cwd)
     run(['pack', '--no-prompt', '--cg', 'javascript', 'build', str(project / config['ui'])], cwd=cwd)
     artifact = application.release(project, config, atomic_write)
     print('Built application artifact: ' + str(artifact), flush=True)
@@ -360,7 +360,7 @@ def watch_hooks(project, config, hot=False, stage=None):
         if kinds & {'server', 'both', 'schema'}:
             runner.run(['pack', '--no-prompt', 'build', str(project / cfg['server'])], cwd=cwd)
         if kinds & {'ui', 'both', 'schema'}:
-            runner.run(['pack', '--no-prompt', 'install', 'flux-ui'], cwd=cwd)
+            runner.run(['pack', '--no-prompt', 'install', 'iris'], cwd=cwd)
             runner.run(['pack', '--no-prompt', '--cg', 'javascript', 'build', str(project / cfg['ui'])], cwd=cwd)
 
     return DevHooks(sources, rebuild, lambda: stage(project, current()), hot=hot,

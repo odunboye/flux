@@ -9,7 +9,6 @@
     "flux-use-cases": "examples/use-cases.ipkg",
     "flux-landing": "website/landing.ipkg",
     "flux-runtime": "packages/runtime/flux-runtime.ipkg",
-    "flux-ui": "packages/ui/flux-ui.ipkg",
     "flux-db-flux": "packages/db-flux/flux-db-flux.ipkg",
     "flux-protocol": "platform/flux-protocol.ipkg",
     "flux-auth": "packages/auth/flux-auth.ipkg",
@@ -19,14 +18,12 @@
     "todo-api": "examples/todo-api/todo-api.ipkg",
     "todo-api-test": "examples/todo-api/test/test.ipkg",
     "todo-api-inmemory-test": "examples/todo-api/test/inmemory-test.ipkg",
-    "todo-api-pooled-test": "examples/todo-api/test/pooled-test.ipkg",
-    "flux-ui-todo": "packages/ui/examples/todo/flux-ui-todo.ipkg"
+    "todo-api-pooled-test": "examples/todo-api/test/pooled-test.ipkg"
   },
   "tests": {"flux": "test/test.ipkg", "todo-api": "test/test.ipkg"},
   "imports": [
     {"path": "packages/runtime", "source": "idris2-flux-async", "commit": "bfc3ff67c3d4dd85462ba7063d6d81ad7328ccf5"},
     {"path": "packages/db-flux", "source": "nebula-flux", "commit": "51f0c818f3a86c2fde4fb59e432b69b949d923e5"},
-    {"path": "packages/ui", "source": "iris", "commit": "bf07bf6ce2b61ab8197323efb8fb4ae46d48efbe"},
     {"path": "examples/todo-api", "source": "todo-api", "commit": "731fbd4f6942d7073c8fc91b10da53b752c8a002"}
   ],
   "unversioned_imports": [],
@@ -63,8 +60,14 @@
       "ipkg": "docker.ipkg",
       "test": "test/test.ipkg",
       "note": "Formerly vendored here as packages/docker/flux-docker; moved back out since it has no dependencies beyond Idris2 base. Had no prior git history to sync into (it was imported as a source snapshot, not a subtree)."
+    },
+    "iris": {
+      "url": "https://github.com/odunboye/iris.git",
+      "commit": "b61974c0fc414488b658ed428922658f0d67096f",
+      "ipkg": "iris.ipkg",
+      "note": "Formerly vendored here as packages/ui/flux-ui (Flux.UI.* modules); moved back out since it has no Flux-specific dependencies (ipkg depends only on contrib), reclaiming its own pre-Flux name - packages/ui was originally imported from a project called 'iris' (see design/CONSOLIDATION.md's history). Module prefix dropped back to Iris.*, and the public-facing runtime identifiers baked into the DOM/JS/native layers (#flux-ui-app, __fluxUI*, flux_ui_tui_*, etc.) were renamed to match (#iris-app, __iris*, iris_tui_*). flux-client (Flux.Platform.Client, generated RPC client runtime) and flux-mobile (Capacitor glue) stay - they're Flux-specific glue on top of this, the same way flux-db-flux stayed behind when db was extracted."
     }
   },
-  "browser_roots": ["flux-ui", "flux-client", "platform-crud-ui"],
+  "browser_roots": ["flux-client", "platform-crud-ui"],
   "browser_forbidden": ["flux", "flux-runtime", "flux-async", "db", "flux-db-flux", "postgres", "postgres-async", "flux-protocol", "flux-auth"]
 }

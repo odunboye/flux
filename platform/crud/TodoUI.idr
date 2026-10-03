@@ -2,9 +2,9 @@ module TodoUI
 
 import Client
 import Flux.Platform.Client.Auth as Auth
-import Flux.UI.App
-import Flux.UI.Widget
-import Flux.UI.Platform.Event
+import Iris.App
+import Iris.Widget
+import Iris.Platform.Event
 import Data.List
 
 %default covering

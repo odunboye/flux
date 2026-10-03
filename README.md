@@ -1,9 +1,17 @@
 # Flux — full-stack Idris applications
 
-**Platform preview.** Flux brings its HTTP server and owned runtime, Flux UI,
-Flux DB persistence/migrations, PostgreSQL transport/pooling, and generated Flux UI
-clients into one modular repository. The UI now uses the `flux-ui` package and
-`Flux.UI.*` modules, a breaking rename without compatibility aliases. Persistence
+**Platform preview.** Flux brings its HTTP server and owned runtime, Iris,
+Flux DB persistence/migrations, PostgreSQL transport/pooling, and generated Iris
+clients into one modular repository. The UI framework is no longer vendored
+here - it moved back out to its own repo,
+[odunboye/iris](https://github.com/odunboye/iris) (package `iris`,
+`Iris.*` modules, reclaiming the framework's own pre-Flux name), since it has
+no Flux-specific dependencies (its `ipkg` depends only on `contrib`);
+`pack.toml` pulls it as a pinned external dependency, the same way
+`postgres`/`db`/`docker` are. `flux-client` (generated RPC client runtime)
+and `flux-mobile` (Capacitor glue) stay here - they're Flux-specific glue on
+top of it, the same way `flux-db-flux` stayed behind when `db` was
+extracted. Persistence
 is now split the same way PostgreSQL support is: the active-record/query-builder
 layer moved back out to its own repo, [odunboye/db](https://github.com/odunboye/db)
 (package `db`, modules `DB.*`), since it has no Flux-specific dependencies; the
@@ -24,14 +32,13 @@ isn't Flux-only; `pack.toml` pulls it as a pinned external dependency (see
 declaration.
 
 - `packages/runtime/`: owned tasks, sockets, streams and supervision.
-- `packages/ui/`: Flux UI widgets, application lifecycle and platform backends.
 - `packages/db-flux/`: Flux's HTTP-framework glue over the external `db` and `postgres` packages.
 - `platform/`: shared protocols, generated server/client code and typed CRUD examples.
 - `examples/todo-api/`: database-backed application example.
 - `website/`: Flux's landing page, served by Flux itself.
 
 See the [workspace/package map](design/CONSOLIDATION.md) and
-[typed Flux UI client guide](platform/README.md). No sibling repositories or
+[typed Iris client guide](platform/README.md). No sibling repositories or
 user-specific dependency paths are needed. Run `python3 tools/workspace.py check`
 to verify the package map and browser/server dependency boundary.
 
@@ -59,7 +66,7 @@ JSON, middleware/health, generated contracts, PostgreSQL migrations, private
 accounts/tasks, Idris UI effects and native clients. Start with the small runnable
 recipes in `examples/src/Recipes/`, then follow the complete application.
 
-## Run the Flux UI application
+## Run the Iris application
 
 ```sh
 ./flux doctor
@@ -639,10 +646,10 @@ encoder calls and public context-record updates.
 - Workspace/package and browser dependency-boundary checks, selected CLI tests
   and shell checks.
 - Library/unit builds, example builds and a live HTTP smoke test.
-- Flux UI checks, browser bundles, Chromium acceptance and native terminal smoke
-  through `tools/ci-suite.sh ui`.
 - Generated-client/native-transport, authentication, migration, CRUD and CLI
   integration through `tools/ci-suite.sh platform`, using disposable databases.
+- Iris's own checks, browser bundles, Chromium acceptance and native terminal
+  smoke live in [its own repo](https://github.com/odunboye/iris) now.
 
 The configured jobs define intended coverage; their existence is not a claim
 that a particular remote run passed. Additional owned-runtime protocol and

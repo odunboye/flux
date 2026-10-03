@@ -183,7 +183,7 @@ unconfirmed server revocation requires an explicit retry. Expiry/revocation clea
 the model when an API request returns 401, not via an idle expiry timer.
 
 For another UI example without the database application, see
-[the standalone Flux UI Todo](../packages/ui/examples/todo/).
+[the standalone Iris Todo](https://github.com/odunboye/iris/tree/main/examples/todo).
 
 Use `webClient` for browser/Capacitor fetch and `nativeClient` (or
 `nativeClientWithCA`) for native RPC. After login, `withBearer session.token client`
@@ -196,7 +196,7 @@ credentials are **test fixtures**, not defaults for an application.
 Native RPC uses in-process libcurl, verified HTTPS outside loopback, bounded
 responses and network timeouts. Native Tasks are synchronous, not immediately
 cancellable background workers. Do **not** use the legacy generic
-`Flux.UI.Effect.Http` shell transport for credentials, and never put tokens in
+`Iris.Effect.Http` shell transport for credentials, and never put tokens in
 URLs, command arguments or browser storage.
 
 ## Verify the examples

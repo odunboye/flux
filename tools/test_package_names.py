@@ -1,9 +1,10 @@
 """Canonical platform package identities, without old-name alias packages.
 
-postgres/postgres-async/db/docker are deliberately NOT in RENAMES: unlike the
-other imported packages, each was moved back out to its own external repo
-(see workspace.json's external_packages and design/CONSOLIDATION.md), so its
-current name there is the correct one - not a legacy alias to guard against.
+postgres/postgres-async/db/docker/iris are deliberately NOT in RENAMES:
+unlike the other imported packages, each was moved back out to its own
+external repo (see workspace.json's external_packages and
+design/CONSOLIDATION.md), so its current name there is the correct one - not
+a legacy alias to guard against.
 """
 from pathlib import Path
 import unittest
@@ -26,9 +27,10 @@ class PackageNamingTests(unittest.TestCase):
                 self.assertEqual(manifest['packages'][new], file)
                 self.assertRegex((ROOT / file).read_text(), rf'(?m)^package {new}$')
                 self.assertFalse((ROOT / file).with_name(old + '.ipkg').exists())
-        for old in ['idris2-docker', 'flux-docker']:
+        for old in ['idris2-docker', 'flux-docker', 'flux-ui', 'flux-ui-todo']:
             self.assertNotIn(old, manifest['packages'])
         self.assertIn('flux-client', manifest['browser_roots'])
+        self.assertNotIn('flux-ui', manifest['browser_roots'])
         for forbidden in ['flux-runtime', 'flux-protocol', 'postgres', 'postgres-async', 'db']:
             self.assertIn(forbidden, manifest['browser_forbidden'])
 

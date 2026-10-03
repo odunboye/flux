@@ -3,7 +3,7 @@
 module Flux.Mobile
 
 import public Capacitor
-import public Flux.UI.State.TEA
+import public Iris.State.TEA
 import Data.IORef
 import Control.Monad.MErr
 

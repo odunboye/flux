@@ -1,7 +1,7 @@
 const {
   chromium,
   expect,
-} = require("../packages/ui/node_modules/@playwright/test");
+} = require("@playwright/test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -123,7 +123,7 @@ const output = path.resolve(__dirname, "../.workspace/landing");
     await expect(client).toBeFocused();
     await expect(page.locator("#client-code")).toBeVisible();
     await expect(page.locator("#client-code .code-caption")).toHaveText(
-      "Generated commands fit directly into Flux UI.",
+      "Generated commands fit directly into Iris.",
     );
     await expect(page.locator("#client-code")).toContainText(
       "Either RpcError TodoView",

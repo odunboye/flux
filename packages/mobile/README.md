@@ -5,7 +5,7 @@
 This package adapts the existing typed library; it does not implement a second
 JavaScript/native bridge or replace the DOM/Canvas renderer. It is intentionally
 outside the default workspace dependency map so server and ordinary browser
-builds do not install Capacitor. Requires `capacitor >= 0.3.0` and `flux-ui >= 0.3.0`.
+builds do not install Capacitor. Requires `capacitor >= 0.3.0` and `iris >= 0.4.0`.
 
 ## Use
 

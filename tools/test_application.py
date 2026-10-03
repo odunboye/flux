@@ -28,7 +28,7 @@ class ApplicationTests(unittest.TestCase):
         (self.root / 'public/assets/icon.png').write_bytes(b'fixture-image')
         for target in ['ui', 'server']:
             (self.root / (target + '.ipkg')).write_text('package external-' + target + '\n' +
-                'depends = ' + ('flux-client, flux-ui' if target == 'ui' else 'flux-protocol, flux-auth') +
+                'depends = ' + ('flux-client, iris' if target == 'ui' else 'flux-protocol, flux-auth') +
                 '\nsourcedir = "src"\nmodules = Main\nmain = Main\nexecutable = external-' + target + '\n')
         shutil.copyfile(flux.ROOT / 'platform/crud/schema.json', self.root / 'api/schema.json')
         self.cfg = {'format': 2, 'schema': 'api/schema.json', 'server': 'server.ipkg', 'ui': 'ui.ipkg',

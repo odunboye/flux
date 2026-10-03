@@ -352,8 +352,8 @@ http.server.HTTPServer(('127.0.0.1',int(sys.argv[1])),Handler).serve_forever()
 
     def test_browser_css_state_overlay_reload_and_reconnect(self):
         script = Path(__file__).parent / 'dev/test_browser.cjs'
-        if not (flux.ROOT / 'packages/ui/node_modules/@playwright/test').exists():
-            self.skipTest('Install packages/ui Playwright dependencies for browser acceptance')
+        if not (flux.ROOT / 'node_modules/@playwright/test').exists():
+            self.skipTest('Install npm Playwright dependencies for browser acceptance')
         subprocess.run(['node', str(script), str(self.port), str(self.root)], check=True, timeout=45)
 
 

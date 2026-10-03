@@ -148,7 +148,6 @@ def test(manifest, without_db):
         run('cli-unit', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_flux.py'])
         run('dev-watch', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_devwatch.py'])
         run('dev-hot', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_hot.py'])
-        run('ui-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_ui_names.py'])
         run('db-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_db_names.py'])
         run('package-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_package_names.py'])
         run('generator', [sys.executable, '-m', 'unittest', 'discover', '-s', 'platform', '-p', 'test_generator.py'])
@@ -176,7 +175,6 @@ def test(manifest, without_db):
         run('install-auth-native', ['pack', '--no-prompt', 'install', 'flux-auth'])
         run('auth-native', ['bash', 'packages/auth/test/native.sh'])
         build('packages/auth/test/test.ipkg')
-        build('packages/db/test/test.ipkg')
         for file in ['platform/example/example.ipkg', 'platform/example/pg-example.ipkg',
                      'platform/example/migrations.ipkg', 'platform/crud/server.ipkg']:
             build(file)

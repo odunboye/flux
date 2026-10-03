@@ -22,12 +22,12 @@ main = do
   let client = webClient base (MkFetchOptions 10000 65536)
   runChecks client (pooled == 1) $ \ok =>
     if pooled == 1 then primIO (prim_done (if ok then 1 else 0)) else do
-      -- Check both the Flux UI command shape and the actual abort delivery.
+      -- Check both the Iris command shape and the actual abort delivery.
       failures <- newIORef (if ok then the Nat 0 else 1)
       case createTodo client (MkCreateTodoRequest "slow-test") id of
         CancellableTask action => do
           cancel <- action $ \result => do
-            check failures "Flux UI cancellation propagates as a typed transport error"
+            check failures "Iris cancellation propagates as a typed transport error"
               (case result of Left (TransportFailure Cancelled) => True; _ => False)
             n <- readIORef failures
             primIO (prim_done (if n == 0 then 1 else 0))

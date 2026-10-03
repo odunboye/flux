@@ -1,6 +1,0 @@
-package flux-ui-counter-web
-depends = flux-ui
-sourcedir = "."
-modules = Counter, MainWeb
-main = MainWeb
-executable = counter-web

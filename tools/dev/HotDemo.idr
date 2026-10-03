@@ -1,10 +1,10 @@
 module HotDemo
 
-import Flux.UI.App
-import Flux.UI.State.TEA
-import Flux.UI.Widget
-import Flux.UI.Platform.Event
-import Flux.UI.Backend.Web.DOM.Run
+import Iris.App
+import Iris.State.TEA
+import Iris.Widget
+import Iris.Platform.Event
+import Iris.Backend.Web.DOM.Run
 import Data.String
 
 %default covering

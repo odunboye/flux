@@ -31,6 +31,18 @@ out to [odunboye/docker](https://github.com/odunboye/docker) and renamed
 repo either way). Don't install or depend on `flux-docker`, it no longer
 exists.
 
+**Flux UI (`flux-ui`), which this batch's intro says "keeps its current
+name," was later moved out too.** It moved back to its own repo,
+[odunboye/iris](https://github.com/odunboye/iris), reclaiming the framework's
+own pre-Flux name (`iris`, `Iris.*` modules, dropping the `Flux.UI.*` prefix
+and the public-facing DOM/JS/native runtime identifiers baked into it), since
+it has no Flux-specific dependencies - the same reasoning as
+`db`/`postgres`/`docker`. See `design/CONSOLIDATION.md`'s package map and
+`workspace.json`'s `external_packages` for the current state. Don't install
+or depend on `flux-ui`, it no longer exists; see
+[its own MIGRATION.md](https://github.com/odunboye/iris/blob/main/MIGRATION.md)
+for its own earlier breaking renames.
+
 Related transport/Docker test package and executable prefixes are renamed too.
 Directories are unchanged; the canonical map is still `workspace.json`, with
 `pack.toml` generated from it. These are workspace-local packages, not a claim

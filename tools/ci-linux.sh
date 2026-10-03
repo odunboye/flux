@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 # GitHub-hosted Ubuntu launcher. Requires Docker and Node >=20 on the host.
 # Explicit host networking lets child PostgreSQL containers' published
-# 127.0.0.1 ports reach the Idris/browser tests inside the compiler container.
+# 127.0.0.1 ports reach the Idris tests inside the compiler container.
+#
+# The "ui" suite (Flux UI's own browser/native tests, and its npm/Playwright
+# setup) moved with packages/ui to its own repo, https://github.com/odunboye/iris,
+# when it was extracted - it had no Flux-specific dependencies.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
-suite=${1:?usage: ci-linux.sh ui|platform}
-case "$suite" in ui|platform) ;; *) echo "Unknown suite: $suite" >&2; exit 2;; esac
+suite=${1:?usage: ci-linux.sh platform}
+case "$suite" in platform) ;; *) echo "Unknown suite: $suite" >&2; exit 2;; esac
 [[ $(uname -s) == Linux ]] || { echo 'This CI launcher requires a Linux Docker host' >&2; exit 2; }
 node_root=$(node -p 'require("path").dirname(require("path").dirname(require("fs").realpathSync(process.execPath)))')
 node -e 'if(Number(process.versions.node.split(".")[0]) < 20) process.exit(1)'
-if [[ $suite == platform ]]; then
-  docker pull postgres:16
-fi
+docker pull postgres:16
 
 docker run --rm --init --network host \
   --volume "$root:$root" --workdir "$root" \
@@ -23,10 +25,5 @@ docker run --rm --init --network host \
     export PATH="/opt/flux-node/bin:$PATH"
     apt-get update
     apt-get install -y --no-install-recommends python3 curl docker.io build-essential procps libssl-dev libsodium-dev libcurl4-openssl-dev pkg-config
-    cd packages/ui
-    npm ci
-    npm audit --audit-level=high
-    npx playwright install --with-deps chromium
-    cd ../..
     bash tools/ci-suite.sh "$1"
   ' bash "$suite"

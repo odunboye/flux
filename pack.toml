@@ -47,16 +47,6 @@ type = "local"
 path = "test"
 ipkg = "test.ipkg"
 
-[custom.all.flux-ui]
-type = "local"
-path = "packages/ui"
-ipkg = "flux-ui.ipkg"
-
-[custom.all.flux-ui-todo]
-type = "local"
-path = "packages/ui/examples/todo"
-ipkg = "flux-ui-todo.ipkg"
-
 [custom.all.flux-use-cases]
 type = "local"
 path = "examples"
@@ -112,6 +102,12 @@ type = "git"
 url = "https://github.com/odunboye/idris2-flux-async.git"
 commit = "bfc3ff67c3d4dd85462ba7063d6d81ad7328ccf5"
 ipkg = "flux-async.ipkg"
+
+[custom.all.iris]
+type = "git"
+url = "https://github.com/odunboye/iris.git"
+commit = "b61974c0fc414488b658ed428922658f0d67096f"
+ipkg = "iris.ipkg"
 
 [custom.all.postgres]
 type = "git"

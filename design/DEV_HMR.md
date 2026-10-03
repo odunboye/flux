@@ -1,4 +1,4 @@
-# Opt-in DOM hot replacement (Flux UI 0.4)
+# Opt-in DOM hot replacement (Iris 0.4)
 
 ```sh
 ./flux dev --hot --disposable-db
@@ -23,11 +23,11 @@ hot-replaced by this DOM feature.
 
 ## Application API
 
-Declare a direct `flux-ui >= 0.4.0` dependency in the browser ipkg (this also
-prevents an older globally installed Flux UI from shadowing the new API):
+Declare a direct `iris >= 0.4.0` dependency in the browser ipkg (this also
+prevents an older globally installed Iris from shadowing the new API):
 
 ```idris
-import Flux.UI.Backend.Web.DOM.Run
+import Iris.Backend.Web.DOM.Run
 
 codec : HotState Model
 codec = MkHotState "my-model-v1" saveModel restoreModel

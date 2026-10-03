@@ -1,5 +1,0 @@
-node_modules/
-ios/
-android/
-www/app.js
-# index.html is tracked — only app.js is generated

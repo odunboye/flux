@@ -1,7 +1,7 @@
 package flux-client
 version = 0.1.0
-brief = "Generated RPC client support for Flux UI applications"
-depends = flux-ui, json-simple
+brief = "Generated RPC client support for Iris UI applications"
+depends = iris, json-simple
 sourcedir = "client/src"
 prebuild = "make native-client"
 modules = Flux.Platform.Client

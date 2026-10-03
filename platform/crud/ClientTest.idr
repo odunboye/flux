@@ -27,7 +27,7 @@ execute (CancellableTask action) send = do
   pure ()
 execute (Task action) send = action >>= send
 execute (MapCmd f command) send = execute command (send . f)
-execute _ _ = fail "unexpected Flux UI command shape"
+execute _ _ = fail "unexpected Iris command shape"
 
 run : Cmd (Either RpcError a) -> (a -> IO ()) -> IO ()
 run command next = execute command $ \result => case result of
@@ -71,7 +71,7 @@ invalidIds client (bad :: rest) done =
 
 lifecycle : Client -> Nat -> IO () -> IO ()
 lifecycle client index done =
-  run (createTodo client (MkCreateTodoRequest ("Flux UI CRUD " ++ show index ++ " 🚀")) id) $ \created => do
+  run (createTodo client (MkCreateTodoRequest ("Iris CRUD " ++ show index ++ " 🚀")) id) $ \created => do
     check "created exact positive BIGINT"
       ((the Integer (cast created.id)) > 9007199254740991 && not created.done)
     run (getTodo client (MkTodoIdRequest created.id) id) $ \found => do
@@ -134,6 +134,6 @@ main = do
                     case n of
                       1 => readPages client 4 Nothing [] $ \after => do
                         check "concurrent CRUD leaves seed data intact" (map (\todo => todo.id) after == ids)
-                        putStrLn "PASS 24 concurrent complete Flux UI CRUD lifecycles"
+                        putStrLn "PASS 24 concurrent complete Iris CRUD lifecycles"
                         primIO (prim_done 1)
                       _ => pure ()) (the (List Nat) [0..23])

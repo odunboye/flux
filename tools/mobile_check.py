@@ -28,14 +28,18 @@ def check(capacitor):
         raise ValueError('Use hardened idris2-capacitor >= 0.2.0')
     packages = {
         'capacitor': capacitor / 'capacitor.ipkg',
-        'flux-ui': ROOT / 'packages/ui/flux-ui.ipkg',
         'flux-client': ROOT / 'platform/flux-client.ipkg',
         'flux-mobile': ROOT / 'packages/mobile/flux-mobile.ipkg',
         'flux-mobile-test': ROOT / 'packages/mobile/tests/test.ipkg',
     }
-    collection = json.loads((ROOT / 'workspace.json').read_text())['collection']
+    manifest = json.loads((ROOT / 'workspace.json').read_text())
+    collection = manifest['collection']
+    iris = manifest['external_packages']['iris']
     with tempfile.TemporaryDirectory(prefix='flux-mobile-check-') as directory:
-        lines = ['collection = ' + json.dumps(collection)]
+        lines = ['collection = ' + json.dumps(collection),
+                  '[custom.all.iris]', 'type = "git"',
+                  'url = ' + json.dumps(iris['url']), 'commit = ' + json.dumps(iris['commit']),
+                  'ipkg = ' + json.dumps(iris['ipkg'])]
         for name, file in packages.items():
             lines += [f'[custom.all.{name}]', 'type = "local"',
                       'path = ' + json.dumps(str(file.parent)), 'ipkg = ' + json.dumps(file.name)]

@@ -3,7 +3,7 @@
 module Flux.Mobile.Client
 
 import public Flux.Platform.Client
-import public Flux.UI.Effect.Http.Web
+import public Iris.Effect.Http.Web
 
 %default covering
 

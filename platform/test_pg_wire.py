@@ -1,4 +1,4 @@
-"""Generated Idris/Flux UI -> Flux -> Flux DB -> PG in a disposable database."""
+"""Generated Idris/Iris -> Flux -> Flux DB -> PG in a disposable database."""
 import os
 from pathlib import Path
 import socket
@@ -76,7 +76,7 @@ try:
                            '-Atc', 'SELECT count(*) FROM todos').stdout.strip()
             # Each target creates one round-trip row plus a 24-command batch.
             assert count == '50', count
-            print('PASS PostgreSQL independently confirms 50 Flux UI-created rows')
+            print('PASS PostgreSQL independently confirms 50 Iris-created rows')
         except BaseException:
             log.seek(0)
             print(log.read().decode(errors='replace'))

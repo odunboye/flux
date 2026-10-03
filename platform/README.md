@@ -1,7 +1,7 @@
-# Flux application platform — Idris clients for Flux UI
+# Flux application platform — Idris clients for Iris
 
 A **separate package** on top of Flux, not a replacement for Flux, Flux DB, or
-postgres. The client target is **Idris 2 / Flux UI**, not Dart or Flutter.
+postgres. The client target is **Idris 2 / Iris**, not Dart or Flutter.
 This remains an experimental protocol/client integration milestone, not a
 complete application platform or a production-ready release.
 
@@ -11,17 +11,17 @@ complete application platform or a production-ready release.
 
 | File | Consumer | Purpose |
 | --- | --- | --- |
-| `ProtocolTypes.idr` | Server and Flux UI client | Shared records and object JSON codecs; depends only on json-simple |
+| `ProtocolTypes.idr` | Server and Iris client | Shared records and object JSON codecs; depends only on json-simple |
 | `Protocol.idr` | Flux server | Typed implementation record, POST routes and OPTIONS preflight handlers |
-| `Client.idr` | Flux UI application | Typed endpoint functions returning `Cmd msg` |
+| `Client.idr` | Iris application | Typed endpoint functions returning `Cmd msg` |
 | `openapi.json` | API tooling | OpenAPI 3.1 description |
 
-The client package `flux-client` depends on **flux-ui and json-simple**,
+The client package `flux-client` depends on **iris and json-simple**,
 not Flux's server runtime, Flux DB or PostgreSQL. Browser builds do not pull
 server sockets, worker threads or database bindings into their generated JS.
 The distinct server package `flux-protocol` supplies typed endpoint adapters.
 
-### Flux UI consumption
+### Iris consumption
 
 ```idris
 import Client
@@ -29,7 +29,7 @@ import Flux.Platform.Client.Web
 
 data Msg = TodoCreated (Either RpcError TodoResponse)
 
--- Return this command from init/update; Flux UI owns execution/cancellation.
+-- Return this command from init/update; Iris owns execution/cancellation.
 covering
 create : String -> Cmd Msg
 create title =
@@ -37,18 +37,18 @@ create title =
              (MkCreateTodoRequest title) TodoCreated
 ```
 
-For a same-origin browser application, use an empty base URL. Native Flux UI
+For a same-origin browser application, use an empty base URL. Native Iris
 applications use `nativeClient base` from `Flux.Platform.Client.Native` instead.
 Both clients use the same generated endpoint functions and wire types.
 
-- Web/Capacitor: `Flux.UI.Effect.Http.Web.requestWith`, retaining `CancellableTask`
-  and its abort action; timeout/size options come from Flux UI's `FetchOptions`.
+- Web/Capacitor: `Iris.Effect.Http.Web.requestWith`, retaining `CancellableTask`
+  and its abort action; timeout/size options come from Iris's `FetchOptions`.
 - Native: in-process libcurl `Task`, with 5s connect/30s total deadlines, a 64KiB
   response cap and mandatory peer verification. No argv credentials, temporary
   request files, redirects, ambient proxies, netrc or cookie store. HTTPS is
   required except loopback development; `nativeClientWithCA` accepts a PEM CA file.
 - Custom transport: supply `MkClient base transport`, where the transport
-  produces a Flux UI `Cmd` from an HTTP request and result-to-message callback.
+  produces a Iris `Cmd` from an HTTP request and result-to-message callback.
 
 `RpcError` distinguishes `TransportFailure HttpError`,
 `RemoteError status code message`, and `InvalidResponse message`. Malformed
@@ -60,8 +60,8 @@ bearers in browser storage or put them in URLs. Native Tasks are synchronous and
 bounded, not immediately cancellable background workers. These are libcurl
 network timeouts, not hard real-time preemption of platform DNS/trust operations.
 No application request worker is detached on timeout. The legacy generic
-`Flux.UI.Effect.Http` shell transport is still unsuitable for credentials.
-Flux UI Web currently reads response
+`Iris.Effect.Http` shell transport is still unsuitable for credentials.
+Iris Web currently reads response
 text before its post-read size check when no usable Content-Length is supplied.
 
 When changing `client/c/http.c`, refresh `platform/flux-client.ipkg`'s timestamp
@@ -120,7 +120,7 @@ it does not change the existing todo-api entry point or routes.
 
 ### Complete typed CRUD example
 
-`crud/schema.json` generates create/get/list/update/toggle/delete Flux UI methods.
+`crud/schema.json` generates create/get/list/update/toggle/delete Iris methods.
 `crud/Main.idr` supplies the domain callbacks using the same pooled repository.
 Get/update/toggle return a nullable todo for absent IDs; delete returns a
 boolean. IDs must be canonical positive BIGINT decimal strings. Titles written
@@ -161,9 +161,9 @@ pack --no-prompt build crud/server.ipkg
 pack --no-prompt --cg javascript build crud/client-test.ipkg
 ```
 
-Build/install Flux UI with the native backend before building JS clients (the
-native client build above does this). If Flux UI sources changed afterwards, run
-`pack --no-prompt install flux-ui` first: Flux UI's packaged demo is native and cannot
+Build/install Iris with the native backend before building JS clients (the
+native client build above does this). If Iris sources changed afterwards, run
+`pack --no-prompt install iris` first: Iris's packaged demo is native and cannot
 be rebuilt with the JavaScript backend.
 
 There is no Dart generator, Dart client, or Dart toolchain dependency.
@@ -172,8 +172,8 @@ There is no Dart generator, Dart client, or Dart toolchain dependency.
 
 Requires Python 3, pack/Idris2, Node.js with fetch, libcurl 7.85+ development
 headers/pkg-config (plus OpenSSL 3 and libsodium for the server), and
-Playwright/Chromium installed from `packages/ui/package-lock.json`
-(`cd packages/ui && npm ci`, then install Chromium from that directory). The PG test also
+Playwright/Chromium installed from this repo's own root `package-lock.json`
+(`npm ci` at the repo root, then install Chromium from there). The PG test also
 requires Docker with a local `postgres:16` image. From the Flux root:
 
 ```sh
@@ -189,7 +189,7 @@ JS/Node fetch, and **real Chromium**. It checks Unicode, large text IDs,
 malformed requests/responses, typed transport/domain errors, server-error
 redaction and clean shutdown. The Web tests verify command cancellation and
 actual cross-origin browser preflight/error handling. The test dispatcher is
-minimal; these are HTTP/Cmd integration tests, not a complete Flux UI test.
+minimal; these are HTTP/Cmd integration tests, not a complete Iris test.
 
 `test_pg_wire.py` creates its **own disposable PostgreSQL container**, runs
 14 Flux DB migration checks, then runs JS and Chromium generated-client checks.
@@ -205,11 +205,11 @@ seed rows, independent DB verification, migration bootstrap and restart safety.
 Neither test touches existing application data.
 
 `test_app.py` additionally creates and builds an application in a fresh source
-copy through `./flux`, then operates the actual Flux UI DOM UI against PostgreSQL.
+copy through `./flux`, then operates the actual Iris DOM UI against PostgreSQL.
 See the [application and CLI guide](crud/README.md) for operation, coverage and
 explicit development-only limitations.
 
-Full CRUD regression reports are in `reports/crud/`; the first Idris/Flux UI
+Full CRUD regression reports are in `reports/crud/`; the first Idris/Iris
 slice is recorded in `reports/iris-client/`. Earlier Dart-based
 prototype records are archived under `reports/pre-iris/` and are **not evidence
 for this client implementation**.

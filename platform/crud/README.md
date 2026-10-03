@@ -1,4 +1,4 @@
-# Flux Todo — generated-client Flux UI application
+# Flux Todo — generated-client Iris application
 
 This is a **private multi-user development preview**, not a production-ready
 service. [Flux Auth](../../packages/auth/README.md) supplies durable accounts and
@@ -9,7 +9,7 @@ missing IDs. Neither task nor account routes enable wildcard CORS.
 Migration 3 archives anonymous tasks without adoption/deletion and creates a
 separate private table; migrations 1/2 and existing accounts/sessions are preserved.
 Read the [reviewed ownership migration](OWNERSHIP_MIGRATION.md) before upgrading.
-`TodoUI.idr` owns the model/update/view; `MainWeb.idr` runs Flux UI's DOM backend.
+`TodoUI.idr` owns the model/update/view; `MainWeb.idr` runs Iris's DOM backend.
 Every API operation goes through generated `Client.idr` commands. There is no
 handwritten JavaScript business model or parallel fetch client in the app.
 
@@ -25,7 +25,7 @@ The UI also supports create, fetch/edit, save/cancel, toggle, confirmed deletion
 keyset pagination, loading/empty states, validation, typed failures and explicit
 retry. BIGINT IDs stay strings. Writes are serialized while pending, input is
 retained on failure, and mutation requests are never automatically retried.
-Flux UI lifecycle suspension cancels pending effects; the UI clears its pending
+Iris lifecycle suspension cancels pending effects; the UI clears its pending
 state, preserves the draft and recovers on resume without replaying a write.
 Transport failure can mean a write committed without its response arriving:
 refresh before retrying. This API does not yet offer idempotency keys or
@@ -119,7 +119,7 @@ Authenticated PostgreSQL TLS and durable accounts/revocable sessions are
 available alongside private tasks and login UI. Deployment remains a separate
 milestone. Native RPC uses in-process libcurl, never shell arguments or temporary
 request files, with verified TLS and bounded synchronous Tasks. The legacy generic
-Flux UI shell HTTP effect is not suitable for credentials. Native builds require
+Iris shell HTTP effect is not suitable for credentials. Native builds require
 libsodium 1.0.18+, OpenSSL 3, libcurl 7.85+ development headers and pkg-config;
 `./flux doctor` checks these dependencies.
 
@@ -128,7 +128,7 @@ libsodium 1.0.18+, OpenSSL 3, libcurl 7.85+ development headers and pkg-config;
 Install browser test dependencies once:
 
 ```sh
-(cd packages/ui && npm ci && npx playwright install chromium)
+(npm ci && npx playwright install chromium)
 python3 platform/test_app.py
 # All platform gates, also run by root CI:
 python3 tools/workspace.py test

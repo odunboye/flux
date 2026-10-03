@@ -172,7 +172,7 @@ rapid saves and superseded builds, failed builds retaining published bytes,
 backend startup failure/rollback, cutover without replay, schema rebuild dispatch,
 restricted routes, and shutdown during compilation. Native-process tests use a
 small HTTP fixture rather than PostgreSQL/Idris, so they run without Docker.
-With `packages/ui` Playwright dependencies and Chromium installed, browser tests
+With this repo's own (`npm install` at the root) Playwright dependencies and Chromium installed, browser tests
 also check CSS state preservation, safe error rendering, successful JS reload,
 and polling reconnection. They are skipped when the Playwright package is absent.
 If `examples/examples.ipkg` has already been built, an additional test launches

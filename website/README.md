@@ -37,7 +37,7 @@ and implementation are original; no Serverpod logos, screenshots, testimonials
 or proprietary assets are reused.
 
 The hero and feature diagrams are illustrations, not live dashboards. Four large
-feature cards explain PostgreSQL/migrations, accounts/private tasks, Flux UI and
+feature cards explain PostgreSQL/migrations, accounts/private tasks, Iris and
 generated contracts. Eight compact cards cover runtime ownership, verified PG TLS,
 native RPC, health, tracing, the local CLI, integration checks and working examples.
 Feature jump links work with or without JavaScript; mobile cards become a single
@@ -64,7 +64,7 @@ There are no API, authentication, form submission or database routes here.
 
 ## Verify
 
-With Playwright/Chromium installed from `packages/ui/package-lock.json`:
+With Playwright/Chromium installed from this repo's own root `package-lock.json`:
 
 ```sh
 python3 website/test_site.py
