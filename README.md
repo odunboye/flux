@@ -21,11 +21,11 @@ repo, [odunboye/postgres](https://github.com/odunboye/postgres), so it
 isn't Flux-only; `pack.toml` pulls it as a pinned external dependency (see
 `workspace.json`'s `external_packages`). The owned task/socket/stream runtime
 is likewise no longer vendored here - it moved back out to
-[odunboye/idris2-flux-async](https://github.com/odunboye/idris2-flux-async)
-(package `flux-async`, `Flux.Async.*`/`Flux.Stream.*` modules unchanged),
-since it has no Flux-specific dependencies either; Flux depends on it as a
-pinned external dependency the same way `postgres-async` does. This is not a
-production-readiness declaration.
+[odunboye/runtime](https://github.com/odunboye/runtime) (package `runtime`,
+`Flux.Async.*`/`Flux.Stream.*` modules renamed to `Async.*`/`Stream.*` along
+with the move), since it has no Flux-specific dependencies either; Flux
+depends on it as a pinned external dependency the same way `postgres-async`
+does. This is not a production-readiness declaration.
 
 - `packages/ui/`: Flux UI widgets, application lifecycle and platform backends.
 - `packages/db-flux/`: Flux's HTTP-framework glue over the external `db` and `postgres` packages.
@@ -110,7 +110,7 @@ project selection, installer collision handling and database/artifact ownership.
 
 ## HTTP server reference
 
-The existing `flux` package remains an HTTP/1.1 framework using `flux-async`
+The existing `flux` package remains an HTTP/1.1 framework using `runtime`
 (the externally hosted owned-task runtime).
 Request parsing, persistent connections, streaming responses, routing and
 middleware are implemented in Idris; a small native shim provides readiness
@@ -524,7 +524,7 @@ exist, so every static request 404s. See "Install / build" above.
 
 ## Concurrency and ownership
 
-Flux now uses `flux-async` (externally hosted); its dependency graph no longer includes
+Flux now uses `runtime` (externally hosted); its dependency graph no longer includes
 `async`, `async-posix`, `streams`, or `streams-posix`. `FLUX_EVENT_LOOPS`
 selects the number of connection owner threads and defaults to 2. Accepted
 connections are assigned round robin. A connection's tasks and continuations
@@ -537,9 +537,9 @@ exclusive database leases. Sharing one raw `DB` across requests is unsafe.
 
 Handler signatures such as `Async Poll es a` remain compatibility aliases
 for the new `Task es a`; no old scheduler is involved. Low-level socket and
-supervisor APIs changed. Use `Flux.Async.Server.serve` for embedded servers
+supervisor APIs changed. Use `Async.Server.serve` for embedded servers
 and explicit stop tasks. See the
-[runtime guide](https://github.com/odunboye/idris2-flux-async/blob/main/README.md).
+[runtime guide](https://github.com/odunboye/runtime/blob/main/README.md).
 
 ## Graceful shutdown
 
@@ -658,7 +658,7 @@ python3 test/runtime_protocol_test.py
 ```
 
 Runtime/native suites and extended load/soak checks have separate commands in
-[the runtime guide](https://github.com/odunboye/idris2-flux-async/blob/main/README.md).
+[the runtime guide](https://github.com/odunboye/runtime/blob/main/README.md).
 They are not all part of root CI.
 Native mobile device certification, production operations, long-duration soak
 and workload-specific performance remain separate validation work.
@@ -735,7 +735,7 @@ whether this is production-ready for their use case:
   set to anything else falls back to `127.0.0.1` with a stderr warning.
 - **Current-runtime performance requires workload-specific measurement.** The
   old `idris2-async` fiber-pinning and connection-leak investigations do not
-  describe `flux-async`. The [recorded runtime verification](test/reports/runtime-completion/README.md)
+  describe `runtime`. The [recorded runtime verification](test/reports/runtime-completion/README.md)
   includes macOS arm64 and Linux amd64-under-emulation results with explicit
   limits: native Linux application performance was not established, and the
   prior two-hour HTTP soak was not repeated after the recorded crypto change.

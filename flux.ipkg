@@ -13,7 +13,7 @@ brief   = "An HTTP/1.1 server framework for Idris2 (platform preview)"
 -- langversion
 
 -- packages to add to search path
-depends    = flux-async
+depends    = runtime
            , posix
            , ref1
            , json-simple
