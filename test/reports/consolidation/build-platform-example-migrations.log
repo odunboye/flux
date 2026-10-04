@@ -1,5 +1,0 @@
-[ info ] Found local config at /private/tmp/flux-consolidation-final/pack.toml
-[ info ] Using package collection nightly-260903
-[ info ] Building: platform-migration-test
-[ build ] Now compiling the executable: platform-migration-test
-[ build ] Warning: compiling hole Helper.unimplementedEncode

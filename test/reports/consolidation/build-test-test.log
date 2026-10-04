@@ -1,4 +1,0 @@
-[ info ] Found local config at /private/tmp/flux-consolidation-final/pack.toml
-[ info ] Using package collection nightly-260903
-[ info ] Building: flux-test
-[ build ] Now compiling the executable: flux-test

@@ -1,8 +1,0 @@
-[ info ] Found local config at
-         - /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
-         - /Users/odunadeboye/dev/idris2/projects/flux/platform/pack.toml
-[ info ] Using package collection nightly-260903
-[ info ] Building: platform-pg-example
-[ build ] 2/2: Building PGMain (PGMain.idr)
-[ build ] Now compiling the executable: platform-pg-example
-[ build ] Warning: compiling hole Helper.unimplementedEncode

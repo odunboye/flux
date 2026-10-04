@@ -1,5 +1,0 @@
-[ info ] Found local config at /Users/odunadeboye/dev/idris2/libs/idris2-pg/pack.toml
-[ info ] Using package collection nightly-260903
-[ info ] Building: idris2-pg-unit-test
-[ build ] Now compiling the executable: idris2-pg-unit-test
-[ build ] Warning: compiling hole Helper.unimplementedEncode

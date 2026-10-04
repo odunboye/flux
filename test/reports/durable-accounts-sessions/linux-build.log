@@ -1,3 +1,0 @@
-pkg-config --atleast-version=1.0.18 libsodium
-mkdir -p lib
-cc -O2 -Wall -Wextra -Werror -std=c11 -shared -fPIC $( pkg-config --cflags libsodium ) c/auth_crypto.c -o lib/libflux_auth.so $( pkg-config --libs libsodium ) -pthread

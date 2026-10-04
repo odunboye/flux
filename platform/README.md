@@ -209,10 +209,11 @@ copy through `./flux`, then operates the actual Iris DOM UI against PostgreSQL.
 See the [application and CLI guide](crud/README.md) for operation, coverage and
 explicit development-only limitations.
 
-Full CRUD regression reports are in `reports/crud/`; the first Idris/Iris
-slice is recorded in `reports/iris-client/`. Earlier Dart-based
-prototype records are archived under `reports/pre-iris/` and are **not evidence
-for this client implementation**.
+Full CRUD regression reports previously lived under `reports/`, removed as
+disposable test-run output - rerun the commands above or
+`python3 tools/workspace.py test` for current results. Earlier Dart-based
+prototype records (`reports/pre-iris/`) were never evidence for this client
+implementation and are also gone.
 
 ## Remaining platform work
 

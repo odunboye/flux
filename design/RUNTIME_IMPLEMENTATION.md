@@ -1,5 +1,11 @@
 # Owned runtime implementation checkpoint — 2026-09-11
 
+**The `test/reports/` paths this checkpoint cites as evidence (`runtime-checkpoint-2026-09-11/`,
+`runtime-completion/`) were later removed as disposable test-run output** -
+the narrative and numbers below are kept as the historical record of this
+checkpoint, not a live link; rerun `python3 tools/workspace.py test` for
+current verification.
+
 Flux now uses the independent `flux-async` package in
 `libs/idris2-flux-async`. Its dependencies no longer include `async`,
 `async-posix`, `streams`, or `streams-posix`. Typed error lists are preserved.

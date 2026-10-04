@@ -1,6 +1,0 @@
-[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
-[ info ] Using package collection nightly-260903
-[ info ] Building: platform-crud-ui
-[ build ] 3/4: Building TodoUI (TodoUI.idr)
-[ build ] 4/4: Building MainWeb (MainWeb.idr)
-[ build ] Now compiling the executable: flux-todo-web

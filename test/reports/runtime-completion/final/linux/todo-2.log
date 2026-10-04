@@ -1,2 +1,0 @@
-PASS 24 clients, 480 CRUD lifecycles, 3360 HTTP requests in 2.92s
-PASS pooled todo-api clean shutdown

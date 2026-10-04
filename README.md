@@ -742,11 +742,13 @@ whether this is production-ready for their use case:
   set to anything else falls back to `127.0.0.1` with a stderr warning.
 - **Current-runtime performance requires workload-specific measurement.** The
   old `idris2-async` fiber-pinning and connection-leak investigations do not
-  describe `runtime`. The [recorded runtime verification](test/reports/runtime-completion/README.md)
-  includes macOS arm64 and Linux amd64-under-emulation results with explicit
-  limits: native Linux application performance was not established, and the
-  prior two-hour HTTP soak was not repeated after the recorded crypto change.
-  No general throughput or long-running memory-stability guarantee follows.
+  describe `runtime`. Point-in-time verification results (macOS arm64 and
+  Linux amd64-under-emulation, with explicit limits: native Linux application
+  performance was not established, and the prior two-hour HTTP soak was not
+  repeated after the recorded crypto change) existed as a committed report
+  under `test/reports/`, since removed as disposable test-run output - rerun
+  `python3 tools/workspace.py test` for current numbers. No general
+  throughput or long-running memory-stability guarantee follows.
 - **Cancellation is cooperative.** Owned scopes join children and native work
   before release; arbitrary blocking IO can delay cleanup. The standalone
   watchdog bounds process shutdown, while embedded APIs never force exit.
