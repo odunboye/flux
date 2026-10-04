@@ -87,7 +87,7 @@ These are their original defining modules, not wrappers. This batch does not
 rename native FFI symbols, environment-variable contracts, SQL objects, RPC
 routes, schemas or application data. In particular, `flux_db_meta.migrations`,
 its lock key and frozen migration checksums are unchanged. The earlier
-[Flux DB cutover](../packages/db/MIGRATION.md) is still required if upgrading a
+[Flux DB cutover](https://github.com/odunboye/db/blob/main/MIGRATION.md) is still required if upgrading a
 pre-Flux-DB database; this batch introduces no further database cutover.
 
 ## Build and verify

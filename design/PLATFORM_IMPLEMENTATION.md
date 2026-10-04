@@ -61,7 +61,7 @@ by `flux-auth`; owner-scoped repositories remain pending. See `IDENTITY_IMPLEMEN
   and per-migration transactional application/history insertion.
 - The original checkpoint passed 14 migration integration checks. The Flux DB
   rename expands this to 21, including metadata cutover and pre-execution SQL
-  batch rejection. See [the migration guide](../packages/db/MIGRATION.md).
+  batch rejection. See [the migration guide](https://github.com/odunboye/db/blob/main/MIGRATION.md).
   Companion Flux DB commit: `a177aee8d3370fd970ff262e549a3611ae3778d2`.
 
 The first Flux/UI/client checkpoint is Flux `f64aef7`, paired with the Flux DB
