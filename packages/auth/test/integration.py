@@ -49,7 +49,7 @@ exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/tmp/tls/cert.pem 
                  '-v',str(d)+':/input:ro','--entrypoint','sh','postgres:16','-c',command])
             created = True
             def ready_db():
-                for _ in range(100):
+                for _ in range(300):
                     try: run(['docker','exec',name,'pg_isready','-h','127.0.0.1','-U','testuser','-d','testdb']); return
                     except subprocess.CalledProcessError: time.sleep(.2)
                 raise AssertionError('database startup deadline')
