@@ -5,7 +5,7 @@
 ```
 Application (Chequra)
     -> Flux.Mobile commands / owned subscriptions
-    -> idris2-capacitor 0.3 typed bindings + one registered JS bridge
+    -> capacitor 0.3 typed bindings + one registered JS bridge
     -> Capacitor 8.4.3
     -> iOS / Android WebView
 ```
@@ -59,7 +59,7 @@ Add `flux.mobile.json` beside an application's `flux.json` (or pass an explicit
   "format": 1,
   "appId": "com.example.sandbox",
   "appName": "Sandbox App",
-  "capacitor": "/path/to/idris2-capacitor",
+  "capacitor": "/path/to/capacitor",
   "webDir": "public",
   "entry": "build/exec/my-app.js",
   "ui": "mobile.ipkg",
@@ -92,8 +92,8 @@ are refused once a host exists; migration requires deliberate host management.
 ## Commands
 
 ```sh
-flux mobile setup --capacitor /path/to/idris2-capacitor
-flux mobile check --capacitor /path/to/idris2-capacitor
+flux mobile setup --capacitor /path/to/capacitor
+flux mobile check --capacitor /path/to/capacitor
 
 flux mobile compile --project /path/to/app
 flux mobile build --project /path/to/app
@@ -165,14 +165,14 @@ must be explicit and must not replay writes.
 
 ```sh
 python3 -m unittest discover -s tools -p 'test_mobile*.py'
-flux mobile check --capacitor /path/to/idris2-capacitor
+flux mobile check --capacitor /path/to/capacitor
 node packages/mobile/tests/browser.cjs /path/to/mobile/releases/ID
 ```
 
 For actual native vault behavior, with the SDK runtimes already installed:
 
 ```sh
-python3 packages/mobile/tests/native_probe.py --capacitor /path/to/idris2-capacitor
+python3 packages/mobile/tests/native_probe.py --capacitor /path/to/capacitor
 ```
 
 This creates new scratch devices/apps, never uses existing user devices, and

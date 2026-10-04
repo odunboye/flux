@@ -25,7 +25,7 @@ def run(args, cwd=ROOT, timeout=300):
 def check(capacitor):
     capacitor = Path(capacitor).resolve(strict=True)
     if not (capacitor / 'js/bridge.mjs').is_file():
-        raise ValueError('Use hardened idris2-capacitor >= 0.2.0')
+        raise ValueError('Use hardened capacitor >= 0.2.0')
     packages = {
         'capacitor': capacitor / 'capacitor.ipkg',
         'flux-client': ROOT / 'platform/flux-client.ipkg',

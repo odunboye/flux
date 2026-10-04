@@ -1,6 +1,6 @@
 # Flux Mobile (optional preview)
 
-`Chequra → Flux.Mobile → idris2-capacitor → Capacitor`.
+`Chequra → Flux.Mobile → capacitor → Capacitor`.
 
 This package adapts the existing typed library; it does not implement a second
 JavaScript/native bridge or replace the DOM/Canvas renderer. It is intentionally
@@ -86,7 +86,7 @@ owned application releases without changing the normal workspace map.
 From the Flux root:
 
 ```sh
-python3 tools/mobile_check.py --capacitor /path/to/idris2-capacitor
+python3 tools/mobile_check.py --capacitor /path/to/capacitor
 ```
 
 This creates a temporary Pack dependency map, builds the **compiled Idris**

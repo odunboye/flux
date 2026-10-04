@@ -64,7 +64,7 @@ def library(path):
     path = Path(path).resolve(strict=True)
     package = read_json(path / 'package.json')
     if not isinstance(package, dict) or package.get('version') not in ['0.2.0', '0.3.0'] or not (path / 'js/register.mjs').is_file():
-        raise ValueError('Expected hardened idris2-capacitor 0.2.0 or 0.3.0')
+        raise ValueError('Expected hardened capacitor 0.2.0 or 0.3.0')
     return path
 
 
