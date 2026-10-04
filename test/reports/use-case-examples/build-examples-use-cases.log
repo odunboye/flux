@@ -1,4 +1,0 @@
-[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
-[ info ] Using package collection nightly-260903
-[ info ] Building: flux-use-cases
-[ build ] Now compiling the executable: flux-use-cases

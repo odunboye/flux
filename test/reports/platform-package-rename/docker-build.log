@@ -1,5 +1,0 @@
-[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
-[ info ] Using package collection nightly-260903
-[ info ] Building: flux-docker-test
-[ build ] 1/1: Building Main (src/Main.idr)
-[ build ] Now compiling the executable: flux-docker-test

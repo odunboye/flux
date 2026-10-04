@@ -1,4 +1,4 @@
-const {chromium, expect} = require('../../packages/ui/node_modules/@playwright/test');
+const {chromium, expect} = require('@playwright/test');
 const assert = require('node:assert/strict');
 (async()=>{
   const browser=await chromium.launch({headless:true});
@@ -35,7 +35,7 @@ const assert = require('node:assert/strict');
     await expect(page.getByText('Count 1',{exact:true})).toBeVisible(); // old effect rejected
     await page.getByRole('button',{name:'Increment',exact:true}).click();
     await expect(page.getByText('Count 3',{exact:true})).toBeVisible(); // new update implementation
-    assert.equal(await page.evaluate(()=>window.__fluxUITimers.size),2); // one render + one tick
+    assert.equal(await page.evaluate(()=>window.__irisTimers.size),2); // one render + one tick
     assert.equal(await page.evaluate(()=>document.adoptedStyleSheets.length),1);
     await page.clock.pauseAt(new Date());
     const ticks=async()=>Number((await page.getByText(/^Ticks \d+$/).innerText()).split(' ')[1]);
@@ -61,7 +61,7 @@ const assert = require('node:assert/strict');
     await expect(page.getByText('Plain version',{exact:true})).toBeVisible();
     assert.equal(await page.evaluate(()=>window.marker),undefined); // runWeb did not mount over the old runtime
     assert.equal(await page.evaluate(()=>window.__hotStarts),1);
-    assert.equal(await page.evaluate(()=>window.__fluxUITimers.size),2);
+    assert.equal(await page.evaluate(()=>window.__irisTimers.size),2);
     assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
     assert.deepEqual(errors,[]);
     console.log('PASS real Idris HMR: state, new update/view, busy deferral, cancellation, stale callbacks, timer/style cleanup, no init replay, incompatible reload');

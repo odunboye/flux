@@ -14,14 +14,14 @@ import flux
 
 class HotBrowser(unittest.TestCase):
     def test_real_idris_replacement_lifecycle_and_incompatible_fallback(self):
-        if not shutil.which('pack') or not (flux.ROOT / 'packages/ui/node_modules/@playwright/test').exists():
-            self.skipTest('pack and packages/ui Playwright dependencies required')
+        if not shutil.which('pack') or not (flux.ROOT / 'node_modules/@playwright/test').exists():
+            self.skipTest('pack and npm Playwright dependencies required')
         (flux.ROOT / '.workspace').mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='flux-hot-build-', dir=flux.ROOT / '.workspace') as directory:
             root = Path(directory)
-            shutil.copyfile(flux.ROOT / 'packages/ui/tests/HotDemo.idr', root / 'HotDemo.idr')
-            (root / 'ui.ipkg').write_text('package hot-browser-test\ndepends = flux-ui >= 0.4.0\nsourcedir = "."\nmodules = HotDemo, Main\nmain = Main\nexecutable = hot-demo\n')
-            (root / 'index.html').write_text('<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\'; style-src \'self\'; connect-src \'self\'"><link rel="stylesheet" href="/app.css"></head><body><main id="flux-ui-app"></main><script src="/app.js"></script></body></html>')
+            shutil.copyfile(flux.ROOT / 'tools/dev/HotDemo.idr', root / 'HotDemo.idr')
+            (root / 'ui.ipkg').write_text('package hot-browser-test\ndepends = iris >= 0.4.0\nsourcedir = "."\nmodules = HotDemo, Main\nmain = Main\nexecutable = hot-demo\n')
+            (root / 'index.html').write_text('<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\'; style-src \'self\'; connect-src \'self\'"><link rel="stylesheet" href="/app.css"></head><body><main id="iris-app"></main><script src="/app.js"></script></body></html>')
             (root / 'app.css').write_text('body{background:white}')
             bundles = []
             runner = devwatch.BuildRunner(dict(os.environ))

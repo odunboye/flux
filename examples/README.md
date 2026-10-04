@@ -17,7 +17,7 @@ Run commands from the **repository root** unless stated otherwise.
 | A database-backed application | [Private Todo server](../platform/crud/Main.idr) | PostgreSQL pools, parameterized SQL, reviewed migrations, keyset pagination |
 | A private multi-user application | [Todo application guide](../platform/crud/README.md) | Durable accounts, revocable sessions and principal-derived row ownership |
 | An interactive Idris frontend | [TodoUI.idr](../platform/crud/TodoUI.idr) | Model/update/view, commands, lifecycle handling and stale-response protection |
-| Native authenticated RPC | [Native client](../platform/client/src/Flux/Platform/Client/Native.idr) | In-process verified TLS transport; no credential argv/body files |
+| Native authenticated RPC | [Native client](https://github.com/odunboye/iris/blob/main/client/src/Iris/Client/Native.idr) | In-process verified TLS transport; no credential argv/body files |
 
 The stateless recipes below are deliberately public. The private starter is a
 separate application; adding a login screen does not protect a public handler.
@@ -135,7 +135,7 @@ Read the [ownership migration guide](../platform/crud/OWNERSHIP_MIGRATION.md)
 before upgrading populated data. Anonymous rows are archived, not assigned to the
 first account that registers. For remote PostgreSQL, configure
 `PGSSLMODE=verify-full`, optionally `PGSSLROOTCERT`; see the
-[PostgreSQL TLS guide](../packages/postgres/README.md). HTTP HTTPS and PG TLS are
+[PostgreSQL TLS guide](https://github.com/odunboye/postgres/blob/main/README.md). HTTP HTTPS and PG TLS are
 separate connections and require separate configuration.
 
 ## 6. Private application: register, log in and keep tasks isolated
@@ -183,12 +183,12 @@ unconfirmed server revocation requires an explicit retry. Expiry/revocation clea
 the model when an API request returns 401, not via an idle expiry timer.
 
 For another UI example without the database application, see
-[the standalone Flux UI Todo](../packages/ui/examples/todo/).
+[the standalone Iris Todo](https://github.com/odunboye/iris/tree/main/examples/todo).
 
 Use `webClient` for browser/Capacitor fetch and `nativeClient` (or
 `nativeClientWithCA`) for native RPC. After login, `withBearer session.token client`
 constructs an immutable per-session client. Portable
-[`Flux.Platform.Client.Auth`](../platform/client/src/Flux/Platform/Client/Auth.idr)
+[`Iris.Client.Auth`](https://github.com/odunboye/iris/blob/main/client/src/Iris/Client/Auth.idr)
 supplies register/login/logout commands. A complete, compiled native account/task
 flow is in [NativeAuthTest.idr](../platform/crud/NativeAuthTest.idr); its literal
 credentials are **test fixtures**, not defaults for an application.
@@ -196,7 +196,7 @@ credentials are **test fixtures**, not defaults for an application.
 Native RPC uses in-process libcurl, verified HTTPS outside loopback, bounded
 responses and network timeouts. Native Tasks are synchronous, not immediately
 cancellable background workers. Do **not** use the legacy generic
-`Flux.UI.Effect.Http` shell transport for credentials, and never put tokens in
+`Iris.Effect.Http` shell transport for credentials, and never put tokens in
 URLs, command arguments or browser storage.
 
 ## Verify the examples

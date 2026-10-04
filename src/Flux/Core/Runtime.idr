@@ -1,12 +1,12 @@
 module Flux.Core.Runtime
 
-import public Flux.Stream.Posix
-import public Flux.Stream.Socket
+import public Stream.Posix
+import public Stream.Socket
 import public Data.Linear.Ref1
 import public System.Clock
 import public System.Posix.Socket
 import public System.Posix.Signal
-import Flux.Async.Runner
+import Async.Runner
 
 %default total
 
@@ -37,4 +37,4 @@ export
 
 export
 sleep : Clock Duration -> Task es ()
-sleep duration = Flux.Async.Core.sleep (cast (seconds duration * 1000 + nanoseconds duration `div` 1000000))
+sleep duration = Async.Core.sleep (cast (seconds duration * 1000 + nanoseconds duration `div` 1000000))

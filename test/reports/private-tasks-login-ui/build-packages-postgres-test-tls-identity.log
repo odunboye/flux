@@ -1,5 +1,0 @@
-[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
-[ info ] Using package collection nightly-260903
-[ info ] Building: flux-postgres-tls-identity-test
-[ build ] Now compiling the executable: flux-postgres-tls-identity-test
-[ build ] Warning: compiling hole Helper.unimplementedEncode

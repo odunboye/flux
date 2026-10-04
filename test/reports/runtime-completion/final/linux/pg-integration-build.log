@@ -1,6 +1,0 @@
-[ info ] Found local config at /tmp/flux-application/playground/todo-api/pack.toml
-[ info ] Using package collection nightly-260906
-[ info ] Building: idris2-pg-test
-[ build ] 1/1: Building Main (src/Main.idr)
-[ build ] Now compiling the executable: idris2-pg-test
-[ build ] Warning: compiling hole Helper.unimplementedEncode

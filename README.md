@@ -1,17 +1,29 @@
 # Flux — full-stack Idris applications
 
-**Platform preview.** Flux brings its HTTP server and owned runtime, Flux UI,
-Flux DB persistence/migrations, PostgreSQL transport/pooling, and generated Flux UI
-clients into one modular repository. The UI now uses the `flux-ui` package and
-`Flux.UI.*` modules, a breaking rename without compatibility aliases. Persistence
+**Platform preview.** Flux brings its HTTP server and owned runtime, Iris,
+Flux DB persistence/migrations, PostgreSQL transport/pooling, and generated Iris
+clients into one modular repository. The UI framework is no longer vendored
+here - it moved back out to its own repo,
+[odunboye/iris](https://github.com/odunboye/iris) (package `iris`,
+`Iris.*` modules, reclaiming the framework's own pre-Flux name), since it has
+no Flux-specific dependencies (its `ipkg` depends only on `contrib`);
+`pack.toml` pulls it as a pinned external dependency, the same way
+`postgres`/`db`/`docker` are. The generated RPC client runtime
+(`flux-client`, now `iris-client`) and Capacitor glue (`flux-mobile`, now
+`iris-mobile`) turned out to have the same property - no real dependency on
+Flux - and moved to the same repo as sub-packages. Flux is server/backend
+only now: the Capacitor application-packaging CLI (formerly `flux mobile *`)
+moved too, as its own [`./iris` launcher](https://github.com/odunboye/iris/blob/main/design/MOBILE_CAPACITOR.md)
+in the same repo, since it packages a UI application rather than running a
+Flux server. Persistence
 is now split the same way PostgreSQL support is: the active-record/query-builder
 layer moved back out to its own repo, [odunboye/db](https://github.com/odunboye/db)
 (package `db`, modules `DB.*`), since it has no Flux-specific dependencies; the
 genuinely Flux-specific HTTP-framework glue (`Flux.DB.PG`/`Flux.DB.Pool`) stays
 here as `flux-db-flux`. Existing databases must follow the
 [Flux DB metadata cutover guide](https://github.com/odunboye/db/blob/main/MIGRATION.md).
-Runtime and protocol/client packages are now `flux-runtime`, `flux-protocol`
-and `flux-client`. See the
+The protocol package is now `flux-protocol` (the client, `flux-client`, has
+since moved to `iris-client` - see above). See the
 [coordinated package migration](design/PACKAGE_MIGRATION.md); suitable module
 namespaces remain unchanged. The Docker dev-workflow helper moved back out to
 its own repo, [odunboye/docker](https://github.com/odunboye/docker) (package
@@ -20,18 +32,21 @@ dependencies either. PostgreSQL transport/pooling (`postgres`/
 `postgres-async`) is no longer vendored here - it moved back to its own
 repo, [odunboye/postgres](https://github.com/odunboye/postgres), so it
 isn't Flux-only; `pack.toml` pulls it as a pinned external dependency (see
-`workspace.json`'s `external_packages`). This is not a production-readiness
-declaration.
+`workspace.json`'s `external_packages`). The owned task/socket/stream runtime
+is likewise no longer vendored here - it moved back out to
+[odunboye/runtime](https://github.com/odunboye/runtime) (package `runtime`,
+`Flux.Async.*`/`Flux.Stream.*` modules renamed to `Async.*`/`Stream.*` along
+with the move), since it has no Flux-specific dependencies either; Flux
+depends on it as a pinned external dependency the same way `postgres-async`
+does. This is not a production-readiness declaration.
 
-- `packages/runtime/`: owned tasks, sockets, streams and supervision.
-- `packages/ui/`: Flux UI widgets, application lifecycle and platform backends.
 - `packages/db-flux/`: Flux's HTTP-framework glue over the external `db` and `postgres` packages.
 - `platform/`: shared protocols, generated server/client code and typed CRUD examples.
 - `examples/todo-api/`: database-backed application example.
 - `website/`: Flux's landing page, served by Flux itself.
 
 See the [workspace/package map](design/CONSOLIDATION.md) and
-[typed Flux UI client guide](platform/README.md). No sibling repositories or
+[typed Iris client guide](platform/README.md). No sibling repositories or
 user-specific dependency paths are needed. Run `python3 tools/workspace.py check`
 to verify the package map and browser/server dependency boundary.
 
@@ -59,7 +74,7 @@ JSON, middleware/health, generated contracts, PostgreSQL migrations, private
 accounts/tasks, Idris UI effects and native clients. Start with the small runnable
 recipes in `examples/src/Recipes/`, then follow the complete application.
 
-## Run the Flux UI application
+## Run the Iris application
 
 ```sh
 ./flux doctor
@@ -107,7 +122,8 @@ project selection, installer collision handling and database/artifact ownership.
 
 ## HTTP server reference
 
-The existing `flux` package remains an HTTP/1.1 framework using `flux-runtime`.
+The existing `flux` package remains an HTTP/1.1 framework using `runtime`
+(the externally hosted owned-task runtime).
 Request parsing, persistent connections, streaming responses, routing and
 middleware are implemented in Idris; a small native shim provides readiness
 and standalone shutdown supervision. The sections below document this server
@@ -520,7 +536,7 @@ exist, so every static request 404s. See "Install / build" above.
 
 ## Concurrency and ownership
 
-Flux now uses `flux-runtime`; its dependency graph no longer includes
+Flux now uses `runtime` (externally hosted); its dependency graph no longer includes
 `async`, `async-posix`, `streams`, or `streams-posix`. `FLUX_EVENT_LOOPS`
 selects the number of connection owner threads and defaults to 2. Accepted
 connections are assigned round robin. A connection's tasks and continuations
@@ -533,8 +549,9 @@ exclusive database leases. Sharing one raw `DB` across requests is unsafe.
 
 Handler signatures such as `Async Poll es a` remain compatibility aliases
 for the new `Task es a`; no old scheduler is involved. Low-level socket and
-supervisor APIs changed. Use `Flux.Async.Server.serve` for embedded servers
-and explicit stop tasks. See the [runtime guide](packages/runtime/README.md).
+supervisor APIs changed. Use `Async.Server.serve` for embedded servers
+and explicit stop tasks. See the
+[runtime guide](https://github.com/odunboye/runtime/blob/main/README.md).
 
 ## Graceful shutdown
 
@@ -639,10 +656,10 @@ encoder calls and public context-record updates.
 - Workspace/package and browser dependency-boundary checks, selected CLI tests
   and shell checks.
 - Library/unit builds, example builds and a live HTTP smoke test.
-- Flux UI checks, browser bundles, Chromium acceptance and native terminal smoke
-  through `tools/ci-suite.sh ui`.
 - Generated-client/native-transport, authentication, migration, CRUD and CLI
   integration through `tools/ci-suite.sh platform`, using disposable databases.
+- Iris's own checks, browser bundles, Chromium acceptance and native terminal
+  smoke live in [its own repo](https://github.com/odunboye/iris) now.
 
 The configured jobs define intended coverage; their existence is not a claim
 that a particular remote run passed. Additional owned-runtime protocol and
@@ -653,7 +670,8 @@ python3 test/runtime_protocol_test.py
 ```
 
 Runtime/native suites and extended load/soak checks have separate commands in
-[the runtime guide](packages/runtime/README.md). They are not all part of root CI.
+[the runtime guide](https://github.com/odunboye/runtime/blob/main/README.md).
+They are not all part of root CI.
 Native mobile device certification, production operations, long-duration soak
 and workload-specific performance remain separate validation work.
 
@@ -729,11 +747,13 @@ whether this is production-ready for their use case:
   set to anything else falls back to `127.0.0.1` with a stderr warning.
 - **Current-runtime performance requires workload-specific measurement.** The
   old `idris2-async` fiber-pinning and connection-leak investigations do not
-  describe `flux-runtime`. The [recorded runtime verification](test/reports/runtime-completion/README.md)
-  includes macOS arm64 and Linux amd64-under-emulation results with explicit
-  limits: native Linux application performance was not established, and the
-  prior two-hour HTTP soak was not repeated after the recorded crypto change.
-  No general throughput or long-running memory-stability guarantee follows.
+  describe `runtime`. Point-in-time verification results (macOS arm64 and
+  Linux amd64-under-emulation, with explicit limits: native Linux application
+  performance was not established, and the prior two-hour HTTP soak was not
+  repeated after the recorded crypto change) existed as a committed report
+  under `test/reports/`, since removed as disposable test-run output - rerun
+  `python3 tools/workspace.py test` for current numbers. No general
+  throughput or long-running memory-stability guarantee follows.
 - **Cancellation is cooperative.** Owned scopes join children and native work
   before release; arbitrary blocking IO can delay cleanup. The standalone
   watchdog bounds process shutdown, while embedded APIs never force exit.

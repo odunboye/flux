@@ -148,7 +148,6 @@ def test(manifest, without_db):
         run('cli-unit', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_flux.py'])
         run('dev-watch', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_devwatch.py'])
         run('dev-hot', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_hot.py'])
-        run('ui-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_ui_names.py'])
         run('db-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_db_names.py'])
         run('package-naming', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools', '-p', 'test_package_names.py'])
         run('generator', [sys.executable, '-m', 'unittest', 'discover', '-s', 'platform', '-p', 'test_generator.py'])
@@ -160,11 +159,10 @@ def test(manifest, without_db):
         run('landing-browser', [sys.executable, 'website/test_site.py'])
         build('test/test.ipkg')
         run('flux-regression', ['./test/build/exec/flux-test'])
-        # Install native dependencies first; Flux UI's packaged demo is not JS.
-        # Native-only edits otherwise leave pack's installed bridge stale.
-        (ROOT / 'platform/flux-client.ipkg').touch()
-        run('install-client-native', ['pack', '--no-prompt', 'install', 'flux-client'])
-        run('client-native-security', [sys.executable, 'platform/client/test/native.py'])
+        # iris-client is an external git dependency (see workspace.json); its
+        # own native/ASan/UBSan verification is that repo's responsibility,
+        # not this gate's - same as postgres below.
+        run('install-client-native', ['pack', '--no-prompt', 'install', 'iris-client'])
         build('platform/example/client-native-test.ipkg')
         build('platform/crud/native-auth-test.ipkg')
         # pack's dependency freshness checks do not track native C changes.
@@ -176,7 +174,6 @@ def test(manifest, without_db):
         run('install-auth-native', ['pack', '--no-prompt', 'install', 'flux-auth'])
         run('auth-native', ['bash', 'packages/auth/test/native.sh'])
         build('packages/auth/test/test.ipkg')
-        build('packages/db/test/test.ipkg')
         for file in ['platform/example/example.ipkg', 'platform/example/pg-example.ipkg',
                      'platform/example/migrations.ipkg', 'platform/crud/server.ipkg']:
             build(file)

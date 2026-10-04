@@ -1,6 +1,0 @@
-[ info ] Found local config at
-         - /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
-         - /Users/odunadeboye/dev/idris2/projects/flux/platform/pack.toml
-[ info ] Using package collection nightly-260903
-[ info ] Building: platform-client-web-test
-[ build ] Now compiling the executable: platform-client-web-test

@@ -1,8 +1,0 @@
-[ info ] Found local config at /Users/odunadeboye/dev/idris2/projects/flux/pack.toml
-[ info ] Using package collection nightly-260903
-[ info ] Installing libraries:
-         - flux-postgres
-[ info ] Installing library (with sources): flux-postgres
-[ build ] pkg-config --atleast-version=3.0.0 openssl
-[ build ] mkdir -p lib
-[ build ] cc -O2 -Wall -Wextra -Werror -std=c11 -I/opt/homebrew/Cellar/openssl@3/3.6.4/include -dynamiclib c/pg_transport.c c/pg_tls.c -o lib/libidris2_pg_transport.dylib -L/opt/homebrew/Cellar/openssl@3/3.6.4/lib -lssl -lcrypto

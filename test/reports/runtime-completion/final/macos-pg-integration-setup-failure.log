@@ -1,6 +1,0 @@
-FAIL connect: SQL error: database "flux_final_pg_test" does not exist
-Traceback (most recent call last):
-  File "/Users/odunadeboye/dev/idris2/libs/idris2-pg/test/runtime_integration_test.py", line 12, in <module>
-    assert 'FAIL' not in result.stdout, 'PG integration suite reported failures'
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: PG integration suite reported failures

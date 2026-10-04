@@ -1,8 +1,8 @@
 module NativeAuthTest
 
 import Client
-import Flux.Platform.Client.Native
-import Flux.Platform.Client.Auth as Auth
+import Iris.Client.Native
+import Iris.Client.Auth as Auth
 import System
 
 %default covering

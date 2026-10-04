@@ -8,47 +8,41 @@
     "flux-examples": "examples/examples.ipkg",
     "flux-use-cases": "examples/use-cases.ipkg",
     "flux-landing": "website/landing.ipkg",
-    "flux-runtime": "packages/runtime/flux-runtime.ipkg",
-    "flux-ui": "packages/ui/flux-ui.ipkg",
     "flux-db-flux": "packages/db-flux/flux-db-flux.ipkg",
     "flux-protocol": "platform/flux-protocol.ipkg",
     "flux-auth": "packages/auth/flux-auth.ipkg",
-    "flux-client": "platform/flux-client.ipkg",
     "platform-crud-ui": "platform/crud/ui.ipkg",
     "platform-crud-server": "platform/crud/server.ipkg",
     "todo-api": "examples/todo-api/todo-api.ipkg",
     "todo-api-test": "examples/todo-api/test/test.ipkg",
     "todo-api-inmemory-test": "examples/todo-api/test/inmemory-test.ipkg",
-    "todo-api-pooled-test": "examples/todo-api/test/pooled-test.ipkg",
-    "flux-ui-todo": "packages/ui/examples/todo/flux-ui-todo.ipkg"
+    "todo-api-pooled-test": "examples/todo-api/test/pooled-test.ipkg"
   },
   "tests": {"flux": "test/test.ipkg", "todo-api": "test/test.ipkg"},
   "imports": [
-    {"path": "packages/runtime", "source": "idris2-flux-async", "commit": "bfc3ff67c3d4dd85462ba7063d6d81ad7328ccf5"},
     {"path": "packages/db-flux", "source": "nebula-flux", "commit": "51f0c818f3a86c2fde4fb59e432b69b949d923e5"},
-    {"path": "packages/ui", "source": "iris", "commit": "bf07bf6ce2b61ab8197323efb8fb4ae46d48efbe"},
     {"path": "examples/todo-api", "source": "todo-api", "commit": "731fbd4f6942d7073c8fc91b10da53b752c8a002"}
   ],
   "unversioned_imports": [],
   "external_packages": {
     "postgres": {
       "url": "https://github.com/odunboye/postgres.git",
-      "commit": "60f4c71a28c9a74d184749e41c9da7dcb7253b4e",
+      "commit": "adfccb0183199b55b80c18ac75021f9479298c23",
       "ipkg": "postgres.ipkg",
       "test": "test/test.ipkg",
       "note": "Formerly vendored here as packages/postgres/flux-postgres (then briefly external as idris2-pg, then idris2-postgres); moved back to its own repo so it isn't Flux-only. See design/CONSOLIDATION.md."
     },
     "postgres-async": {
       "url": "https://github.com/odunboye/postgres.git",
-      "commit": "60f4c71a28c9a74d184749e41c9da7dcb7253b4e",
+      "commit": "adfccb0183199b55b80c18ac75021f9479298c23",
       "ipkg": "async/postgres-async.ipkg",
-      "note": "Formerly packages/postgres/async/flux-postgres-pool; same repo/commit as postgres, different ipkg path. Depends on flux-async below (its own name for flux-runtime) - a git dependency can only resolve its own deps against other globally-known collection/git packages, not a project-local alias."
+      "note": "Formerly packages/postgres/async/flux-postgres-pool; same repo/commit as postgres, different ipkg path. Depends on runtime below - a git dependency can only resolve its own deps against other globally-known collection/git packages, not a project-local alias."
     },
-    "flux-async": {
-      "url": "https://github.com/odunboye/idris2-flux-async.git",
-      "commit": "bfc3ff67c3d4dd85462ba7063d6d81ad7328ccf5",
-      "ipkg": "flux-async.ipkg",
-      "note": "Published so postgres-async (an external git dependency) can resolve its own 'flux-async' dependency. Same content Flux vendors locally as flux-runtime (packages/runtime); kept as two names because postgres-async predates the flux-runtime rename and nothing outside Flux knows that name."
+    "runtime": {
+      "url": "https://github.com/odunboye/runtime.git",
+      "commit": "f2fe96d719f9bbda6b71456900ee0daea5495109",
+      "ipkg": "runtime.ipkg",
+      "note": "Formerly vendored here as packages/runtime/flux-runtime, then briefly external as idris2-flux-async/flux-async (so postgres-async, an external git dependency, could resolve its own flux-async dependency); renamed there to runtime/runtime.ipkg since it has no Flux-specific dependencies, dropping the Flux.Async.*/Flux.Stream.* module prefix to Async.*/Stream.* along with it, same reasoning as db/postgres/docker. postgres-async's own dependency was updated to match - see that repo."
     },
     "db": {
       "url": "https://github.com/odunboye/db.git",
@@ -63,8 +57,20 @@
       "ipkg": "docker.ipkg",
       "test": "test/test.ipkg",
       "note": "Formerly vendored here as packages/docker/flux-docker; moved back out since it has no dependencies beyond Idris2 base. Had no prior git history to sync into (it was imported as a source snapshot, not a subtree)."
+    },
+    "iris": {
+      "url": "https://github.com/odunboye/iris.git",
+      "commit": "97c4366f338fdc0ac4142c71002ea24ed9823cad",
+      "ipkg": "iris.ipkg",
+      "note": "Formerly vendored here as packages/ui/flux-ui (Flux.UI.* modules); moved back out since it has no Flux-specific dependencies (ipkg depends only on contrib), reclaiming its own pre-Flux name - packages/ui was originally imported from a project called 'iris' (see design/CONSOLIDATION.md's history). Module prefix dropped back to Iris.*, and the public-facing runtime identifiers baked into the DOM/JS/native layers (#flux-ui-app, __fluxUI*, flux_ui_tui_*, etc.) were renamed to match (#iris-app, __iris*, iris_tui_*). flux-client and flux-mobile turned out to have the same property (no real dependency on flux, just flux-client, which itself only depends on iris/json-simple) and were later moved into this same repo as iris-client/iris-mobile sub-packages - see those entries below. Bumped past iris's own packaging fix that removed a terminal-only demo executable (main/executable) bundled in iris.ipkg itself - that demo broke every --cg javascript install of iris, including this workspace's own dev-hot browser acceptance test, on a clean cache."
+    },
+    "iris-client": {
+      "url": "https://github.com/odunboye/iris.git",
+      "commit": "97c4366f338fdc0ac4142c71002ea24ed9823cad",
+      "ipkg": "client/iris-client.ipkg",
+      "note": "Formerly vendored here as platform/flux-client (Flux.Platform.Client.* modules); moved out since it has no real Flux dependency - a portable typed JSON-RPC-over-HTTP client runtime for Iris apps, not coupled to Flux's server code. Same repo/commit as iris, different ipkg path. iris-mobile (formerly packages/mobile/flux-mobile, Flux.Mobile.* modules) moved to the same repo for the same reason, but is deliberately NOT registered here: nothing in this workspace's own build graph depends on it directly. Flux is server/backend only now - the Capacitor application-packaging CLI (formerly flux mobile *, tools/mobile.py/mobile_check.py/packages/mobile/tooling) moved to the iris repo too as its own ./iris launcher, since it packages a UI application and had no real dependency on Flux's server either."
     }
   },
-  "browser_roots": ["flux-ui", "flux-client", "platform-crud-ui"],
-  "browser_forbidden": ["flux", "flux-runtime", "flux-async", "db", "flux-db-flux", "postgres", "postgres-async", "flux-protocol", "flux-auth"]
+  "browser_roots": ["platform-crud-ui"],
+  "browser_forbidden": ["flux", "runtime", "db", "flux-db-flux", "postgres", "postgres-async", "flux-protocol", "flux-auth"]
 }

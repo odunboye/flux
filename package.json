@@ -1,0 +1,8 @@
+{
+  "name": "flux-browser-tests",
+  "private": true,
+  "description": "Shared Playwright dependency for this repo's own browser-based tests and tooling (dev-server hot reload, generated-client, landing page). Flux UI's own browser suite lives in its own repo now: https://github.com/odunboye/iris.",
+  "devDependencies": {
+    "@playwright/test": "^1.51.0"
+  }
+}

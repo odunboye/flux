@@ -101,9 +101,9 @@ failures return 401 `Session unavailable`. Never treat an outage as authenticate
 
 No MFA, OAuth/OIDC, email verification, password recovery or persistent browser
 credential storage is supplied. The starter has a handwritten Idris login UI
-using portable `Flux.Platform.Client.Auth` commands. Its native RPC transport is
+using portable `Iris.Client.Auth` commands. Its native RPC transport is
 now in-process verified libcurl, with no credential argv or temporary request
-files. The legacy generic `Flux.UI.Effect.Http` shell transport remains unsuitable
+files. The legacy generic `Iris.Effect.Http` shell transport remains unsuitable
 for credentials. Browser clients use same-origin fetch and memory-only tokens,
 not localStorage/sessionStorage/cookies.
 

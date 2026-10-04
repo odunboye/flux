@@ -2,7 +2,7 @@
 module Client
 
 import public ProtocolTypes
-import public Flux.Platform.Client
+import public Iris.Client
 
 %default covering
 

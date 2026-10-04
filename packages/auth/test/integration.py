@@ -29,7 +29,8 @@ def main():
     created = False
     server = None
     tokens = []
-    with tempfile.TemporaryDirectory(prefix='flux-accounts-', dir='/tmp') as temp, tempfile.TemporaryFile() as log:
+    (ROOT/'.workspace').mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='flux-accounts-', dir=ROOT/'.workspace') as temp, tempfile.TemporaryFile() as log:
         d = Path(temp)
         run(['openssl','req','-x509','-newkey','ec','-pkeyopt','ec_paramgen_curve:P-256','-nodes',
              '-keyout',str(d/'key.pem'),'-out',str(d/'cert.pem'),'-days','1','-subj','/CN=localhost',
@@ -49,7 +50,7 @@ exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/tmp/tls/cert.pem 
                  '-v',str(d)+':/input:ro','--entrypoint','sh','postgres:16','-c',command])
             created = True
             def ready_db():
-                for _ in range(100):
+                for _ in range(300):
                     try: run(['docker','exec',name,'pg_isready','-h','127.0.0.1','-U','testuser','-d','testdb']); return
                     except subprocess.CalledProcessError: time.sleep(.2)
                 raise AssertionError('database startup deadline')

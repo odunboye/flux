@@ -1,4 +1,0 @@
-PASS authentication precedes body parsing and cannot use a claimed owner
-PASS generated callback receives server principal; normal validation still applies
-PASS resolver errors redacted, duplicate Authorization rejected, mixed public/protected routes
-PASS authentication-boundary HTTP integration and clean shutdown

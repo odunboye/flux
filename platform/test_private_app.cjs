@@ -1,5 +1,5 @@
 // Real account UI + two independent browser contexts + delivered stale callbacks.
-const {chromium,expect}=require('../packages/ui/node_modules/@playwright/test');
+const {chromium,expect}=require('@playwright/test');
 const assert=require('node:assert/strict');
 const base=process.argv[2], password='Private browser correct horse battery';
 (async()=>{

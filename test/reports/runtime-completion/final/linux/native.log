@@ -1,5 +1,0 @@
-PASS native readiness, registration tokens, EOF, wake saturation, cross-thread wake
-PASS interrupted poll retains deadline (50 ms)
-PASS 5000 registrations under four continuous wake producers
-PASS standalone signal lifecycle and independent forced exit
-PASS native PG bytes, deadlines, nested deadline precedence, and closed-peer send

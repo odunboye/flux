@@ -1,4 +1,4 @@
-"""Generated Idris/Flux UI -> Flux -> Flux DB -> PG in a disposable database."""
+"""Generated Idris/Iris -> Flux -> Flux DB -> PG in a disposable database."""
 import os
 from pathlib import Path
 import socket
@@ -40,12 +40,13 @@ try:
                PGPASSWORD='testpass', PGDATABASE='platform_test',
                IDRIS2_INC_SRC=str(app), LD_LIBRARY_PATH=str(app),
                DYLD_LIBRARY_PATH=str(app), FLUX_EVENT_LOOPS='2')
-    # Exercise the renamed persistence package against this owned disposable DB.
-    repository_env = dict(env, PG_TEST_HOST='127.0.0.1', PG_TEST_PORT=pgport,
-                          PG_TEST_USER='testuser', PG_TEST_PASSWORD='testpass',
-                          PG_TEST_DB='platform_test')
-    subprocess.run(['python3', str(ROOT.parent / 'packages/db/test/runtime_integration_test.py')],
-                   env=repository_env, check=True, timeout=200)
+    # db's own runtime_integration_test.py used to run here against this owned
+    # disposable DB, back when it was vendored as packages/db. It moved out to
+    # its own repo (see design/CONSOLIDATION.md) and is that repo's own test
+    # suite's responsibility now, same as iris/postgres/runtime/docker's own
+    # tests no longer running from here - this workspace has no local path to
+    # it any more (db is a pinned external git dependency, not a checkout at a
+    # fixed relative path).
     migration_app = ROOT / 'example/build/exec/platform-migration-test_app'
     migration_env = dict(env, FLUX_DISPOSABLE_TEST='1', IDRIS2_INC_SRC=str(migration_app),
                          LD_LIBRARY_PATH=str(migration_app), DYLD_LIBRARY_PATH=str(migration_app))
@@ -76,7 +77,7 @@ try:
                            '-Atc', 'SELECT count(*) FROM todos').stdout.strip()
             # Each target creates one round-trip row plus a 24-command batch.
             assert count == '50', count
-            print('PASS PostgreSQL independently confirms 50 Flux UI-created rows')
+            print('PASS PostgreSQL independently confirms 50 Iris-created rows')
         except BaseException:
             log.seek(0)
             print(log.read().decode(errors='replace'))

@@ -1,2 +1,0 @@
-PASS native ASan/UBSan: in-memory credentials, no argv/body files/proxy/redirect leaks, response caps, rejected URL credentials/plaintext, trusted and rejected TLS peers
-PASS real 30-second native request deadline; no abandoned request worker

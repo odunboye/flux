@@ -1,4 +1,4 @@
-const {chromium, expect} = require('../../packages/ui/node_modules/@playwright/test');
+const {chromium, expect} = require('@playwright/test');
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');

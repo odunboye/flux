@@ -1,4 +1,4 @@
-"""Run generated Idris/Flux UI native, JS and browser clients against Flux."""
+"""Run generated Idris/Iris native, JS and browser clients against Flux."""
 import os
 from pathlib import Path
 import socket
@@ -35,7 +35,7 @@ with tempfile.TemporaryFile() as log:
                                 env=native_env, check=True, timeout=90, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         print(result.stdout, end='')
-        assert 'PASS native Flux UI client checks complete' in result.stdout
+        assert 'PASS native Iris client checks complete' in result.stdout
         assert not any(line.startswith('FAIL ') for line in result.stdout.splitlines())
         for target in ['node', 'browser']:
             subprocess.run(['node', str(ROOT / 'run_web_client.cjs'), base, 'smoke', target],

@@ -1,3 +1,0 @@
-PASS ShellCheck
-PASS actionlint 1.7.7
-found 0 vulnerabilities
