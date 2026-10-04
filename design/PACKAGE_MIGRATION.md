@@ -71,9 +71,13 @@ module prefix to `Iris.Client.*`. See `design/CONSOLIDATION.md`'s package map
 and `workspace.json`'s `external_packages.iris-client` for the current state.
 `flux-mobile`, which depended on `flux-client`, moved to the same repo too as
 `iris-mobile` for the same reason, but was never a workspace-registered
-package to begin with (resolved only via `tools/mobile_check.py`'s own
-temporary Pack map, like `capacitor`) so there's no row for it above. Don't
-install or depend on `flux-client`, it no longer exists.
+package to begin with (like `capacitor`) so there's no row for it above.
+Flux's Capacitor application-packaging CLI (formerly `flux mobile *`,
+`tools/mobile.py`/`mobile_check.py`/`packages/mobile/tooling`) moved to the
+same repo too, as its own `./iris` launcher - Flux is server/backend only
+now, and that CLI packaged a UI application, not anything depending on
+Flux's server. Don't install or depend on `flux-client`, and don't run
+`flux mobile`, neither exists any more.
 
 Related transport/Docker test package and executable prefixes are renamed too.
 Directories are unchanged; the canonical map is still `workspace.json`, with

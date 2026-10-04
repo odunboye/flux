@@ -490,16 +490,11 @@ def install_cli(directory, force=False):
 
 
 def main():
-    # Optional mobile tooling is isolated from server/web dependencies.
-    import mobile
-    if mobile.dispatch(sys.argv[1:]):
-        return
     parser = argparse.ArgumentParser(prog='flux', description=__doc__)
     parser.add_argument('--project', help='application directory (relative to cwd or absolute); otherwise discover flux.json')
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('new').add_argument('name')
     commands.add_parser('doctor')
-    commands.add_parser('mobile', help='optional Capacitor compile/build/sync/run tooling')
     commands.add_parser('generate').add_argument('--check', action='store_true')
     commands.add_parser('build')
     commands.add_parser('check')

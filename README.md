@@ -11,9 +11,11 @@ no Flux-specific dependencies (its `ipkg` depends only on `contrib`);
 `postgres`/`db`/`docker` are. The generated RPC client runtime
 (`flux-client`, now `iris-client`) and Capacitor glue (`flux-mobile`, now
 `iris-mobile`) turned out to have the same property - no real dependency on
-Flux - and moved to the same repo as sub-packages. Flux's own mobile CLI
-packaging tooling (`flux mobile *`, `tools/mobile.py`) stays here regardless,
-the same way `flux build`/`flux dev` do. Persistence
+Flux - and moved to the same repo as sub-packages. Flux is server/backend
+only now: the Capacitor application-packaging CLI (formerly `flux mobile *`)
+moved too, as its own [`./iris` launcher](https://github.com/odunboye/iris/blob/main/design/MOBILE_CAPACITOR.md)
+in the same repo, since it packages a UI application rather than running a
+Flux server. Persistence
 is now split the same way PostgreSQL support is: the active-record/query-builder
 layer moved back out to its own repo, [odunboye/db](https://github.com/odunboye/db)
 (package `db`, modules `DB.*`), since it has no Flux-specific dependencies; the

@@ -58,13 +58,15 @@ as the `iris-client` sub-package, dropping the `Flux.Platform.Client.*`
 module prefix to `Iris.Client.*` - see the package map above and
 `workspace.json`'s
 `external_packages` - so each is a pinned external dependency, not a
-workspace-local package. Server source stays at the root. Flux's own mobile
-CLI packaging tooling (`flux mobile *`) stays regardless of where the UI
-framework it packages lives - `flux-mobile`, which depended on `flux-client`,
-moved to the same repo as `iris-mobile` for the same no-Flux-dependency
-reason, but was never a workspace-registered package to begin with (like
-`capacitor`, it's resolved only via `tools/mobile_check.py`'s own temporary
-Pack map) so it never appeared in this table.
+workspace-local package. Server source stays at the root. `flux-mobile`,
+which depended on `flux-client`, moved to the same repo as `iris-mobile` for
+the same no-Flux-dependency reason, but was never a workspace-registered
+package to begin with (like `capacitor`) so it never appeared in this table.
+Flux is server/backend only now: its Capacitor application-packaging CLI
+(formerly `flux mobile *`, `tools/mobile.py`/`mobile_check.py`/
+`packages/mobile/tooling`) moved to the same repo too, as its own `./iris`
+launcher - it packaged a UI application, not anything depending on Flux's
+server, so it belongs with the library it packages.
 
 `workspace.json` is the canonical map. `pack.toml` is generated from it; nested
 package configs were removed to prevent stale sibling/absolute paths from
