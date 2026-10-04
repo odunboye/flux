@@ -90,13 +90,13 @@ test = "test/test.ipkg"
 [custom.all.iris]
 type = "git"
 url = "https://github.com/odunboye/iris.git"
-commit = "a8582447dcefb119be1ebfe6a2cf40cbd647269a"
+commit = "97c4366f338fdc0ac4142c71002ea24ed9823cad"
 ipkg = "iris.ipkg"
 
 [custom.all.iris-client]
 type = "git"
 url = "https://github.com/odunboye/iris.git"
-commit = "a8582447dcefb119be1ebfe6a2cf40cbd647269a"
+commit = "97c4366f338fdc0ac4142c71002ea24ed9823cad"
 ipkg = "client/iris-client.ipkg"
 
 [custom.all.postgres]
