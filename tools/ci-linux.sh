@@ -3,9 +3,11 @@
 # Explicit host networking lets child PostgreSQL containers' published
 # 127.0.0.1 ports reach the Idris tests inside the compiler container.
 #
-# The "ui" suite (Flux UI's own browser/native tests, and its npm/Playwright
-# setup) moved with packages/ui to its own repo, https://github.com/odunboye/iris,
-# when it was extracted - it had no Flux-specific dependencies.
+# The "ui" suite (Flux UI's own browser/native tests) moved with packages/ui
+# to its own repo, https://github.com/odunboye/iris, when it was extracted -
+# it had no Flux-specific dependencies. This repo's own browser tests
+# (dev-server hot reload, landing page) still need the shared root-level
+# Playwright dependency installed below.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 suite=${1:?usage: ci-linux.sh platform}
@@ -25,5 +27,8 @@ docker run --rm --init --network host \
     export PATH="/opt/flux-node/bin:$PATH"
     apt-get update
     apt-get install -y --no-install-recommends python3 curl docker.io build-essential procps libssl-dev libsodium-dev libcurl4-openssl-dev pkg-config
+    npm ci
+    npm audit --audit-level=high
+    npx playwright install --with-deps chromium
     bash tools/ci-suite.sh "$1"
   ' bash "$suite"
