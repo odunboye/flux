@@ -176,12 +176,23 @@ def compile_ui(project, override=None):
         if spec.get('type') != 'local':
             raise ValueError('Mobile compile currently requires a local managed Pack map')
         paths[name] = ((project / spec['path']).resolve(), spec['ipkg'])
-    for name, path, ipkg in [('capacitor', cap, 'capacitor.ipkg'),
-                             ('flux-mobile', ROOT / 'packages/mobile', 'flux-mobile.ipkg')]:
+    for name, path, ipkg in [('capacitor', cap, 'capacitor.ipkg')]:
         if name in paths and paths[name] != (path, ipkg):
             raise ValueError('Conflicting optional package registration: ' + name)
         paths[name] = (path, ipkg)
-    collection = config.get('collection', json.loads((ROOT / 'workspace.json').read_text())['collection'])
+    # iris-mobile/iris-client live in the same external repo as iris itself
+    # (see workspace.json's external_packages.iris-client); pinned here the
+    # same way, since iris-mobile isn't a workspace-registered package
+    # (nothing in this framework's own build graph depends on it directly).
+    manifest = json.loads((ROOT / 'workspace.json').read_text())
+    iris = manifest['external_packages']['iris']
+    git_entries = {
+        'iris-client': (iris['url'], iris['commit'], 'client/iris-client.ipkg'),
+        'iris-mobile': (iris['url'], iris['commit'], 'mobile/iris-mobile.ipkg'),
+    }
+    for name in git_entries:
+        paths.pop(name, None)
+    collection = config.get('collection', manifest['collection'])
     with tempfile.TemporaryDirectory(prefix='flux-mobile-compile-') as directory:
         lines = ['collection = ' + json.dumps(collection)]
         for name, (path, ipkg) in paths.items():
@@ -189,6 +200,10 @@ def compile_ui(project, override=None):
                 raise ValueError('Invalid Pack package name')
             lines += [f'[custom.all.{name}]', 'type = "local"',
                       'path = ' + json.dumps(str(path)), 'ipkg = ' + json.dumps(ipkg)]
+        for name, (url, commit, ipkg) in git_entries.items():
+            lines += [f'[custom.all.{name}]', 'type = "git"',
+                      'url = ' + json.dumps(url), 'commit = ' + json.dumps(commit),
+                      'ipkg = ' + json.dumps(ipkg)]
         Path(directory, 'pack.toml').write_text('\n'.join(lines) + '\n')
         run(['pack', '--no-prompt', '--cg', 'javascript', 'build', package], directory)
 

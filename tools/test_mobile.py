@@ -173,7 +173,7 @@ class MobileTests(unittest.TestCase):
         def run(args, cwd):
             locations.append(Path(cwd))
             contents = (Path(cwd) / 'pack.toml').read_text()
-            self.assertIn('[custom.all.flux-mobile]', contents)
+            self.assertIn('[custom.all.iris-mobile]', contents)
             self.assertIn(str(self.cap), contents)
             self.assertIn('--cg', args)
         with patch.object(mobile, 'run', side_effect=run):

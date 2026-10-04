@@ -8,17 +8,20 @@ here - it moved back out to its own repo,
 `Iris.*` modules, reclaiming the framework's own pre-Flux name), since it has
 no Flux-specific dependencies (its `ipkg` depends only on `contrib`);
 `pack.toml` pulls it as a pinned external dependency, the same way
-`postgres`/`db`/`docker` are. `flux-client` (generated RPC client runtime)
-and `flux-mobile` (Capacitor glue) stay here - they're Flux-specific glue on
-top of it, the same way `flux-db-flux` stayed behind when `db` was
-extracted. Persistence
+`postgres`/`db`/`docker` are. The generated RPC client runtime
+(`flux-client`, now `iris-client`) and Capacitor glue (`flux-mobile`, now
+`iris-mobile`) turned out to have the same property - no real dependency on
+Flux - and moved to the same repo as sub-packages. Flux's own mobile CLI
+packaging tooling (`flux mobile *`, `tools/mobile.py`) stays here regardless,
+the same way `flux build`/`flux dev` do. Persistence
 is now split the same way PostgreSQL support is: the active-record/query-builder
 layer moved back out to its own repo, [odunboye/db](https://github.com/odunboye/db)
 (package `db`, modules `DB.*`), since it has no Flux-specific dependencies; the
 genuinely Flux-specific HTTP-framework glue (`Flux.DB.PG`/`Flux.DB.Pool`) stays
 here as `flux-db-flux`. Existing databases must follow the
 [Flux DB metadata cutover guide](https://github.com/odunboye/db/blob/main/MIGRATION.md).
-Protocol/client packages are now `flux-protocol` and `flux-client`. See the
+The protocol package is now `flux-protocol` (the client, `flux-client`, has
+since moved to `iris-client` - see above). See the
 [coordinated package migration](design/PACKAGE_MIGRATION.md); suitable module
 namespaces remain unchanged. The Docker dev-workflow helper moved back out to
 its own repo, [odunboye/docker](https://github.com/odunboye/docker) (package

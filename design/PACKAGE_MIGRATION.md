@@ -62,6 +62,19 @@ namespaces changed along with this second rename: `Flux.Async.*`/
 `Flux.Stream.*` became `Async.*`/`Stream.*`. Don't install or depend on
 `flux-runtime` or `flux-async`, neither exists any more.
 
+**The `flux-platform-client`/`flux-client` row above was later moved out
+too**, once `iris` (above) moved out and `flux-client` turned out to have no
+real Flux dependency either - it only ever depended on `flux-ui`/`iris` and
+`json-simple`. It moved into the same repo as `iris`, as the `iris-client`
+sub-package (`client/iris-client.ipkg`), dropping the `Flux.Platform.Client.*`
+module prefix to `Iris.Client.*`. See `design/CONSOLIDATION.md`'s package map
+and `workspace.json`'s `external_packages.iris-client` for the current state.
+`flux-mobile`, which depended on `flux-client`, moved to the same repo too as
+`iris-mobile` for the same reason, but was never a workspace-registered
+package to begin with (resolved only via `tools/mobile_check.py`'s own
+temporary Pack map, like `capacitor`) so there's no row for it above. Don't
+install or depend on `flux-client`, it no longer exists.
+
 Related transport/Docker test package and executable prefixes are renamed too.
 Directories are unchanged; the canonical map is still `workspace.json`, with
 `pack.toml` generated from it. These are workspace-local packages, not a claim
@@ -79,7 +92,9 @@ Existing suitable **module namespaces stay unchanged**:
 - Runtime: `Flux.Async.*`, `Flux.IO.*`, and its other existing `Flux.*` modules
   at the time of this batch (later renamed `Async.*`/`Stream.*` when the
   package moved out to its own repo - see the reversal note above).
-- Protocols/client: `Flux.Platform.*`, including `Flux.Platform.Client.*`.
+- Protocols/client: `Flux.Platform.*` at the time of this batch (the client
+  half, `Flux.Platform.Client.*`, was later renamed `Iris.Client.*` when
+  `flux-client` moved out to its own repo - see the reversal note above).
 - PostgreSQL: `Idris2_pg`, `Data.PG*`, `Network.*` and `Crypto.*`.
 - Docker: `Docker`.
 
@@ -97,6 +112,7 @@ From the Flux root:
 ```sh
 python3 tools/workspace.py check
 pack --no-prompt install runtime
+pack --no-prompt install iris-client
 pack --no-prompt install postgres
 pack --no-prompt install postgres-async
 pack --no-prompt install db
@@ -110,7 +126,7 @@ multiple pack builds/installations concurrently against the same workspace and
 cache. Independent source edits, unit checks and lint checks can run in parallel;
 shared manifest integration and compiler builds are serialized.
 
-The browser closure now uses `flux-client`; `runtime`, `flux-protocol`,
+The browser closure now uses `iris-client`; `runtime`, `flux-protocol`,
 `postgres`, `postgres-async`, and the DB/server packages remain forbidden
 in that closure. Current package names/dependencies are checked in root CI.
 

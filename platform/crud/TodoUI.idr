@@ -1,7 +1,7 @@
 module TodoUI
 
 import Client
-import Flux.Platform.Client.Auth as Auth
+import Iris.Client.Auth as Auth
 import Iris.App
 import Iris.Widget
 import Iris.Platform.Event

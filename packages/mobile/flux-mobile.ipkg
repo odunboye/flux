@@ -1,7 +1,0 @@
-package flux-mobile
-version = 0.2.0
-authors = "Odun Adeboye"
-brief = "Optional Capacitor commands and owned subscriptions for Iris"
-depends = iris >= 0.4.0, capacitor >= 0.3.0, async-js, flux-client
-sourcedir = "src"
-modules = Flux.Mobile, Flux.Mobile.Client, Flux.Mobile.Session

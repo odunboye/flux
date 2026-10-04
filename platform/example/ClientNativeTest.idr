@@ -1,7 +1,7 @@
 module ClientNativeTest
 
 import ClientChecks
-import Flux.Platform.Client.Native
+import Iris.Client.Native
 import System
 
 %default covering

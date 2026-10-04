@@ -1,7 +1,0 @@
-package flux-mobile-test
-version = 0.1.0
-depends = flux-mobile
-sourcedir = "src"
-main = Main
-executable = "flux-mobile-test.js"
-opts = "--codegen javascript"

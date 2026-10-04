@@ -172,7 +172,7 @@ def server(schema, digest):
 
 def client(schema, digest):
     lines = header('Client', digest) + [
-        'import public ProtocolTypes', 'import public Flux.Platform.Client',
+        'import public ProtocolTypes', 'import public Iris.Client',
         '', '%default covering', '']
     for ep in sorted(schema['endpoints'], key=lambda ep: ep['name']):
         lines += ['export',

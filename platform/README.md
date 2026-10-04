@@ -16,16 +16,21 @@ complete application platform or a production-ready release.
 | `Client.idr` | Iris application | Typed endpoint functions returning `Cmd msg` |
 | `openapi.json` | API tooling | OpenAPI 3.1 description |
 
-The client package `flux-client` depends on **iris and json-simple**,
-not Flux's server runtime, Flux DB or PostgreSQL. Browser builds do not pull
-server sockets, worker threads or database bindings into their generated JS.
-The distinct server package `flux-protocol` supplies typed endpoint adapters.
+The generated `Client.idr` depends on `iris-client` (`Iris.Client`), an
+external package hosted in [odunboye/iris](https://github.com/odunboye/iris)
+- see its [own README](https://github.com/odunboye/iris/blob/main/client/README.md)
+for the `Client`/`call`/`Transport`/`RpcError`/`withBearer` API this generated
+code builds on, the Web/Native/custom transport options, and credential
+handling guidance. It depends only on `iris` and `json-simple` - not Flux's
+server runtime, Flux DB or PostgreSQL - so browser builds do not pull server
+sockets, worker threads or database bindings into their generated JS. The
+distinct server package `flux-protocol` supplies typed endpoint adapters.
 
 ### Iris consumption
 
 ```idris
 import Client
-import Flux.Platform.Client.Web
+import Iris.Client.Web
 
 data Msg = TodoCreated (Either RpcError TodoResponse)
 
@@ -38,35 +43,9 @@ create title =
 ```
 
 For a same-origin browser application, use an empty base URL. Native Iris
-applications use `nativeClient base` from `Flux.Platform.Client.Native` instead.
+applications use `nativeClient base` from `Iris.Client.Native` instead.
 Both clients use the same generated endpoint functions and wire types.
-
-- Web/Capacitor: `Iris.Effect.Http.Web.requestWith`, retaining `CancellableTask`
-  and its abort action; timeout/size options come from Iris's `FetchOptions`.
-- Native: in-process libcurl `Task`, with 5s connect/30s total deadlines, a 64KiB
-  response cap and mandatory peer verification. No argv credentials, temporary
-  request files, redirects, ambient proxies, netrc or cookie store. HTTPS is
-  required except loopback development; `nativeClientWithCA` accepts a PEM CA file.
-- Custom transport: supply `MkClient base transport`, where the transport
-  produces a Iris `Cmd` from an HTTP request and result-to-message callback.
-
-`RpcError` distinguishes `TransportFailure HttpError`,
-`RemoteError status code message`, and `InvalidResponse message`. Malformed
-response bodies are not copied into public decoder diagnostics. Credentials,
-URL trust and transport selection remain application responsibilities. Use
-`withBearer token client` for an immutable session client; portable
-`Flux.Platform.Client.Auth` supplies register/login/logout commands. Never persist
-bearers in browser storage or put them in URLs. Native Tasks are synchronous and
-bounded, not immediately cancellable background workers. These are libcurl
-network timeouts, not hard real-time preemption of platform DNS/trust operations.
-No application request worker is detached on timeout. The legacy generic
-`Iris.Effect.Http` shell transport is still unsuitable for credentials.
-Iris Web currently reads response
-text before its post-read size check when no usable Content-Length is supplied.
-
-When changing `client/c/http.c`, refresh `platform/flux-client.ipkg`'s timestamp
-before `pack --no-prompt install flux-client`: pack otherwise ignores C-only
-changes. The combined workspace gate performs this native refresh automatically.
+`Iris.Client.Auth` supplies register/login/logout commands.
 
 ## Protocol scope and server behavior
 

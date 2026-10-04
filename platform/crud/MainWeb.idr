@@ -1,7 +1,7 @@
 module MainWeb
 
 import TodoUI
-import Flux.Platform.Client.Web
+import Iris.Client.Web
 import Iris.Backend.Web.DOM.Run
 
 main : IO ()

@@ -11,7 +11,6 @@
     "flux-db-flux": "packages/db-flux/flux-db-flux.ipkg",
     "flux-protocol": "platform/flux-protocol.ipkg",
     "flux-auth": "packages/auth/flux-auth.ipkg",
-    "flux-client": "platform/flux-client.ipkg",
     "platform-crud-ui": "platform/crud/ui.ipkg",
     "platform-crud-server": "platform/crud/server.ipkg",
     "todo-api": "examples/todo-api/todo-api.ipkg",
@@ -61,11 +60,17 @@
     },
     "iris": {
       "url": "https://github.com/odunboye/iris.git",
-      "commit": "b61974c0fc414488b658ed428922658f0d67096f",
+      "commit": "139ffcb2724c1dc9e7b602507537c8f8977a0561",
       "ipkg": "iris.ipkg",
-      "note": "Formerly vendored here as packages/ui/flux-ui (Flux.UI.* modules); moved back out since it has no Flux-specific dependencies (ipkg depends only on contrib), reclaiming its own pre-Flux name - packages/ui was originally imported from a project called 'iris' (see design/CONSOLIDATION.md's history). Module prefix dropped back to Iris.*, and the public-facing runtime identifiers baked into the DOM/JS/native layers (#flux-ui-app, __fluxUI*, flux_ui_tui_*, etc.) were renamed to match (#iris-app, __iris*, iris_tui_*). flux-client (Flux.Platform.Client, generated RPC client runtime) and flux-mobile (Capacitor glue) stay - they're Flux-specific glue on top of this, the same way flux-db-flux stayed behind when db was extracted."
+      "note": "Formerly vendored here as packages/ui/flux-ui (Flux.UI.* modules); moved back out since it has no Flux-specific dependencies (ipkg depends only on contrib), reclaiming its own pre-Flux name - packages/ui was originally imported from a project called 'iris' (see design/CONSOLIDATION.md's history). Module prefix dropped back to Iris.*, and the public-facing runtime identifiers baked into the DOM/JS/native layers (#flux-ui-app, __fluxUI*, flux_ui_tui_*, etc.) were renamed to match (#iris-app, __iris*, iris_tui_*). flux-client and flux-mobile turned out to have the same property (no real dependency on flux, just flux-client, which itself only depends on iris/json-simple) and were later moved into this same repo as iris-client/iris-mobile sub-packages - see those entries below."
+    },
+    "iris-client": {
+      "url": "https://github.com/odunboye/iris.git",
+      "commit": "139ffcb2724c1dc9e7b602507537c8f8977a0561",
+      "ipkg": "client/iris-client.ipkg",
+      "note": "Formerly vendored here as platform/flux-client (Flux.Platform.Client.* modules); moved out since it has no real Flux dependency - a portable typed JSON-RPC-over-HTTP client runtime for Iris apps, not coupled to Flux's server code. Same repo/commit as iris, different ipkg path. iris-mobile (formerly packages/mobile/flux-mobile, Flux.Mobile.* modules) moved to the same repo for the same reason, but - like 'capacitor' before it - is deliberately NOT registered here: nothing in this workspace's own build graph depends on it directly, only tools/mobile_check.py's own temporary pack map does (registering it here would make pack eagerly validate its capacitor dependency too, which isn't resolvable from this workspace)."
     }
   },
-  "browser_roots": ["flux-client", "platform-crud-ui"],
+  "browser_roots": ["platform-crud-ui"],
   "browser_forbidden": ["flux", "runtime", "db", "flux-db-flux", "postgres", "postgres-async", "flux-protocol", "flux-auth"]
 }

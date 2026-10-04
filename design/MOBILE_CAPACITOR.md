@@ -1,10 +1,16 @@
 # Optional Capacitor integration
 
+This covers Flux's own application-packaging/build CLI for Capacitor targets
+(`flux mobile *`). The `Iris.Mobile` library itself (Capacitor command/
+subscription bindings, native session persistence) lives in
+[odunboye/iris](https://github.com/odunboye/iris) - see its
+[mobile library guide](https://github.com/odunboye/iris/blob/main/mobile/README.md).
+
 ## Architecture
 
 ```
 Application (Chequra)
-    -> Flux.Mobile commands / owned subscriptions
+    -> Iris.Mobile commands / owned subscriptions
     -> capacitor 0.3 typed bindings + one registered JS bridge
     -> Capacitor 8.4.3
     -> iOS / Android WebView
@@ -15,39 +21,13 @@ remain independent of Capacitor. The existing DOM UI and CSS are packaged as loc
 assets; native plugins are bundled before the compiled application. There is no
 remote `server.url`, storage snapshot, watcher injection or automatic RPC replay.
 
-`flux-mobile` is an optional package outside the ordinary workspace map.
-`flux mobile compile` adds it and `capacitor` in a **temporary** Pack map derived
+`iris-mobile` is an optional external package outside the ordinary workspace
+map (same as `capacitor` itself), pinned at the commit recorded in
+`workspace.json`'s `external_packages.iris-client` note. `flux mobile compile`
+adds it, `iris-client` and `capacitor` in a **temporary** Pack map derived
 from the application's existing local map; ordinary `pack.toml` files and server
 dependency registrations are not rewritten. Prefer a separate mobile UI ipkg if
-only the mobile target imports `Flux.Mobile`.
-
-## Native session persistence
-
-The optional adapter is now `flux-mobile 0.2.0`, requiring `capacitor >= 0.3.0`.
-`Flux.Mobile.Session` provides native-only origin-scoped storage and a strict
-versioned codec containing only token and active/revoking intent. The portable
-client's `Auth.me` validates restored identity/expiry with the backend; cached
-account metadata is never treated as authority.
-
-Native revision CAS rejects old saves after a clear or newer write. Clearing
-commits an empty revision. A revoking record must be acknowledged before remote
-logout starts; it never restores an authenticated UI or automatically replays
-logout on cold start. An interrupted local write is reconciled by a read, not by
-resubmitting login or financial RPC. Local-only clearing cannot claim server
-revocation: unreachable/lost server sessions can remain valid until expiry.
-
-The library owns the Keychain/Keystore implementation. Flux snapshots its local
-`native/session-vault` plugin into the owned native host and installs a file
-package; no registry publication, application plugin wiring or new core/server
-dependency is required. Managed manifest/plugin edits are rejected, source changes
-invalidate bundle fingerprints, and npm staging changes are detected. Known
-previous managed manifests can upgrade; arbitrary existing npm changes cannot.
-
-Hosts use `loggingBehavior: 'none'`, including debug builds. The facade checks this
-before sending storage payloads; native handlers also reject enabled logging.
-SDK debug request/response logging must never expose credentials. The exact old
-managed native configuration can upgrade to this stricter setting; other identity
-or configuration edits remain protected.
+only the mobile target imports `Iris.Mobile`.
 
 ## Configuration
 
@@ -71,7 +51,7 @@ For networked applications, use `"format": 2` and add an explicit
 `"apiOrigin": "https://your-api.example.com"`. This is an origin, not a route:
 no HTTP, userinfo, path/trailing slash, query, fragment or noncanonical default
 port. There is no insecure loopback exception. Format 1 remains a packaging-only
-preview and cannot initialize `Flux.Mobile.Client.mobileClient`.
+preview and cannot initialize `Iris.Mobile.Client.mobileClient`.
 
 Format 2 requires exactly one CSP meta element with `default-src 'self'`,
 `script-src 'self'`, `object-src 'none'`, `base-uri 'none'` and `form-action 'none'`.
@@ -148,12 +128,12 @@ sync successfully. Unsigned iOS Simulator Debug and Android Debug APK builds pas
 These are packaging/build checks, **not device-level behavioral certification**.
 
 The ordinary Chequra web entry uses a relative API origin. Networked mobile apps
-must use a separate entry calling `Flux.Mobile.Client.mobileClient`, with explicit
-format-2 configuration and server origin/CORS policy. The transport rejects
-redirects (including POST-preserving redirects), omits cookies and caches, bounds
-streamed responses and never retries a request. Native session persistence is
-implemented as described above; hosted deployment remains separate work. No hosted backend or payment/card service
-is created by this integration.
+must use a separate entry calling `Iris.Mobile.Client.mobileClient`, with explicit
+format-2 configuration and server origin/CORS policy - see iris-mobile's own
+README for the transport's guarantees (origin binding, no redirects/cookies/
+retries, bounded streaming) and native session persistence. Hosted deployment
+remains separate work. No hosted backend or payment/card service is created by
+this integration.
 
 Camera, biometrics, app lifecycle/back/deep-link plugin bindings,
 notifications, permission flows and device accessibility testing are subsequent
@@ -166,7 +146,15 @@ must be explicit and must not replay writes.
 ```sh
 python3 -m unittest discover -s tools -p 'test_mobile*.py'
 flux mobile check --capacitor /path/to/capacitor
-node packages/mobile/tests/browser.cjs /path/to/mobile/releases/ID
+```
+
+`flux mobile check` builds and runs iris-mobile's own compiled-Idris adapter
+test against the hardened bridge (fetching
+[odunboye/iris](https://github.com/odunboye/iris) at the pinned commit) -
+see `tools/mobile_check.py`. For a packaged release's bundled web content:
+
+```sh
+node /path/to/iris/mobile/tests/browser.cjs /path/to/mobile/releases/ID
 ```
 
 For actual native vault behavior, with the SDK runtimes already installed:
@@ -182,9 +170,10 @@ uses a disposable emulator with its own system PIN; that OS version requires a
 secure screen lock for unlocked-device keys. Tests cover cold persistence,
 origin isolation, native revision CAS/clear, reinstall reset, and Android
 ciphertext/AAD tampering, corrupt data, and locked-device denial. This is not a
-physical-device or biometric certification. SDK caches remain as normal.
+physical-device or biometric certification. SDK caches remain as normal. This
+test drives real packaging through `flux mobile build/sync`, so it stays here
+rather than moving to iris with the library it exercises.
 
-The library separately tests compiled Idris against actual browser plugins.
 Pinned core/native/CLI 8.4.3 deliberately avoids the current 8.5.x CLI's vulnerable
 xcode/uuid dependency. Library, example and Flux mobile tooling npm audits all
 reported zero vulnerabilities during validation; rerun audits as advisories change.

@@ -1,8 +1,8 @@
 module ClientTest
 
 import Client
-import Flux.Platform.Client.Web
-import Flux.Platform.Client.Auth as Auth
+import Iris.Client.Web
+import Iris.Client.Auth as Auth
 import Data.IORef
 import Data.List
 

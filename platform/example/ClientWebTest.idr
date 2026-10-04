@@ -1,7 +1,7 @@
 module ClientWebTest
 
 import ClientChecks
-import Flux.Platform.Client.Web
+import Iris.Client.Web
 import Data.IORef
 
 %default covering

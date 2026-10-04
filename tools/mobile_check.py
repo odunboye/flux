@@ -26,27 +26,29 @@ def check(capacitor):
     capacitor = Path(capacitor).resolve(strict=True)
     if not (capacitor / 'js/bridge.mjs').is_file():
         raise ValueError('Use hardened capacitor >= 0.2.0')
-    packages = {
-        'capacitor': capacitor / 'capacitor.ipkg',
-        'flux-client': ROOT / 'platform/flux-client.ipkg',
-        'flux-mobile': ROOT / 'packages/mobile/flux-mobile.ipkg',
-        'flux-mobile-test': ROOT / 'packages/mobile/tests/test.ipkg',
-    }
     manifest = json.loads((ROOT / 'workspace.json').read_text())
     collection = manifest['collection']
     iris = manifest['external_packages']['iris']
     with tempfile.TemporaryDirectory(prefix='flux-mobile-check-') as directory:
-        lines = ['collection = ' + json.dumps(collection),
-                  '[custom.all.iris]', 'type = "git"',
-                  'url = ' + json.dumps(iris['url']), 'commit = ' + json.dumps(iris['commit']),
-                  'ipkg = ' + json.dumps(iris['ipkg'])]
+        directory = Path(directory)
+        iris_clone = directory / 'iris'
+        run(['git', 'clone', '--quiet', iris['url'], str(iris_clone)], cwd=directory, timeout=120)
+        run(['git', 'checkout', '--quiet', iris['commit']], cwd=iris_clone, timeout=60)
+        packages = {
+            'capacitor': capacitor / 'capacitor.ipkg',
+            'iris': iris_clone / iris['ipkg'],
+            'iris-client': iris_clone / 'client/iris-client.ipkg',
+            'iris-mobile': iris_clone / 'mobile/iris-mobile.ipkg',
+            'iris-mobile-test': iris_clone / 'mobile/tests/test.ipkg',
+        }
+        lines = ['collection = ' + json.dumps(collection)]
         for name, file in packages.items():
             lines += [f'[custom.all.{name}]', 'type = "local"',
                       'path = ' + json.dumps(str(file.parent)), 'ipkg = ' + json.dumps(file.name)]
         Path(directory, 'pack.toml').write_text('\n'.join(lines) + '\n')
-        run(['pack', '--no-prompt', 'build', str(packages['flux-mobile-test'])], cwd=directory)
-    run(['node', '--unhandled-rejections=strict', str(ROOT / 'packages/mobile/tests/runtime.mjs'),
-         str(capacitor), str(ROOT / 'packages/mobile/tests/build/exec/flux-mobile-test.js')], timeout=30)
+        run(['pack', '--no-prompt', 'build', str(packages['iris-mobile-test'])], cwd=directory)
+        run(['node', '--unhandled-rejections=strict', str(iris_clone / 'mobile/tests/runtime.mjs'),
+             str(capacitor), str(iris_clone / 'mobile/tests/build/exec/iris-mobile-test.js')], timeout=30)
 
 
 if __name__ == '__main__':

@@ -159,11 +159,10 @@ def test(manifest, without_db):
         run('landing-browser', [sys.executable, 'website/test_site.py'])
         build('test/test.ipkg')
         run('flux-regression', ['./test/build/exec/flux-test'])
-        # Install native dependencies first; Flux UI's packaged demo is not JS.
-        # Native-only edits otherwise leave pack's installed bridge stale.
-        (ROOT / 'platform/flux-client.ipkg').touch()
-        run('install-client-native', ['pack', '--no-prompt', 'install', 'flux-client'])
-        run('client-native-security', [sys.executable, 'platform/client/test/native.py'])
+        # iris-client is an external git dependency (see workspace.json); its
+        # own native/ASan/UBSan verification is that repo's responsibility,
+        # not this gate's - same as postgres below.
+        run('install-client-native', ['pack', '--no-prompt', 'install', 'iris-client'])
         build('platform/example/client-native-test.ipkg')
         build('platform/crud/native-auth-test.ipkg')
         # pack's dependency freshness checks do not track native C changes.

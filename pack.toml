@@ -12,11 +12,6 @@ type = "local"
 path = "packages/auth"
 ipkg = "flux-auth.ipkg"
 
-[custom.all.flux-client]
-type = "local"
-path = "platform"
-ipkg = "flux-client.ipkg"
-
 [custom.all.flux-db-flux]
 type = "local"
 path = "packages/db-flux"
@@ -95,8 +90,14 @@ test = "test/test.ipkg"
 [custom.all.iris]
 type = "git"
 url = "https://github.com/odunboye/iris.git"
-commit = "b61974c0fc414488b658ed428922658f0d67096f"
+commit = "139ffcb2724c1dc9e7b602507537c8f8977a0561"
 ipkg = "iris.ipkg"
+
+[custom.all.iris-client]
+type = "git"
+url = "https://github.com/odunboye/iris.git"
+commit = "139ffcb2724c1dc9e7b602507537c8f8977a0561"
+ipkg = "client/iris-client.ipkg"
 
 [custom.all.postgres]
 type = "git"
