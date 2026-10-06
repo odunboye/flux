@@ -199,6 +199,23 @@ def pack_config(project, cfg, framework):
         lines += [f'[custom.all.{name}]', 'type = "local"',
                   'path = ' + json.dumps(os.path.relpath(path.parent, project)),
                   'ipkg = ' + json.dumps(path.name), '']
+    # Pinned external (git) dependencies, same as tools/workspace.py's own
+    # pack_config: unconditionally included, not filtered by whether this
+    # application's locally-readable ipkg files directly name them. A git
+    # package can only resolve its own transitive deps (e.g. iris-client ->
+    # iris) against other globally-known collection/git packages in the same
+    # pack.toml, not by this script introspecting a remote ipkg it has no
+    # local copy of - so there's no reliable way to compute a smaller exact
+    # subset here. Previously omitted entirely, which broke every managed
+    # external application whose server or UI transitively needed one of
+    # these (e.g. flux.ipkg -> runtime, any Iris UI -> iris/iris-client).
+    for name, dep in sorted(manifest.get('external_packages', {}).items()):
+        lines += [f'[custom.all.{name}]', 'type = "git"',
+                  'url = ' + json.dumps(dep['url']), 'commit = ' + json.dumps(dep['commit']),
+                  'ipkg = ' + json.dumps(dep['ipkg'])]
+        if 'test' in dep:
+            lines += ['test = ' + json.dumps(dep['test'])]
+        lines += ['']
     return '\n'.join(lines).rstrip() + '\n'
 
 

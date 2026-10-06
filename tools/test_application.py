@@ -64,6 +64,24 @@ class ApplicationTests(unittest.TestCase):
                 flux.main()
             generate.assert_called_once()
 
+    def test_managed_pack_config_includes_transitively_needed_git_dependencies(self):
+        # A real external UI ipkg only names iris-client directly; iris
+        # itself is iris-client's own dependency, inside a remote ipkg this
+        # script has no local copy of to introspect. pack_config must still
+        # emit a usable [custom.all.iris] git entry - previously it only
+        # emitted entries for locally-known framework packages, so any
+        # externally-pinned transitive dependency (iris here, runtime via
+        # flux.ipkg) was silently missing and broke the subsequent pack
+        # build with "Unknown package".
+        (self.root / 'ui.ipkg').write_text(
+            'package external-ui\ndepends = iris-client\nsourcedir = "src"\n'
+            'modules = Main\nmain = Main\nexecutable = external-ui\n')
+        config = application.pack_config(self.root, self.cfg, flux.ROOT)
+        for name in ['iris-client', 'iris', 'runtime']:
+            self.assertIn(f'[custom.all.{name}]', config)
+            section = config.split(f'[custom.all.{name}]')[1].split('[custom.all.')[0]
+            self.assertIn('type = "git"', section)
+
     def test_generated_namespace_and_dependency_map_do_not_mutate_framework(self):
         before = (flux.ROOT / 'workspace.json').read_bytes(), (flux.ROOT / 'pack.toml').read_bytes()
         expected = application.pack_config(self.root, self.cfg, flux.ROOT)
